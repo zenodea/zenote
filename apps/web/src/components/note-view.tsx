@@ -1,12 +1,30 @@
+import { isValidElement, type ComponentProps } from "react";
 import Link from "next/link";
 import Markdown from "react-markdown";
+import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import "katex/dist/katex.min.css";
 import type { Backlink } from "@/lib/backlinks";
 import type { Note } from "@/lib/notes";
 import { remarkTag } from "@/lib/remark-tag";
 import { remarkWikilink } from "@/lib/remark-wikilink";
 import { noteTags } from "@/lib/tags";
 import type { WikilinkResolver } from "@/lib/wikilinks";
+import { CodeBlock } from "@/components/code-block";
+import { MermaidDiagram } from "@/components/mermaid-diagram";
+
+function Pre({ children }: ComponentProps<"pre">) {
+  if (isValidElement(children)) {
+    const code = children.props as { className?: string; children?: unknown };
+    const text = String(code.children ?? "");
+    if (code.className?.split(" ").includes("language-mermaid")) {
+      return <MermaidDiagram chart={text} />;
+    }
+    return <CodeBlock text={text}>{children}</CodeBlock>;
+  }
+  return <pre>{children}</pre>;
+}
 
 export function NoteView({
   note,
@@ -46,7 +64,14 @@ export function NoteView({
 
       <div className="prose prose-neutral max-w-none dark:prose-invert prose-pre:bg-black/80 prose-pre:text-neutral-100 dark:prose-pre:bg-black/50">
         <Markdown
-          remarkPlugins={[remarkGfm, [remarkWikilink, { resolver }], remarkTag]}
+          remarkPlugins={[
+            remarkGfm,
+            remarkMath,
+            [remarkWikilink, { resolver }],
+            remarkTag,
+          ]}
+          rehypePlugins={[rehypeKatex]}
+          components={{ pre: Pre }}
         >
           {note.body}
         </Markdown>
