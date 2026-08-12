@@ -3,7 +3,9 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Backlink } from "@/lib/backlinks";
 import type { Note } from "@/lib/notes";
+import { remarkTag } from "@/lib/remark-tag";
 import { remarkWikilink } from "@/lib/remark-wikilink";
+import { noteTags } from "@/lib/tags";
 import type { WikilinkResolver } from "@/lib/wikilinks";
 
 export function NoteView({
@@ -30,19 +32,22 @@ export function NoteView({
               })}
             </time>
           )}
-          {note.tags.map((tag) => (
-            <span
+          {noteTags(note).map((tag) => (
+            <Link
               key={tag}
-              className="rounded-full bg-black/5 px-2 py-0.5 text-xs dark:bg-white/10"
+              href={`/tags/${tag}`}
+              className="rounded-full bg-black/5 px-2 py-0.5 text-xs hover:opacity-70 dark:bg-white/10"
             >
-              {tag}
-            </span>
+              #{tag}
+            </Link>
           ))}
         </div>
       </header>
 
       <div className="prose prose-neutral max-w-none dark:prose-invert prose-pre:bg-black/80 prose-pre:text-neutral-100 dark:prose-pre:bg-black/50">
-        <Markdown remarkPlugins={[remarkGfm, [remarkWikilink, { resolver }]]}>
+        <Markdown
+          remarkPlugins={[remarkGfm, [remarkWikilink, { resolver }], remarkTag]}
+        >
           {note.body}
         </Markdown>
       </div>

@@ -26,6 +26,18 @@ body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
+.tag {
+  color: #7c3aed;
+  font-size: 0.9em;
+  text-decoration: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .tag {
+    color: #c4b5fd;
+  }
+}
+
 .wikilink-broken {
   color: #b91c1c;
   font-style: normal;
