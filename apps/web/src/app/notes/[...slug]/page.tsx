@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { NoteView } from "@/components/note-view";
+import { buildBacklinks } from "@/lib/backlinks";
 import { getAllNotes, getNote } from "@/lib/notes";
 import { buildResolver } from "@/lib/wikilinks";
 
@@ -23,7 +24,9 @@ export default async function NotePage({
   const note = await getNote(slug.join("/"));
   if (!note) notFound();
 
-  const resolver = buildResolver(await getAllNotes());
+  const notes = await getAllNotes();
+  const resolver = buildResolver(notes);
+  const backlinks = buildBacklinks(notes, resolver).get(note.slug) ?? [];
 
-  return <NoteView note={note} resolver={resolver} />;
+  return <NoteView note={note} resolver={resolver} backlinks={backlinks} />;
 }

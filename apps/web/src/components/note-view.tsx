@@ -1,5 +1,7 @@
+import Link from "next/link";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import type { Backlink } from "@/lib/backlinks";
 import type { Note } from "@/lib/notes";
 import { remarkWikilink } from "@/lib/remark-wikilink";
 import type { WikilinkResolver } from "@/lib/wikilinks";
@@ -7,9 +9,11 @@ import type { WikilinkResolver } from "@/lib/wikilinks";
 export function NoteView({
   note,
   resolver,
+  backlinks,
 }: {
   note: Note;
   resolver: WikilinkResolver;
+  backlinks: Backlink[];
 }) {
   return (
     <article className="mx-auto w-full max-w-3xl px-6 py-12">
@@ -42,6 +46,26 @@ export function NoteView({
           {note.body}
         </Markdown>
       </div>
+
+      {backlinks.length > 0 && (
+        <footer className="mt-16 border-t border-black/10 pt-6 dark:border-white/15">
+          <h2 className="text-sm font-semibold uppercase tracking-wide opacity-60">
+            Linked from
+          </h2>
+          <ul className="mt-3 space-y-1">
+            {backlinks.map((backlink) => (
+              <li key={backlink.slug}>
+                <Link
+                  href={`/notes/${backlink.slug}`}
+                  className="text-sm hover:opacity-70"
+                >
+                  {backlink.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </footer>
+      )}
     </article>
   );
 }

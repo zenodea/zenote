@@ -1,9 +1,10 @@
 import { findAndReplace } from "mdast-util-find-and-replace";
 import type { Nodes, PhrasingContent, Root } from "mdast";
-import { resolveWikilink, type WikilinkResolver } from "./wikilinks";
-
-// [[target]] · [[target#heading]] · [[target|display]]
-const WIKILINK = /\[\[([^\[\]|#]+)(?:#([^\[\]|]+))?(?:\|([^\[\]]+))?\]\]/g;
+import {
+  resolveWikilink,
+  wikilinkRegex,
+  type WikilinkResolver,
+} from "./wikilinks";
 
 type Options = { resolver: WikilinkResolver };
 
@@ -12,7 +13,7 @@ export function remarkWikilink({ resolver }: Options) {
     findAndReplace(
       tree as Nodes,
       [
-        WIKILINK,
+        wikilinkRegex(),
         (_match: string, target: string, _heading: string, display: string) => {
           const label = (display ?? target).trim();
           const slug = resolveWikilink(resolver, target);
