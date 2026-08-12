@@ -33,7 +33,6 @@ export function remarkWikilink({ resolver }: Options) {
   };
 }
 
-/** `hName` overrides the output element, so this emits a <span>, not an <em>. */
 function brokenLink(label: string, target: string): PhrasingContent {
   return {
     type: "emphasis",

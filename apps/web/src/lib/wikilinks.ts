@@ -2,15 +2,12 @@ import type { Note } from "./notes";
 
 export type WikilinkResolver = Map<string, string>;
 
-// [[target]] · [[target#heading]] · [[target|display]]
 const WIKILINK_SOURCE = String.raw`\[\[([^\[\]|#]+)(?:#([^\[\]|]+))?(?:\|([^\[\]]+))?\]\]`;
 
-/** Fresh instance each call — a shared /g regex carries lastIndex between uses. */
 export function wikilinkRegex(): RegExp {
   return new RegExp(WIKILINK_SOURCE, "g");
 }
 
-/** Targets referenced by a note, ignoring anything inside code. */
 export function extractTargets(body: string): string[] {
   const prose = body
     .replace(/```[\s\S]*?```/g, "")
@@ -23,10 +20,6 @@ function normalise(value: string): string {
   return value.trim().toLowerCase();
 }
 
-/**
- * Keys are registered least- to most-specific, so a later exact slug match
- * overwrites a title or filename that collided with it.
- */
 export function buildResolver(notes: Note[]): WikilinkResolver {
   const resolver: WikilinkResolver = new Map();
 

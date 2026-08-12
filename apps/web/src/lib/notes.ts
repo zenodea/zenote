@@ -49,7 +49,6 @@ function toSlug(absolute: string): string {
 export async function getNote(slug: string): Promise<Note | null> {
   const target = path.join(CONTENT_DIR, `${slug}.md`);
 
-  // Reject anything that escapes CONTENT_DIR, e.g. a slug of "../../secrets".
   if (!target.startsWith(CONTENT_DIR + path.sep)) return null;
 
   try {

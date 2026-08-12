@@ -154,6 +154,19 @@ export function Sidebar({ docs }: { docs: SearchDoc[] }) {
             >
               <LogoIcon />
             </Link>
+            <Link
+              href="/graph"
+              aria-label="Graph view"
+              aria-current={pathname === "/graph" ? "page" : undefined}
+              // Mirrors the Button icon variant, active state included.
+              className={`block shrink-0 rounded p-1.5 ${
+                pathname === "/graph"
+                  ? "bg-foreground/10 text-accent"
+                  : "opacity-60 hover:bg-foreground/10 hover:opacity-100"
+              }`}
+            >
+              <GraphIcon />
+            </Link>
             <Button
               onClick={() => setNaming(naming === "note" ? null : "note")}
               // mousedown-preventDefault: else the input's blur-cancel makes this click reopen.
@@ -349,6 +362,27 @@ function SlidersIcon() {
       <circle cx="10.5" cy="3.5" r="1.75" fill="var(--background)" />
       <circle cx="5.5" cy="8" r="1.75" fill="var(--background)" />
       <circle cx="10.5" cy="12.5" r="1.75" fill="var(--background)" />
+    </svg>
+  );
+}
+
+function GraphIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      aria-hidden
+      className="block"
+    >
+      <path d="M4 4 12 5.5 6.5 12 4 4" />
+      <circle cx="4" cy="4" r="1.75" fill="var(--background)" />
+      <circle cx="12" cy="5.5" r="1.75" fill="var(--background)" />
+      <circle cx="6.5" cy="12" r="1.75" fill="var(--background)" />
     </svg>
   );
 }

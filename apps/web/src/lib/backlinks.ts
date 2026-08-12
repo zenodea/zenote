@@ -3,7 +3,6 @@ import { extractTargets, resolveWikilink, type WikilinkResolver } from "./wikili
 
 export type Backlink = { slug: string; title: string };
 
-/** Maps a note's slug to the notes that link to it. */
 export function buildBacklinks(
   notes: Note[],
   resolver: WikilinkResolver,

@@ -55,7 +55,6 @@ function toNodes(folder: FolderDraft, prefix: string): TreeNode[] {
     },
   );
 
-  // Folders above notes, each group alphabetical.
   return nodes.sort((a, b) => {
     if (a.kind !== b.kind) return a.kind === "folder" ? -1 : 1;
     return a.name.localeCompare(b.name);
