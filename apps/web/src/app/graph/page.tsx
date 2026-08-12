@@ -11,11 +11,13 @@ export default async function GraphPage() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <header className="flex shrink-0 items-baseline gap-3 border-b border-foreground/15 px-6 py-3">
-        <h1 className="text-xl font-semibold tracking-tight">Graph</h1>
-        <p className="text-sm opacity-60">
-          {graph.nodes.length} notes · {graph.links.length} links
-        </p>
+      <header className="flex h-14 shrink-0 items-center border-b border-foreground/15 px-6">
+        <div className="flex items-baseline gap-3">
+          <h1 className="text-xl font-semibold tracking-tight">Graph</h1>
+          <p className="text-sm opacity-60">
+            {graph.nodes.length} notes · {graph.links.length} links
+          </p>
+        </div>
       </header>
 
       <div className="min-h-0 flex-1">
