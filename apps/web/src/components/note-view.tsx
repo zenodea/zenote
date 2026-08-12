@@ -62,7 +62,7 @@ export function NoteView({
         </div>
       </header>
 
-      <div className="prose max-w-none prose-pre:bg-black/80 prose-pre:text-neutral-100 dark:prose-pre:bg-black/50">
+      <div className="prose max-w-none">
         <Markdown
           remarkPlugins={[
             remarkGfm,

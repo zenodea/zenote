@@ -29,7 +29,7 @@ export function CodeBlock({
       <button
         type="button"
         onClick={copy}
-        className="absolute right-2 top-2 rounded border border-white/20 bg-black/40 px-2 py-0.5 text-xs text-neutral-100 opacity-0 backdrop-blur transition-opacity hover:bg-white/10 focus-visible:opacity-100 group-hover:opacity-100"
+        className="absolute right-2 top-2 rounded border border-foreground/20 bg-background/60 px-2 py-0.5 text-xs text-foreground opacity-0 backdrop-blur transition-opacity hover:bg-foreground/10 focus-visible:opacity-100 group-hover:opacity-100"
         aria-label="Copy code"
       >
         {copied ? "Copied" : "Copy"}
