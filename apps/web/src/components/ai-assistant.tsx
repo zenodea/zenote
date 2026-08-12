@@ -1,0 +1,269 @@
+"use client";
+
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { usePathname } from "next/navigation";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+type ChatMessage = { role: "user" | "assistant"; content: string };
+
+type AiAssistantState = {
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  busy: boolean;
+  setBusy: (busy: boolean) => void;
+};
+
+const AiAssistantContext = createContext<AiAssistantState | null>(null);
+
+function useAiAssistant(): AiAssistantState {
+  const state = useContext(AiAssistantContext);
+  if (!state) {
+    throw new Error("AiAssistant components need an <AiAssistantProvider>.");
+  }
+  return state;
+}
+
+// Slug of the note being read, or null outside note pages.
+function useNoteSlug(): string | null {
+  const pathname = usePathname();
+  if (!pathname.startsWith("/notes/")) return null;
+  return decodeURIComponent(pathname.slice("/notes/".length));
+}
+
+export function AiAssistantProvider({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const pathname = usePathname();
+
+  // Navigating to another note switches the assistant off. State is adjusted
+  // during render (the documented alternative to a setState-in-effect).
+  const [lastPathname, setLastPathname] = useState(pathname);
+  if (pathname !== lastPathname) {
+    setLastPathname(pathname);
+    setOpen(false);
+  }
+
+  return (
+    <AiAssistantContext.Provider value={{ open, setOpen, busy, setBusy }}>
+      {children}
+    </AiAssistantContext.Provider>
+  );
+}
+
+export function AiButton() {
+  const { open, setOpen, busy } = useAiAssistant();
+  const slug = useNoteSlug();
+
+  return (
+    <button
+      type="button"
+      onClick={() => setOpen(!open)}
+      disabled={!slug}
+      aria-pressed={open}
+      aria-label={open ? "Close AI assistant" : "Ask AI about this note"}
+      title={
+        slug
+          ? "Ask AI about this note"
+          : "Open a note to use the AI assistant"
+      }
+      className={`rounded p-1.5 ${
+        open
+          ? `bg-foreground/10 text-accent ${busy ? "animate-pulse" : ""}`
+          : "opacity-60 hover:bg-foreground/10 hover:opacity-100 disabled:opacity-25 disabled:hover:bg-transparent"
+      }`}
+    >
+      <SparkleIcon />
+    </button>
+  );
+}
+
+export function AiPanel({ titles }: { titles: Record<string, string> }) {
+  const { open, setOpen, setBusy } = useAiAssistant();
+  const slug = useNoteSlug();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [busy, setLocalBusy] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const show = open && slug !== null;
+
+  // A conversation belongs to one note; reset when the note changes.
+  const [lastSlug, setLastSlug] = useState(slug);
+  if (slug !== lastSlug) {
+    setLastSlug(slug);
+    setMessages([]);
+    abortRef.current?.abort();
+  }
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+  }, [messages]);
+
+  function markBusy(value: boolean) {
+    setLocalBusy(value);
+    setBusy(value);
+  }
+
+  function appendToReply(chunk: string) {
+    setMessages((previous) => {
+      const last = previous[previous.length - 1];
+      if (!last || last.role !== "assistant") return previous;
+      return [
+        ...previous.slice(0, -1),
+        { ...last, content: last.content + chunk },
+      ];
+    });
+  }
+
+  async function send() {
+    const text = input.trim();
+    if (!text || busy || !slug) return;
+
+    const history = [...messages, { role: "user" as const, content: text }];
+    setMessages([...history, { role: "assistant", content: "" }]);
+    setInput("");
+    markBusy(true);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, messages: history }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error(await response.text());
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        appendToReply(decoder.decode(value, { stream: true }));
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        appendToReply(
+          `⚠️ ${error instanceof Error && error.message ? error.message : "Something went wrong."}`,
+        );
+      }
+    } finally {
+      markBusy(false);
+    }
+  }
+
+  return (
+    <aside
+      aria-hidden={!show}
+      aria-label="AI assistant"
+      className={`shrink-0 overflow-hidden transition-[width] duration-300 ${
+        show ? "w-96" : "w-0"
+      }`}
+    >
+      <div className="flex h-full w-96 flex-col border-l border-foreground/15 text-sm">
+        <div className="flex h-14 shrink-0 items-center gap-2 border-b border-foreground/15 px-4">
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">AI Assistant</p>
+            <p className="truncate text-xs opacity-60">
+              {slug ? (titles[slug] ?? slug) : ""}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Close assistant"
+            className="shrink-0 rounded p-1 opacity-60 hover:bg-foreground/10 hover:opacity-100"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div
+          ref={scrollRef}
+          className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4"
+        >
+          {messages.length === 0 && (
+            <p className="opacity-50">Ask anything about this note</p>
+          )}
+          {messages.map((message, index) =>
+            message.role === "user" ? (
+              <p
+                key={index}
+                className="ml-8 whitespace-pre-wrap rounded-lg bg-foreground/10 px-3 py-2"
+              >
+                {message.content}
+              </p>
+            ) : (
+              <div key={index} className="prose prose-sm max-w-none">
+                {message.content ? (
+                  <Markdown remarkPlugins={[remarkGfm]}>
+                    {message.content}
+                  </Markdown>
+                ) : (
+                  <p className="animate-pulse opacity-50">Thinking…</p>
+                )}
+              </div>
+            ),
+          )}
+        </div>
+
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            send();
+          }}
+          className="flex shrink-0 gap-2 border-t border-foreground/15 p-3"
+        >
+          <input
+            type="text"
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            placeholder="Ask about this note…"
+            aria-label="Message the assistant"
+            className="min-w-0 flex-1 rounded border border-foreground/15 bg-background px-2 py-1.5 placeholder:opacity-50 focus:border-foreground/40 focus:outline-none"
+          />
+          <button
+            type="submit"
+            disabled={busy || input.trim().length === 0}
+            className="shrink-0 rounded bg-foreground/10 px-3 py-1.5 font-medium hover:bg-foreground/15 disabled:opacity-40 disabled:hover:bg-foreground/10"
+          >
+            Send
+          </button>
+        </form>
+      </div>
+    </aside>
+  );
+}
+
+function SparkleIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+      aria-hidden
+      className="block"
+    >
+      <path d="M8 1.5 9.7 6.3 14.5 8 9.7 9.7 8 14.5 6.3 9.7 1.5 8 6.3 6.3Z" />
+    </svg>
+  );
+}
