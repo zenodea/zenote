@@ -12,9 +12,10 @@ export function MermaidDiagram({ chart }: { chart: string }) {
     (async () => {
       try {
         const mermaid = (await import("mermaid")).default;
-        const dark =
-          document.documentElement.classList.contains("dark") ||
-          window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const theme = document.documentElement.dataset.theme;
+        const dark = theme
+          ? theme.endsWith("-dark")
+          : window.matchMedia("(prefers-color-scheme: dark)").matches;
 
         mermaid.initialize({
           startOnLoad: false,

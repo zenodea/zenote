@@ -28,7 +28,7 @@ export default async function TagPage({ params }: PageProps<"/tags/[tag]">) {
         {notes.length} {notes.length === 1 ? "note" : "notes"}
       </p>
 
-      <ul className="mt-8 divide-y divide-black/10 dark:divide-white/15">
+      <ul className="mt-8 divide-y divide-foreground/15">
         {notes.map((note) => (
           <li key={note.slug}>
             <Link

@@ -5,8 +5,21 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { TreeNode } from "@/lib/tree";
 import { Text } from "@/components/text";
+import { ThemePicker } from "@/components/theme-picker";
 
-export function Sidebar({ tree }: { tree: TreeNode[] }) {
+const footerJustify = {
+  left: "justify-start",
+  center: "justify-center",
+  right: "justify-end",
+} as const;
+
+export function Sidebar({
+  tree,
+  footerPosition = "right",
+}: {
+  tree: TreeNode[];
+  footerPosition?: keyof typeof footerJustify;
+}) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const pathname = usePathname();
 
@@ -19,8 +32,8 @@ export function Sidebar({ tree }: { tree: TreeNode[] }) {
   }
 
   return (
-    <nav className="flex w-64 shrink-0 flex-col border-r border-black/10 text-sm dark:border-white/15">
-      <div className="shrink-0 border-b border-black/10 p-4 dark:border-white/15">
+    <nav className="flex w-64 shrink-0 flex-col border-r border-foreground/15 text-sm">
+      <div className="shrink-0 border-b border-foreground/15 p-4">
         <Link href="/" className="block font-semibold hover:opacity-70">
           Z-Notes
         </Link>
@@ -34,6 +47,11 @@ export function Sidebar({ tree }: { tree: TreeNode[] }) {
           pathname={pathname}
         />
       </div>
+      <div
+        className={`flex shrink-0 border-t border-foreground/15 p-2 ${footerJustify[footerPosition]}`}
+      >
+        <ThemePicker />
+      </div>
     </nav>
   );
 }
@@ -46,7 +64,13 @@ type NodeListProps = {
   pathname: string;
 };
 
-function NodeList({ nodes, depth, collapsed, onToggle, pathname }: NodeListProps) {
+function NodeList({
+  nodes,
+  depth,
+  collapsed,
+  onToggle,
+  pathname,
+}: NodeListProps) {
   return (
     <ul>
       {nodes.map((node) => {
@@ -61,7 +85,7 @@ function NodeList({ nodes, depth, collapsed, onToggle, pathname }: NodeListProps
                 type="button"
                 onClick={() => onToggle(node.path)}
                 style={indent}
-                className="flex w-full items-center gap-1 rounded py-1 text-left opacity-70 hover:bg-black/5 dark:hover:bg-white/10"
+                className="flex w-full items-center gap-1 rounded py-1 text-left opacity-70 hover:bg-foreground/10"
                 aria-expanded={!isCollapsed}
               >
                 <Text className="inline-block w-3">
@@ -92,8 +116,8 @@ function NodeList({ nodes, depth, collapsed, onToggle, pathname }: NodeListProps
               href={href}
               style={indent}
               aria-current={isActive ? "page" : undefined}
-              className={`block rounded py-1 pl-4 hover:bg-black/5 dark:hover:bg-white/10 ${
-                isActive ? "bg-black/5 font-medium dark:bg-white/10" : ""
+              className={`block rounded py-1 pl-4 hover:bg-foreground/10 ${
+                isActive ? "bg-foreground/10 font-medium" : ""
               }`}
             >
               {node.name}
