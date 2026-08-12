@@ -35,13 +35,15 @@ export function ThemePicker() {
       direction="up"
       align="center"
       ariaLabel="Colour theme"
+      triggerClassName="block rounded-sm opacity-80 hover:opacity-100"
       label={
         <span
           aria-hidden
-          className="my-0.5 block size-3.5 rounded-full border border-foreground/30"
+          className="block size-4 rounded-sm"
           style={{
+            // All three theme tokens, as a tri-segment swatch.
             background:
-              "linear-gradient(135deg, var(--background) 50%, var(--accent) 50%)",
+              "conic-gradient(from 210deg, var(--accent) 0deg 120deg, var(--foreground) 120deg 240deg, var(--background) 240deg 360deg)",
           }}
         />
       }

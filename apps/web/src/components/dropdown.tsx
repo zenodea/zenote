@@ -8,12 +8,14 @@ export function Dropdown({
   align = "right",
   direction = "down",
   ariaLabel,
+  triggerClassName,
 }: {
   label: ReactNode;
   children: ReactNode;
   align?: "left" | "right" | "center";
   direction?: "down" | "up";
   ariaLabel?: string;
+  triggerClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -44,7 +46,10 @@ export function Dropdown({
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label={ariaLabel}
-        className="rounded border border-foreground/15 bg-background px-2 py-0.5 text-xs opacity-70 hover:opacity-100"
+        className={
+          triggerClassName ??
+          "rounded border border-foreground/15 bg-background px-2 py-0.5 text-xs opacity-70 hover:opacity-100"
+        }
       >
         {label}
       </button>

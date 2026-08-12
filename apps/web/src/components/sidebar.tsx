@@ -13,6 +13,21 @@ const footerJustify = {
   right: "justify-end",
 } as const;
 
+function filterTree(nodes: TreeNode[], query: string): TreeNode[] {
+  const result: TreeNode[] = [];
+  for (const node of nodes) {
+    if (node.kind === "folder") {
+      const children = filterTree(node.children, query);
+      if (children.length > 0) result.push({ ...node, children });
+    } else if (node.name.toLowerCase().includes(query)) {
+      result.push(node);
+    }
+  }
+  return result;
+}
+
+const NONE_COLLAPSED: Set<string> = new Set();
+
 export function Sidebar({
   tree,
   footerPosition = "right",
@@ -21,7 +36,14 @@ export function Sidebar({
   footerPosition?: keyof typeof footerJustify;
 }) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const pathname = usePathname();
+
+  function closeSearch() {
+    setSearchOpen(false);
+    setQuery("");
+  }
 
   function toggle(path: string) {
     setCollapsed((previous) => {
@@ -31,21 +53,74 @@ export function Sidebar({
     });
   }
 
+  const trimmed = query.trim().toLowerCase();
+  const searching = trimmed.length > 0;
+  // In search mode the tree starts empty and fills in as matches appear.
+  const shown = searchOpen
+    ? searching
+      ? filterTree(tree, trimmed)
+      : []
+    : tree;
+
   return (
     <nav className="flex w-64 shrink-0 flex-col border-r border-foreground/15 text-sm">
-      <div className="shrink-0 border-b border-foreground/15 p-4">
-        <Link href="/" className="block font-semibold hover:opacity-70">
-          Z-Notes
-        </Link>
+      <div className="flex h-14 shrink-0 items-center gap-2 border-b border-foreground/15 px-4">
+        {searchOpen ? (
+          <>
+            <input
+              autoFocus
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") closeSearch();
+              }}
+              placeholder="Search notes…"
+              aria-label="Search notes"
+              className="min-w-0 flex-1 rounded border border-foreground/15 bg-background px-2 py-1 placeholder:opacity-50 focus:border-foreground/40 focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={closeSearch}
+              aria-label="Close search"
+              className="shrink-0 opacity-60 hover:opacity-100"
+            >
+              ✕
+            </button>
+          </>
+        ) : (
+          <>
+            <Link
+              href="/"
+              className="min-w-0 flex-1 truncate font-semibold hover:opacity-70"
+            >
+              Z-Notes
+            </Link>
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              aria-label="Search notes"
+              className="shrink-0 rounded p-1 opacity-60 hover:bg-foreground/10 hover:opacity-100"
+            >
+              <SearchIcon />
+            </button>
+          </>
+        )}
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        <NodeList
-          nodes={tree}
-          depth={0}
-          collapsed={collapsed}
-          onToggle={toggle}
-          pathname={pathname}
-        />
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
+        {searchOpen && !searching ? (
+          <p className="opacity-50">Type to find files…</p>
+        ) : searching && shown.length === 0 ? (
+          <p className="opacity-50">No files found</p>
+        ) : (
+          <NodeList
+            nodes={shown}
+            depth={0}
+            collapsed={searching ? NONE_COLLAPSED : collapsed}
+            onToggle={toggle}
+            pathname={pathname}
+          />
+        )}
       </div>
       <div
         className={`flex shrink-0 border-t border-foreground/15 p-2 ${footerJustify[footerPosition]}`}
@@ -53,6 +128,25 @@ export function Sidebar({
         <ThemePicker />
       </div>
     </nav>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      aria-hidden
+      className="block"
+    >
+      <circle cx="7" cy="7" r="4.5" />
+      <path d="m10.5 10.5 3.5 3.5" />
+    </svg>
   );
 }
 

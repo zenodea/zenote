@@ -47,9 +47,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
       </head>
-      <body className="flex h-full">
+      <body className="flex h-full overflow-hidden">
         <Sidebar tree={tree} />
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <main className="flex-1 overflow-y-auto overscroll-contain">
+          {children}
+        </main>
       </body>
     </html>
   );
