@@ -4,14 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { TreeNode } from "@/lib/tree";
+import { AiButton } from "@/components/ai-assistant";
 import { Text } from "@/components/text";
 import { ThemePicker } from "@/components/theme-picker";
-
-const footerJustify = {
-  left: "justify-start",
-  center: "justify-center",
-  right: "justify-end",
-} as const;
 
 function filterTree(nodes: TreeNode[], query: string): TreeNode[] {
   const result: TreeNode[] = [];
@@ -28,13 +23,7 @@ function filterTree(nodes: TreeNode[], query: string): TreeNode[] {
 
 const NONE_COLLAPSED: Set<string> = new Set();
 
-export function Sidebar({
-  tree,
-  footerPosition = "right",
-}: {
-  tree: TreeNode[];
-  footerPosition?: keyof typeof footerJustify;
-}) {
+export function Sidebar({ tree }: { tree: TreeNode[] }) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -122,10 +111,9 @@ export function Sidebar({
           />
         )}
       </div>
-      <div
-        className={`flex shrink-0 border-t border-foreground/15 p-2 ${footerJustify[footerPosition]}`}
-      >
+      <div className="flex shrink-0 items-center justify-between border-t border-foreground/15 p-2">
         <ThemePicker />
+        <AiButton />
       </div>
     </nav>
   );

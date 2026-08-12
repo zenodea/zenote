@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { AiAssistantProvider, AiPanel } from "@/components/ai-assistant";
 import { Sidebar } from "@/components/sidebar";
 import { getAllNotes } from "@/lib/notes";
 import { THEME_IDS, THEME_STORAGE_KEY } from "@/lib/theme";
@@ -36,7 +37,11 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const tree = buildTree(await getAllNotes());
+  const notes = await getAllNotes();
+  const tree = buildTree(notes);
+  const titles = Object.fromEntries(
+    notes.map((note) => [note.slug, note.title]),
+  );
 
   return (
     <html
@@ -48,10 +53,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
       </head>
       <body className="flex h-full overflow-hidden">
-        <Sidebar tree={tree} />
-        <main className="flex-1 overflow-y-auto overscroll-contain">
-          {children}
-        </main>
+        <AiAssistantProvider>
+          <Sidebar tree={tree} />
+          <main className="min-w-0 flex-1 overflow-y-auto overscroll-contain">
+            {children}
+          </main>
+          <AiPanel titles={titles} />
+        </AiAssistantProvider>
       </body>
     </html>
   );
