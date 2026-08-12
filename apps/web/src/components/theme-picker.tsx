@@ -33,7 +33,7 @@ export function ThemePicker() {
   return (
     <Dropdown
       direction="up"
-      align="center"
+      align="left"
       ariaLabel="Colour theme"
       triggerClassName="block rounded-sm opacity-80 hover:opacity-100"
       label={
