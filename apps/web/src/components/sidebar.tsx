@@ -279,6 +279,7 @@ export function Sidebar({ docs }: { docs: SearchDoc[] }) {
           </div>
         )}
       </div>
+<<<<<<< HEAD
       {vault.changeCount > 0 && (
         <div className="flex shrink-0 items-center justify-between gap-2 border-t border-foreground/15 px-4 py-1.5 text-xs">
           <span className="min-w-0 truncate opacity-60">
@@ -313,6 +314,38 @@ export function Sidebar({ docs }: { docs: SearchDoc[] }) {
         >
           <SlidersIcon />
         </Link>
+=======
+      <div className="flex shrink-0 items-center justify-between border-t border-foreground/15 p-2">
+        <div className="flex items-center gap-1">
+          <Link
+            href="/settings"
+            aria-label="Settings"
+            aria-current={pathname === "/settings" ? "page" : undefined}
+            // Mirrors the Button icon variant, active state included.
+            className={`block rounded p-1.5 ${
+              pathname === "/settings"
+                ? "bg-foreground/10 text-accent"
+                : "opacity-60 hover:bg-foreground/10 hover:opacity-100"
+            }`}
+          >
+            <SlidersIcon />
+          </Link>
+          <Link
+            href="/graph"
+            aria-label="Graph"
+            title="Graph"
+            aria-current={pathname === "/graph" ? "page" : undefined}
+            // Mirrors the Button icon variant, active state included.
+            className={`block rounded p-1.5 ${
+              pathname === "/graph"
+                ? "bg-foreground/10 text-accent"
+                : "opacity-60 hover:bg-foreground/10 hover:opacity-100"
+            }`}
+          >
+            <GraphIcon />
+          </Link>
+        </div>
+>>>>>>> b155c6a (chore: rebased with main)
         <AiButton />
       </div>
     </nav>
