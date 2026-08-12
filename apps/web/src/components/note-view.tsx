@@ -1,8 +1,16 @@
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Note } from "@/lib/notes";
+import { remarkWikilink } from "@/lib/remark-wikilink";
+import type { WikilinkResolver } from "@/lib/wikilinks";
 
-export function NoteView({ note }: { note: Note }) {
+export function NoteView({
+  note,
+  resolver,
+}: {
+  note: Note;
+  resolver: WikilinkResolver;
+}) {
   return (
     <article className="mx-auto w-full max-w-3xl px-6 py-12">
       <header className="mb-10 border-b border-black/10 pb-6 dark:border-white/15">
@@ -30,7 +38,9 @@ export function NoteView({ note }: { note: Note }) {
       </header>
 
       <div className="prose prose-neutral max-w-none dark:prose-invert prose-pre:bg-black/80 prose-pre:text-neutral-100 dark:prose-pre:bg-black/50">
-        <Markdown remarkPlugins={[remarkGfm]}>{note.body}</Markdown>
+        <Markdown remarkPlugins={[remarkGfm, [remarkWikilink, { resolver }]]}>
+          {note.body}
+        </Markdown>
       </div>
     </article>
   );

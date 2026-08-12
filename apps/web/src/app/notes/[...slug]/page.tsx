@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { NoteView } from "@/components/note-view";
 import { getAllNotes, getNote } from "@/lib/notes";
+import { buildResolver } from "@/lib/wikilinks";
 
 export async function generateStaticParams() {
   const notes = await getAllNotes();
@@ -22,5 +23,7 @@ export default async function NotePage({
   const note = await getNote(slug.join("/"));
   if (!note) notFound();
 
-  return <NoteView note={note} />;
+  const resolver = buildResolver(await getAllNotes());
+
+  return <NoteView note={note} resolver={resolver} />;
 }
