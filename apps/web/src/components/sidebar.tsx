@@ -18,17 +18,21 @@ export function Sidebar({ tree }: { tree: TreeNode[] }) {
   }
 
   return (
-    <nav className="w-64 shrink-0 overflow-y-auto border-r border-black/10 p-4 text-sm dark:border-white/15">
-      <Link href="/" className="mb-4 block font-semibold hover:opacity-70">
-        All notes
-      </Link>
-      <NodeList
-        nodes={tree}
-        depth={0}
-        collapsed={collapsed}
-        onToggle={toggle}
-        pathname={pathname}
-      />
+    <nav className="flex w-64 shrink-0 flex-col border-r border-black/10 text-sm dark:border-white/15">
+      <div className="shrink-0 border-b border-black/10 p-4 dark:border-white/15">
+        <Link href="/" className="block font-semibold hover:opacity-70">
+          Z-Notes
+        </Link>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        <NodeList
+          nodes={tree}
+          depth={0}
+          collapsed={collapsed}
+          onToggle={toggle}
+          pathname={pathname}
+        />
+      </div>
     </nav>
   );
 }
