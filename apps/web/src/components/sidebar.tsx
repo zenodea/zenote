@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { TreeNode } from "@/lib/tree";
+import { Text } from "@/components/text";
 
 export function Sidebar({ tree }: { tree: TreeNode[] }) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -63,9 +64,9 @@ function NodeList({ nodes, depth, collapsed, onToggle, pathname }: NodeListProps
                 className="flex w-full items-center gap-1 rounded py-1 text-left opacity-70 hover:bg-black/5 dark:hover:bg-white/10"
                 aria-expanded={!isCollapsed}
               >
-                <span className="inline-block w-3">
+                <Text className="inline-block w-3">
                   {isCollapsed ? "▸" : "▾"}
-                </span>
+                </Text>
                 {node.name}
               </button>
 

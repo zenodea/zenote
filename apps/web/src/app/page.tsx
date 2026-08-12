@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getAllNotes } from "@/lib/notes";
+import { Text } from "@/components/text";
 
 export default async function Home() {
   const notes = await getAllNotes();
@@ -15,11 +16,11 @@ export default async function Home() {
               href={`/notes/${note.slug}`}
               className="block py-4 hover:opacity-70"
             >
-              <span className="font-medium">{note.title}</span>
+              <Text variant="strong">{note.title}</Text>
               {note.tags.length > 0 && (
-                <span className="ml-3 text-sm opacity-60">
+                <Text variant="muted" className="ml-3">
                   {note.tags.join(" · ")}
-                </span>
+                </Text>
               )}
             </Link>
           </li>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAllNotes } from "@/lib/notes";
 import { buildTagIndex, noteTags } from "@/lib/tags";
+import { Text } from "@/components/text";
 
 export async function generateStaticParams() {
   const index = buildTagIndex(await getAllNotes());
@@ -34,13 +35,13 @@ export default async function TagPage({ params }: PageProps<"/tags/[tag]">) {
               href={`/notes/${note.slug}`}
               className="block py-4 hover:opacity-70"
             >
-              <span className="font-medium">{note.title}</span>
-              <span className="ml-3 text-sm opacity-60">
+              <Text variant="strong">{note.title}</Text>
+              <Text variant="muted" className="ml-3">
                 {noteTags(note)
                   .filter((other) => other !== name)
                   .map((other) => `#${other}`)
                   .join(" ")}
-              </span>
+              </Text>
             </Link>
           </li>
         ))}
