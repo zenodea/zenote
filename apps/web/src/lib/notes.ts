@@ -24,21 +24,47 @@ function toNote(slug: string, raw: string): Note {
   };
 }
 
+async function walk(dir: string): Promise<string[]> {
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+
+  const nested = await Promise.all(
+    entries.map(async (entry) => {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) return walk(full);
+      return entry.name.endsWith(".md") ? [full] : [];
+    }),
+  );
+
+  return nested.flat();
+}
+
+function toSlug(absolute: string): string {
+  return path
+    .relative(CONTENT_DIR, absolute)
+    .replace(/\.md$/, "")
+    .split(path.sep)
+    .join("/");
+}
+
 export async function getNote(slug: string): Promise<Note | null> {
+  const target = path.join(CONTENT_DIR, `${slug}.md`);
+
+  // Reject anything that escapes CONTENT_DIR, e.g. a slug of "../../secrets".
+  if (!target.startsWith(CONTENT_DIR + path.sep)) return null;
+
   try {
-    const raw = await fs.readFile(path.join(CONTENT_DIR, `${slug}.md`), "utf8");
-    return toNote(slug, raw);
+    return toNote(slug, await fs.readFile(target, "utf8"));
   } catch {
     return null;
   }
 }
 
 export async function getAllNotes(): Promise<Note[]> {
-  const entries = await fs.readdir(CONTENT_DIR);
-  const slugs = entries
-    .filter((name) => name.endsWith(".md"))
-    .map((name) => name.replace(/\.md$/, ""));
+  const files = await walk(CONTENT_DIR);
 
-  const notes = await Promise.all(slugs.map((slug) => getNote(slug)));
-  return notes.filter((note): note is Note => note !== null);
+  const notes = await Promise.all(
+    files.map(async (file) => toNote(toSlug(file), await fs.readFile(file, "utf8"))),
+  );
+
+  return notes.sort((a, b) => a.slug.localeCompare(b.slug));
 }

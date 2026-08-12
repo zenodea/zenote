@@ -4,18 +4,22 @@ import { getAllNotes, getNote } from "@/lib/notes";
 
 export async function generateStaticParams() {
   const notes = await getAllNotes();
-  return notes.map((note) => ({ slug: note.slug }));
+  return notes.map((note) => ({ slug: note.slug.split("/") }));
 }
 
-export async function generateMetadata({ params }: PageProps<"/notes/[slug]">) {
+export async function generateMetadata({
+  params,
+}: PageProps<"/notes/[...slug]">) {
   const { slug } = await params;
-  const note = await getNote(slug);
+  const note = await getNote(slug.join("/"));
   return { title: note ? note.title : "Not found" };
 }
 
-export default async function NotePage({ params }: PageProps<"/notes/[slug]">) {
+export default async function NotePage({
+  params,
+}: PageProps<"/notes/[...slug]">) {
   const { slug } = await params;
-  const note = await getNote(slug);
+  const note = await getNote(slug.join("/"));
   if (!note) notFound();
 
   return <NoteView note={note} />;
