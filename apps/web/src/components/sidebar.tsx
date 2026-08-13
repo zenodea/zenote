@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   SEARCH_MODES,
   parseQuery,
@@ -13,7 +13,14 @@ import {
   type SearchResult,
 } from "@/lib/search";
 import { useSettings } from "@/lib/settings";
-import type { TreeNode } from "@/lib/tree";
+import { buildTree, type TreeNode } from "@/lib/tree";
+import {
+  createFolder,
+  createNote,
+  discardOverlay,
+  moveNote,
+  useVaultDocs,
+} from "@/lib/vault";
 import { AiButton } from "@/components/ai-assistant";
 import { Button } from "@/components/button";
 import { ChevronIcon } from "@/components/chevron-icon";
@@ -22,27 +29,68 @@ import { Segmented } from "@/components/segmented";
 
 const TAG_LIST_LIMIT = 100;
 
-export function Sidebar({
-  tree,
-  docs,
-}: {
-  tree: TreeNode[];
-  docs: SearchDoc[];
-}) {
+/** "note.md" → "note"; rejects empty and path-escaping names. */
+function sanitizeName(raw: string): string | null {
+  const name = raw
+    .trim()
+    .replace(/\.md$/i, "")
+    .replace(/^\/+|\/+$/g, "");
+  if (!name || name.split("/").some((s) => !s.trim() || s === "..")) {
+    return null;
+  }
+  return name;
+}
+
+export function Sidebar({ docs }: { docs: SearchDoc[] }) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [modeOverride, setModeOverride] = useState<SearchMode | null>(null);
   const [tagFilter, setTagFilter] = useState("");
+  const [naming, setNaming] = useState<"note" | "folder" | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
   const pathname = usePathname();
+  const router = useRouter();
   const settings = useSettings();
   const mode = modeOverride ?? settings.searchMode;
 
-  const prepared = useMemo(() => prepareDocs(docs), [docs]);
-  const allTags = useMemo(
-    () => [...new Set(docs.flatMap((doc) => doc.tags))].sort(),
-    [docs],
+  const vault = useVaultDocs(docs);
+  const tree = useMemo(
+    () => buildTree(vault.docs, vault.folders),
+    [vault.docs, vault.folders],
   );
+  const prepared = useMemo(() => prepareDocs(vault.docs), [vault.docs]);
+  const allTags = useMemo(
+    () => [...new Set(vault.docs.flatMap((doc) => doc.tags))].sort(),
+    [vault.docs],
+  );
+
+  function submitName(raw: string) {
+    const name = sanitizeName(raw);
+    setNaming(null);
+    if (!name) return;
+    if (naming === "folder") {
+      createFolder(name);
+      return;
+    }
+    if (!vault.docs.some((doc) => doc.slug === name)) createNote(name);
+    router.push(`/notes/${name}`);
+  }
+
+  function handleDrop(slug: string, folder: string) {
+    setDropTarget(null);
+    const doc = vault.docs.find((entry) => entry.slug === slug);
+    if (!doc) return;
+    const filename = slug.split("/").pop()!;
+    const next = folder ? `${folder}/${filename}` : filename;
+    if (next === slug) return;
+
+    moveNote(slug, folder, {
+      body: doc.body,
+      isBaseNote: docs.some((entry) => entry.slug === slug),
+    });
+    if (pathname === `/notes/${slug}`) router.push(`/notes/${next}`);
+  }
 
   function closeSearch() {
     setSearchOpen(false);
@@ -97,14 +145,35 @@ export function Sidebar({
             className="min-w-0 flex-1 rounded border border-foreground/15 bg-background px-2 py-1 placeholder:opacity-50 focus:border-foreground/40 focus:outline-none"
           />
         ) : (
-          <Link
-            href="/"
-            aria-label="Zenote home"
-            title="Zenote"
-            className="flex min-w-0 flex-1 items-center hover:opacity-70"
-          >
-            <LogoIcon />
-          </Link>
+          <>
+            <Link
+              href="/"
+              aria-label="Zenote home"
+              title="Zenote"
+              className="flex min-w-0 flex-1 items-center hover:opacity-70"
+            >
+              <LogoIcon />
+            </Link>
+            <Button
+              onClick={() => setNaming("note")}
+              active={naming === "note"}
+              aria-label="New note"
+              title="New note"
+              className="shrink-0"
+            >
+              <FilePlusIcon />
+            </Button>
+            <Button
+              onClick={() => setNaming("folder")}
+              active={naming === "folder"}
+              aria-label="New folder"
+              title="New folder"
+              className="shrink-0"
+            >
+              <FolderPlusIcon />
+            </Button>
+          </>
+
         )}
         <Button
           onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
@@ -157,15 +226,59 @@ export function Sidebar({
             )}
           </>
         ) : (
-          <NodeList
-            nodes={tree}
-            depth={0}
-            collapsed={collapsed}
-            onToggle={toggle}
-            pathname={pathname}
-          />
+          <div
+            className={`min-h-full rounded ${
+              dropTarget === "" ? "bg-foreground/5" : ""
+            }`}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setDropTarget("");
+            }}
+            onDragLeave={() => setDropTarget(null)}
+            onDrop={(event) => {
+              event.preventDefault();
+              const slug = event.dataTransfer.getData("application/x-note");
+              if (slug) handleDrop(slug, "");
+            }}
+          >
+            {naming && (
+              <NamingRow
+                kind={naming}
+                onSubmit={submitName}
+                onCancel={() => setNaming(null)}
+              />
+            )}
+            <NodeList
+              nodes={tree}
+              depth={0}
+              collapsed={collapsed}
+              onToggle={toggle}
+              pathname={pathname}
+              modified={vault.modified}
+              dropTarget={dropTarget}
+              onDropTarget={setDropTarget}
+              onDrop={handleDrop}
+            />
+          </div>
         )}
       </div>
+      {vault.changeCount > 0 && (
+        <div className="flex shrink-0 items-center justify-between gap-2 border-t border-foreground/15 px-4 py-1.5 text-xs">
+          <span className="min-w-0 truncate opacity-60">
+            {vault.changeCount} local{" "}
+            {vault.changeCount === 1 ? "change" : "changes"} — not saved
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm("Discard all local changes?")) discardOverlay();
+            }}
+            className="shrink-0 opacity-60 hover:opacity-100"
+          >
+            Discard
+          </button>
+        </div>
+      )}
       <div
         data-seam="top"
         className="flex shrink-0 items-center justify-between border-t border-foreground/15 p-2"
@@ -391,12 +504,49 @@ function TitleHighlight({
   );
 }
 
+function NamingRow({
+  kind,
+  onSubmit,
+  onCancel,
+}: {
+  kind: "note" | "folder";
+  onSubmit: (name: string) => void;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState("");
+
+  return (
+    <div className="mb-2 flex items-center gap-1.5">
+      <span className="shrink-0 opacity-60">
+        {kind === "note" ? <FilePlusIcon /> : <FolderPlusIcon />}
+      </span>
+      <input
+        autoFocus
+        value={name}
+        onChange={(event) => setName(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") onSubmit(name);
+          if (event.key === "Escape") onCancel();
+        }}
+        onBlur={onCancel}
+        placeholder={kind === "note" ? "Note name…" : "Folder name…"}
+        aria-label={kind === "note" ? "New note name" : "New folder name"}
+        className="min-w-0 flex-1 rounded border border-foreground/15 bg-background px-2 py-1 placeholder:opacity-50 focus:border-foreground/40 focus:outline-none"
+      />
+    </div>
+  );
+}
+
 type NodeListProps = {
   nodes: TreeNode[];
   depth: number;
   collapsed: Set<string>;
   onToggle: (path: string) => void;
   pathname: string;
+  modified: Set<string>;
+  dropTarget: string | null;
+  onDropTarget: (path: string | null) => void;
+  onDrop: (slug: string, folder: string) => void;
 };
 
 function NodeList({
@@ -405,7 +555,22 @@ function NodeList({
   collapsed,
   onToggle,
   pathname,
+  modified,
+  dropTarget,
+  onDropTarget,
+  onDrop,
 }: NodeListProps) {
+  const nested = {
+    depth: depth + 1,
+    collapsed,
+    onToggle,
+    pathname,
+    modified,
+    dropTarget,
+    onDropTarget,
+    onDrop,
+  };
+
   return (
     <ul className="space-y-0.5">
       {nodes.map((node) => {
@@ -422,6 +587,23 @@ function NodeList({
                 onClick={() => onToggle(node.path)}
                 style={folderIndent}
                 aria-expanded={!isCollapsed}
+                className={dropTarget === node.path ? "bg-foreground/10" : ""}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onDropTarget(node.path);
+                }}
+                onDragLeave={(event) => {
+                  event.stopPropagation();
+                  onDropTarget(null);
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  const slug =
+                    event.dataTransfer.getData("application/x-note");
+                  if (slug) onDrop(slug, node.path);
+                }}
               >
                 <ChevronIcon
                   className={`w-3 shrink-0 transition-transform ${
@@ -431,15 +613,7 @@ function NodeList({
                 {node.name}
               </Button>
 
-              {!isCollapsed && (
-                <NodeList
-                  nodes={node.children}
-                  depth={depth + 1}
-                  collapsed={collapsed}
-                  onToggle={onToggle}
-                  pathname={pathname}
-                />
-              )}
+              {!isCollapsed && <NodeList nodes={node.children} {...nested} />}
             </li>
           );
         }
@@ -453,15 +627,65 @@ function NodeList({
               href={href}
               style={fileIndent}
               aria-current={isActive ? "page" : undefined}
+              draggable
+              onDragStart={(event) => {
+                event.dataTransfer.setData("application/x-note", node.slug);
+              }}
               className={`block truncate rounded py-1.5 pr-2 hover:bg-foreground/10 ${
                 isActive ? "bg-foreground/10" : ""
               }`}
             >
               {node.name}
+              {modified.has(node.slug) && (
+                <span
+                  title="Changed locally"
+                  className="ml-1.5 inline-block size-1.5 rounded-full bg-accent align-middle"
+                />
+              )}
             </Link>
           </li>
         );
       })}
     </ul>
+  );
+}
+
+function FilePlusIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="block"
+    >
+      <path d="M9 1.5H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V5.5l-4-4Z" />
+      <path d="M9 1.5V5.5h4M8 8v4M6 10h4" />
+    </svg>
+  );
+}
+
+function FolderPlusIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="block"
+    >
+      <path d="M1.5 3.5a1 1 0 0 1 1-1h3l1.5 2h6a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-10.5a1 1 0 0 1-1-1v-9Z" />
+      <path d="M8 7.5v4M6 9.5h4" />
+    </svg>
   );
 }

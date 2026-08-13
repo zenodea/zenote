@@ -9,7 +9,6 @@ import { getAllNotes } from "@/lib/notes";
 import type { SearchDoc } from "@/lib/search";
 import { noteTags } from "@/lib/tags";
 import { THEME_IDS, THEME_STORAGE_KEY } from "@/lib/theme";
-import { buildTree } from "@/lib/tree";
 import "./globals.css";
 
 // Runs before paint so the stored theme applies without a flash.
@@ -43,7 +42,6 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const notes = await getAllNotes();
-  const tree = buildTree(notes);
   const titles = Object.fromEntries(
     notes.map((note) => [note.slug, note.title]),
   );
@@ -65,7 +63,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="relative flex h-full overflow-hidden">
         <AiAssistantProvider>
-          <Sidebar tree={tree} docs={docs} />
+          <Sidebar docs={docs} />
           <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
             {children}
             <FindBar />
