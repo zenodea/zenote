@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import type { TreeNode } from "@/lib/tree";
 import { AiButton } from "@/components/ai-assistant";
 import { Text } from "@/components/text";
-import { ThemePicker } from "@/components/theme-picker";
 
 function filterTree(nodes: TreeNode[], query: string): TreeNode[] {
   const result: TreeNode[] = [];
@@ -112,10 +111,40 @@ export function Sidebar({ tree }: { tree: TreeNode[] }) {
         )}
       </div>
       <div className="flex shrink-0 items-center justify-between border-t border-foreground/15 p-2">
-        <ThemePicker />
+        <Link
+          href="/settings"
+          aria-label="Settings"
+          aria-current={pathname === "/settings" ? "page" : undefined}
+          className={`block rounded p-1 hover:bg-foreground/10 hover:opacity-100 ${
+            pathname === "/settings" ? "opacity-100" : "opacity-60"
+          }`}
+        >
+          <SlidersIcon />
+        </Link>
         <AiButton />
       </div>
     </nav>
+  );
+}
+
+function SlidersIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      aria-hidden
+      className="block"
+    >
+      <path d="M2 3.5h12M2 8h12M2 12.5h12" />
+      <circle cx="10.5" cy="3.5" r="1.75" fill="var(--background)" />
+      <circle cx="5.5" cy="8" r="1.75" fill="var(--background)" />
+      <circle cx="10.5" cy="12.5" r="1.75" fill="var(--background)" />
+    </svg>
   );
 }
 

@@ -26,14 +26,14 @@
   }
 }
 
-:root[data-theme="default-dark"] {
+[data-theme="default-dark"] {
   --background: #0a0a0a;
   --foreground: #ededed;
   --accent: #a78bfa;
   color-scheme: dark;
 }
 
-:root[data-theme="dracula-dark"] {
+[data-theme="dracula-dark"] {
   --background: #282a36;
   --foreground: #f8f8f2;
   --accent: #bd93f9;
@@ -41,14 +41,14 @@
 }
 
 /* Alucard, Dracula's official light counterpart. */
-:root[data-theme="dracula-light"] {
+[data-theme="dracula-light"] {
   --background: #fffbeb;
   --foreground: #1f1f1f;
   --accent: #644ac9;
   color-scheme: light;
 }
 
-:root[data-theme="tokyo-night-dark"] {
+[data-theme="tokyo-night-dark"] {
   --background: #1a1b26;
   --foreground: #c0caf5;
   --accent: #7aa2f7;
@@ -56,35 +56,35 @@
 }
 
 /* Tokyo Night Day. */
-:root[data-theme="tokyo-night-light"] {
+[data-theme="tokyo-night-light"] {
   --background: #e1e2e7;
   --foreground: #3760bf;
   --accent: #2e7de9;
   color-scheme: light;
 }
 
-:root[data-theme="gruvbox-dark"] {
+[data-theme="gruvbox-dark"] {
   --background: #282828;
   --foreground: #ebdbb2;
   --accent: #d79921;
   color-scheme: dark;
 }
 
-:root[data-theme="gruvbox-light"] {
+[data-theme="gruvbox-light"] {
   --background: #fbf1c7;
   --foreground: #3c3836;
   --accent: #b57614;
   color-scheme: light;
 }
 
-:root[data-theme="everforest-dark"] {
+[data-theme="everforest-dark"] {
   --background: #2d353b;
   --foreground: #d3c6aa;
   --accent: #a7c080;
   color-scheme: dark;
 }
 
-:root[data-theme="everforest-light"] {
+[data-theme="everforest-light"] {
   --background: #fdf6e3;
   --foreground: #5c6a72;
   --accent: #8da101;
@@ -92,7 +92,7 @@
 }
 
 /* Catppuccin Mocha. */
-:root[data-theme="catppuccin-dark"] {
+[data-theme="catppuccin-dark"] {
   --background: #1e1e2e;
   --foreground: #cdd6f4;
   --accent: #cba6f7;
@@ -100,7 +100,7 @@
 }
 
 /* Catppuccin Latte. */
-:root[data-theme="catppuccin-light"] {
+[data-theme="catppuccin-light"] {
   --background: #eff1f5;
   --foreground: #4c4f69;
   --accent: #8839ef;
