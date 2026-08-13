@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { TreeNode } from "@/lib/tree";
 import { AiButton } from "@/components/ai-assistant";
+import { Button } from "@/components/button";
 import { Text } from "@/components/text";
 
 function filterTree(nodes: TreeNode[], query: string): TreeNode[] {
@@ -54,46 +55,35 @@ export function Sidebar({ tree }: { tree: TreeNode[] }) {
     <nav className="flex w-64 shrink-0 flex-col border-r border-foreground/15 text-sm">
       <div className="flex h-14 shrink-0 items-center gap-2 border-b border-foreground/15 px-4">
         {searchOpen ? (
-          <>
-            <input
-              autoFocus
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Escape") closeSearch();
-              }}
-              placeholder="Search notes…"
-              aria-label="Search notes"
-              className="min-w-0 flex-1 rounded border border-foreground/15 bg-background px-2 py-1 placeholder:opacity-50 focus:border-foreground/40 focus:outline-none"
-            />
-            <button
-              type="button"
-              onClick={closeSearch}
-              aria-label="Close search"
-              className="shrink-0 opacity-60 hover:opacity-100"
-            >
-              ✕
-            </button>
-          </>
+          <input
+            autoFocus
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") closeSearch();
+            }}
+            placeholder="Search notes…"
+            aria-label="Search notes"
+            className="min-w-0 flex-1 rounded border border-foreground/15 bg-background px-2 py-1 placeholder:opacity-50 focus:border-foreground/40 focus:outline-none"
+          />
         ) : (
-          <>
-            <Link
-              href="/"
-              className="min-w-0 flex-1 truncate font-semibold hover:opacity-70"
-            >
-              Z-Notes
-            </Link>
-            <button
-              type="button"
-              onClick={() => setSearchOpen(true)}
-              aria-label="Search notes"
-              className="shrink-0 rounded p-1 opacity-60 hover:bg-foreground/10 hover:opacity-100"
-            >
-              <SearchIcon />
-            </button>
-          </>
+          <Link
+            href="/"
+            className="min-w-0 flex-1 truncate font-semibold hover:opacity-70"
+          >
+            Z-Notes
+          </Link>
         )}
+        <Button
+          onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
+          active={searchOpen}
+          aria-pressed={searchOpen}
+          aria-label="Search notes"
+          className="shrink-0"
+        >
+          <SearchIcon />
+        </Button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
         {searchOpen && !searching ? (
@@ -115,8 +105,11 @@ export function Sidebar({ tree }: { tree: TreeNode[] }) {
           href="/settings"
           aria-label="Settings"
           aria-current={pathname === "/settings" ? "page" : undefined}
-          className={`block rounded p-1 hover:bg-foreground/10 hover:opacity-100 ${
-            pathname === "/settings" ? "opacity-100" : "opacity-60"
+          // Mirrors the Button icon variant, active state included.
+          className={`block rounded p-1.5 ${
+            pathname === "/settings"
+              ? "bg-foreground/10 text-accent"
+              : "opacity-60 hover:bg-foreground/10 hover:opacity-100"
           }`}
         >
           <SlidersIcon />
@@ -192,18 +185,17 @@ function NodeList({
 
           return (
             <li key={node.path}>
-              <button
-                type="button"
+              <Button
+                variant="row"
                 onClick={() => onToggle(node.path)}
                 style={indent}
-                className="flex w-full items-center gap-1 rounded py-1 text-left opacity-70 hover:bg-foreground/10"
                 aria-expanded={!isCollapsed}
               >
                 <Text className="inline-block w-3">
                   {isCollapsed ? "▸" : "▾"}
                 </Text>
                 {node.name}
-              </button>
+              </Button>
 
               {!isCollapsed && (
                 <NodeList

@@ -11,6 +11,7 @@ import {
 import { usePathname } from "next/navigation";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Button } from "@/components/button";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -63,10 +64,10 @@ export function AiButton() {
   const slug = useNoteSlug();
 
   return (
-    <button
-      type="button"
+    <Button
       onClick={() => setOpen(!open)}
       disabled={!slug}
+      active={open}
       aria-pressed={open}
       aria-label={open ? "Close AI assistant" : "Ask AI about this note"}
       title={
@@ -74,14 +75,10 @@ export function AiButton() {
           ? "Ask AI about this note"
           : "Open a note to use the AI assistant"
       }
-      className={`rounded p-1.5 ${
-        open
-          ? `bg-foreground/10 text-accent ${busy ? "animate-pulse" : ""}`
-          : "opacity-60 hover:bg-foreground/10 hover:opacity-100 disabled:opacity-25 disabled:hover:bg-transparent"
-      }`}
+      className={open && busy ? "animate-pulse" : undefined}
     >
       <SparkleIcon />
-    </button>
+    </Button>
   );
 }
 
@@ -183,14 +180,13 @@ export function AiPanel({ titles }: { titles: Record<string, string> }) {
               {slug ? (titles[slug] ?? slug) : ""}
             </p>
           </div>
-          <button
-            type="button"
+          <Button
             onClick={() => setOpen(false)}
             aria-label="Close assistant"
-            className="shrink-0 rounded p-1 opacity-60 hover:bg-foreground/10 hover:opacity-100"
+            className="shrink-0"
           >
             ✕
-          </button>
+          </Button>
         </div>
 
         <div
@@ -237,13 +233,14 @@ export function AiPanel({ titles }: { titles: Record<string, string> }) {
             aria-label="Message the assistant"
             className="min-w-0 flex-1 rounded border border-foreground/15 bg-background px-2 py-1.5 placeholder:opacity-50 focus:border-foreground/40 focus:outline-none"
           />
-          <button
+          <Button
+            variant="solid"
             type="submit"
             disabled={busy || input.trim().length === 0}
-            className="shrink-0 rounded bg-foreground/10 px-3 py-1.5 font-medium hover:bg-foreground/15 disabled:opacity-40 disabled:hover:bg-foreground/10"
+            className="shrink-0"
           >
             Send
-          </button>
+          </Button>
         </form>
       </div>
     </aside>
