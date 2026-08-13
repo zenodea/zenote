@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { GraphNode } from "@/lib/graph";
-import { Text } from "@/components/text";
+import type { GraphNode } from "@/lib/graph/model";
+import { Text } from "@/components/ui/Text";
 
 const MAX_RESULTS = 8;
 

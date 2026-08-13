@@ -1,8 +1,8 @@
 "use client";
 
-import type { Graph } from "@/lib/graph";
+import type { Graph } from "@/lib/graph/model";
 import { useSettings } from "@/lib/settings";
-import { GraphView } from "@/components/graph-view";
+import { GraphView } from "@/components/graph/GraphView";
 
 export function NoteGraph({
   graph,

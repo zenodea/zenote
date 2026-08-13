@@ -1,29 +1,12 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
-import {
-  THEME_FAMILIES,
-  applyTheme,
-  isThemeId,
-  subscribeToTheme,
-  type ThemeId,
-} from "@/lib/theme";
+import { THEME_FAMILIES, applyTheme } from "@/lib/theme";
+import { useThemeId } from "@/lib/use-theme";
 
-function getSnapshot(): ThemeId {
-  const current = document.documentElement.dataset.theme;
-  return current && isThemeId(current) ? current : "default-light";
-}
 
-function getServerSnapshot(): ThemeId {
-  return "default-light";
-}
 
 export function ThemeSettings() {
-  const theme = useSyncExternalStore(
-    subscribeToTheme,
-    getSnapshot,
-    getServerSnapshot,
-  );
+  const theme = useThemeId();
 
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">

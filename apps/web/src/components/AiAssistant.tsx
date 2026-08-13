@@ -11,7 +11,8 @@ import {
 import { usePathname } from "next/navigation";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Button } from "@/components/button";
+import { Button } from "@/components/ui/Button";
+import { CloseIcon, SendIcon, SparkleIcon } from "@/components/ui/Icons";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -189,7 +190,7 @@ export function AiPanel({ titles }: { titles: Record<string, string> }) {
             aria-label="Close assistant"
             className="shrink-0"
           >
-            <XIcon />
+            <CloseIcon />
           </Button>
         </div>
 
@@ -253,57 +254,5 @@ export function AiPanel({ titles }: { titles: Record<string, string> }) {
   );
 }
 
-function XIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      aria-hidden
-      className="block"
-    >
-      <path d="m4 4 8 8M12 4l-8 8" />
-    </svg>
-  );
-}
 
-function SendIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-      className="block"
-    >
-      <path d="M8 13.5v-11M3.5 7 8 2.5 12.5 7" />
-    </svg>
-  );
-}
 
-function SparkleIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinejoin="round"
-      aria-hidden
-      className="block"
-    >
-      <path d="M8 1.5 9.7 6.3 14.5 8 9.7 9.7 8 14.5 6.3 9.7 1.5 8 6.3 6.3Z" />
-    </svg>
-  );
-}

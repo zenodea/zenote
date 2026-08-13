@@ -1,6 +1,6 @@
-import { GraphView } from "@/components/graph-view";
-import { PageHeader } from "@/components/page-header";
-import { buildGraph } from "@/lib/graph";
+import { GraphView } from "@/components/graph/GraphView";
+import { PageHeader } from "@/components/frame/PageHeader";
+import { buildGraph } from "@/lib/graph/model";
 import { getAllNotes } from "@/lib/notes";
 import { buildResolver } from "@/lib/wikilinks";
 

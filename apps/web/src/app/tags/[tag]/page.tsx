@@ -2,8 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAllNotes } from "@/lib/notes";
 import { buildTagIndex, noteTags } from "@/lib/tags";
-import { PageHeader } from "@/components/page-header";
-import { Text } from "@/components/text";
+import { PageHeader } from "@/components/frame/PageHeader";
+import { Text } from "@/components/ui/Text";
 
 export async function generateStaticParams() {
   const index = buildTagIndex(await getAllNotes());

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Diamond } from "@/components/diamond";
+import { Diamond } from "@/components/frame/Diamond";
 
 type Point = { x: number; y: number };
 

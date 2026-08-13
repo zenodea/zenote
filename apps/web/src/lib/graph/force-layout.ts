@@ -1,4 +1,4 @@
-import { indexGraph, type Graph } from "./graph";
+import { indexGraph, type Graph } from "./model";
 
 export type Layout = {
   x: Float64Array;

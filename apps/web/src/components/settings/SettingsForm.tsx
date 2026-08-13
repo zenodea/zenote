@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { SEARCH_MODES } from "@/lib/search";
 import { updateSettings, useSettings } from "@/lib/settings";
-import { Segmented } from "@/components/segmented";
+import { Segmented } from "@/components/ui/Segmented";
 
 export function SettingsForm() {
   const settings = useSettings();

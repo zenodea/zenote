@@ -3,12 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createLayout, solveLayout } from "@/lib/force-layout";
-import { indexGraph, neighbourhood, type Graph } from "@/lib/graph";
-import { drawGraph, hitTest, type View } from "@/lib/graph-draw";
+import { createLayout, solveLayout } from "@/lib/graph/force-layout";
+import { indexGraph, neighbourhood, type Graph } from "@/lib/graph/model";
+import { drawGraph, hitTest, type View } from "@/lib/graph/draw";
 import { subscribeToTheme } from "@/lib/theme";
-import { FocusChip } from "@/components/focus-chip";
-import { GraphToolbar } from "@/components/graph-toolbar";
+import { FocusChip } from "@/components/graph/FocusChip";
+import { GraphToolbar } from "@/components/graph/GraphToolbar";
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 8;
@@ -28,9 +28,7 @@ export function GraphView({
   controls = true,
 }: {
   graph: Graph;
-  /** Node id to focus from the start, e.g. the mini graph's own note. */
   focusId?: string;
-  /** When false, hides the search/filter/zoom chrome and the focus chip. */
   controls?: boolean;
 }) {
   const router = useRouter();

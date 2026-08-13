@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Text } from "@/components/text";
+import { Text } from "@/components/ui/Text";
 
 type TagFilterProps = {
   /** [tag, note count] pairs, already sorted for display. */

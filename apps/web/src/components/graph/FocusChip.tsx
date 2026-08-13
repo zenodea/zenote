@@ -1,6 +1,6 @@
 "use client";
 
-import { Text } from "@/components/text";
+import { Text } from "@/components/ui/Text";
 
 type FocusChipProps = {
   label: string;

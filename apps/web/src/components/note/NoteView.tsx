@@ -14,20 +14,21 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import "katex/dist/katex.min.css";
 import type { Backlink } from "@/lib/backlinks";
-import type { Graph } from "@/lib/graph";
+import type { Graph } from "@/lib/graph/model";
 import type { Note } from "@/lib/notes";
 import { remarkTag } from "@/lib/remark-tag";
 import { remarkWikilink } from "@/lib/remark-wikilink";
 import { useSettings } from "@/lib/settings";
 import { noteTags } from "@/lib/tags";
 import { revertNote, updateNote, useOverlay } from "@/lib/vault";
-import { Backlinks } from "@/components/backlinks";
-import { Button } from "@/components/button";
-import { CodeBlock } from "@/components/code-block";
-import { MarkdownEditor } from "@/components/markdown-editor";
-import { MermaidDiagram } from "@/components/mermaid-diagram";
-import { NoteGraph } from "@/components/note-graph";
-import { PageHeader } from "@/components/page-header";
+import { Backlinks } from "@/components/note/Backlinks";
+import { Button } from "@/components/ui/Button";
+import { PencilIcon } from "@/components/ui/Icons";
+import { CodeBlock } from "@/components/note/CodeBlock";
+import { MarkdownEditor } from "@/components/note/MarkdownEditor";
+import { MermaidDiagram } from "@/components/note/MermaidDiagram";
+import { NoteGraph } from "@/components/note/NoteGraph";
+import { PageHeader } from "@/components/frame/PageHeader";
 
 function Pre({ children }: ComponentProps<"pre">) {
   if (isValidElement(children)) {
@@ -228,22 +229,4 @@ export function NoteView({
   );
 }
 
-function PencilIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-      className="block"
-    >
-      <path d="M11.5 2 14 4.5 5.5 13 2 14l1-3.5L11.5 2Z" />
-    </svg>
-  );
-}
 

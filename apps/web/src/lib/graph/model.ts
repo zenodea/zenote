@@ -1,6 +1,6 @@
-import type { Note } from "./notes";
-import { noteTags } from "./tags";
-import { resolvedTargets, type WikilinkResolver } from "./wikilinks";
+import type { Note } from "../notes";
+import { noteTags } from "../tags";
+import { resolvedTargets, type WikilinkResolver } from "../wikilinks";
 
 export type GraphNode = {
   id: string;

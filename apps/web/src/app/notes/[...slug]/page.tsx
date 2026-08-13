@@ -1,6 +1,6 @@
-import { NoteView } from "@/components/note-view";
+import { NoteView } from "@/components/note/NoteView";
 import { buildBacklinks } from "@/lib/backlinks";
-import { buildGraph, localGraph } from "@/lib/graph";
+import { buildGraph, localGraph } from "@/lib/graph/model";
 import { getAllNotes, getNote } from "@/lib/notes";
 import { buildResolver } from "@/lib/wikilinks";
 

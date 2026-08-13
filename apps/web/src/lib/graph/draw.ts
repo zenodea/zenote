@@ -1,11 +1,8 @@
-import type { GraphNode } from "@/lib/graph";
+import type { GraphNode } from "@/lib/graph/model";
 
-// Labels fade in with zoom (relative to the fitted scale): hubs first at
-// LABEL_HUB_SCALE, stragglers by LABEL_SCALE (importance-squared spacing).
 const LABEL_SCALE = 2.0;
 const LABEL_HUB_SCALE = 0.8;
 const LABEL_FADE = 0.2;
-// Stepped alpha keeps the canvas batched; per-node alpha is one call per node.
 const BUCKETS = 12;
 
 export type View = { x: number; y: number; scale: number };
@@ -15,26 +12,18 @@ export type DrawParams = {
   width: number;
   height: number;
   view: View;
-  /** Resolved theme tokens; canvas needs concrete colours. */
   foreground: string;
   accent: string;
-  /** Scale at which the whole graph fits the viewport; anchors label zoom. */
   fitScale: number;
-  /** Node positions, indexed like `nodes`. */
   x: Float64Array;
   y: Float64Array;
   nodes: GraphNode[];
   edges: ReadonlyArray<readonly [number, number]>;
   baseRadius: number;
-  /** Per-node fade toward the active set; rests at 1. */
   highlight: Float32Array;
-  /** Per-node label fade; rests at 0. */
   labelFocus: Float32Array;
-  /** How far into a focus/hover state the view is, 0..1. */
   focusAmount: number;
-  /** Node indices ringed as focus seeds. */
   seeds: number[];
-  /** Indices still shown. Null means no filter, which skips every check. */
   visible: Set<number> | null;
 };
 

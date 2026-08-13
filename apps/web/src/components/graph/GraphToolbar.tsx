@@ -1,8 +1,8 @@
 "use client";
 
-import type { GraphNode } from "@/lib/graph";
-import { GraphSearch } from "@/components/graph-search";
-import { TagFilter } from "@/components/tag-filter";
+import type { GraphNode } from "@/lib/graph/model";
+import { GraphSearch } from "@/components/graph/GraphSearch";
+import { TagFilter } from "@/components/graph/TagFilter";
 
 const buttonClass =
   "h-7 rounded border border-foreground/15 bg-background/70 px-2 backdrop-blur hover:bg-foreground/10";
