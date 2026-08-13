@@ -8,6 +8,7 @@ import { indexGraph, neighbourhood, type Graph } from "@/lib/graph";
 import { drawGraph, hitTest, type View } from "@/lib/graph-draw";
 import { subscribeToTheme } from "@/lib/theme";
 import { FocusChip } from "@/components/focus-chip";
+import { GraphSearch } from "@/components/graph-search";
 import { TagFilter } from "@/components/tag-filter";
 
 const MIN_SCALE = 0.05;
@@ -396,6 +397,48 @@ export function GraphView({ graph }: { graph: Graph }) {
     [start],
   );
 
+  const focusNode = useCallback(
+    (node: number) => {
+      setSeeds([node]);
+      setDepth(1);
+      adjusted.current = true;
+
+      // Frame the whole neighbourhood the focus is about to show, capped so
+      // a node with one or two neighbours doesn't fill the screen.
+      const shown = neighbourhood(neighbours, [node], 1);
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minY = Infinity;
+      let maxY = -Infinity;
+      for (const i of shown) {
+        minX = Math.min(minX, layout.x[i]);
+        maxX = Math.max(maxX, layout.x[i]);
+        minY = Math.min(minY, layout.y[i]);
+        maxY = Math.max(maxY, layout.y[i]);
+      }
+
+      const { width, height } = size.current;
+      const scale = Math.max(
+        MIN_SCALE,
+        Math.min(
+          (width - FIT_PADDING * 2) / Math.max(maxX - minX, 1),
+          (height - FIT_PADDING * 2) / Math.max(maxY - minY, 1),
+          fitScale.current * 4,
+          MAX_SCALE,
+        ),
+      );
+
+      viewTarget.current = {
+        scale,
+        x: width / 2 - ((minX + maxX) / 2) * scale,
+        y: height / 2 - ((minY + maxY) / 2) * scale,
+      };
+      velocity.current = { x: 0, y: 0 };
+      start();
+    },
+    [layout, neighbours, start],
+  );
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -548,6 +591,11 @@ export function GraphView({ graph }: { graph: Graph }) {
       )}
 
       <div className="absolute right-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap justify-end gap-1 text-sm">
+        <GraphSearch
+          nodes={graph.nodes}
+          onSelect={focusNode}
+          inputClass={buttonClass}
+        />
         <TagFilter
           tagCounts={tagCounts}
           activeTags={activeTags}
