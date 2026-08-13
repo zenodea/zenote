@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AiAssistantProvider, AiPanel } from "@/components/ai-assistant";
+import { FindBar } from "@/components/find-bar";
 import { Sidebar } from "@/components/sidebar";
 import { getAllNotes } from "@/lib/notes";
 import type { SearchDoc } from "@/lib/search";
@@ -65,6 +66,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           <Sidebar tree={tree} docs={docs} />
           <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
             {children}
+            <FindBar />
           </main>
           <AiPanel titles={titles} />
         </AiAssistantProvider>

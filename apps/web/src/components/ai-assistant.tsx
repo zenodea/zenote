@@ -223,7 +223,8 @@ export function AiPanel({ titles }: { titles: Record<string, string> }) {
             event.preventDefault();
             send();
           }}
-          className="flex shrink-0 gap-2 border-t border-foreground/15 p-3"
+          // h-[45px]: 44px row + 1px border, level with the other footers.
+          className="flex h-[45px] shrink-0 items-center gap-2 border-t border-foreground/15 px-3"
         >
           <input
             type="text"
@@ -231,15 +232,15 @@ export function AiPanel({ titles }: { titles: Record<string, string> }) {
             onChange={(event) => setInput(event.target.value)}
             placeholder="Ask about this note…"
             aria-label="Message the assistant"
-            className="min-w-0 flex-1 rounded border border-foreground/15 bg-background px-2 py-1.5 placeholder:opacity-50 focus:border-foreground/40 focus:outline-none"
+            className="min-w-0 flex-1 bg-transparent placeholder:opacity-50 focus:outline-none"
           />
           <Button
-            variant="solid"
             type="submit"
             disabled={busy || input.trim().length === 0}
+            aria-label="Send"
             className="shrink-0"
           >
-            Send
+            <SendIcon />
           </Button>
         </form>
       </div>
@@ -261,6 +262,25 @@ function XIcon() {
       className="block"
     >
       <path d="m4 4 8 8M12 4l-8 8" />
+    </svg>
+  );
+}
+
+function SendIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="block"
+    >
+      <path d="M8 13.5v-11M3.5 7 8 2.5 12.5 7" />
     </svg>
   );
 }

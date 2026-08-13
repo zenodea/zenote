@@ -160,6 +160,14 @@ body {
   text-decoration: none;
 }
 
+::highlight(find-match) {
+  background-color: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+::highlight(find-current) {
+  background-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
 .wikilink-broken {
   color: #ef4444;
   font-style: normal;
