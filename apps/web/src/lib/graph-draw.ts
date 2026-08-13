@@ -1,17 +1,11 @@
 import type { GraphNode } from "@/lib/graph";
 
-// Labels start appearing at LABEL_HUB_SCALE (best-connected nodes first) and
-// the last stragglers start at LABEL_SCALE; each fades in over LABEL_FADE of
-// scale once past its threshold. Below LABEL_HUB_SCALE there is no text.
-// Importance is squared, so the widest gap sits between the top tier and the
-// next — lesser tiers bunch progressively closer to LABEL_SCALE.
-// All three are relative to the fitted zoom, so label timing is independent
-// of how large the layout happens to be.
+// Labels fade in with zoom (relative to the fitted scale): hubs first at
+// LABEL_HUB_SCALE, stragglers by LABEL_SCALE (importance-squared spacing).
 const LABEL_SCALE = 2.0;
 const LABEL_HUB_SCALE = 0.8;
 const LABEL_FADE = 0.2;
-// Continuous per-node alpha would cost one draw call per node; 12 steps is
-// indistinguishable in motion and keeps the canvas batched.
+// Stepped alpha keeps the canvas batched; per-node alpha is one call per node.
 const BUCKETS = 12;
 
 export type View = { x: number; y: number; scale: number };
@@ -21,8 +15,7 @@ export type DrawParams = {
   width: number;
   height: number;
   view: View;
-  /** Resolved theme tokens (--foreground / --accent); canvas needs concrete
-   * colours, so the caller reads them from the active theme. */
+  /** Resolved theme tokens; canvas needs concrete colours. */
   foreground: string;
   accent: string;
   /** Scale at which the whole graph fits the viewport; anchors label zoom. */

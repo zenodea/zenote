@@ -28,15 +28,6 @@ export function FocusChip({
       <Text className="shrink-0 opacity-40">
         {depth} {depth === 1 ? "hop" : "hops"} · {noteCount} notes
       </Text>
-      <button
-        type="button"
-        onClick={onExpand}
-        className="shrink-0 rounded border border-foreground/15 px-1 opacity-70 hover:opacity-100"
-        aria-label="Expand focus by one hop"
-        title="Expand by one hop"
-      >
-        +
-      </button>
       {depth > 1 && (
         <button
           type="button"
@@ -47,6 +38,15 @@ export function FocusChip({
           −
         </button>
       )}
+      <button
+        type="button"
+        onClick={onExpand}
+        className="shrink-0 rounded border border-foreground/15 px-1 opacity-70 hover:opacity-100"
+        aria-label="Expand focus by one hop"
+        title="Expand by one hop"
+      >
+        +
+      </button>
       <button
         type="button"
         onClick={onClear}

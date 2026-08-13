@@ -14,10 +14,7 @@ type TagFilterProps = {
   buttonClass: string;
 };
 
-/**
- * Filter button plus its checkbox panel. Renders inside the (positioned)
- * control row, so the panel anchors to the row's bottom-right corner.
- */
+// Filter button + checkbox panel, anchored to the control row's bottom-right.
 export function TagFilter({
   tagCounts,
   activeTags,

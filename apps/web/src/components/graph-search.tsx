@@ -13,10 +13,7 @@ type GraphSearchProps = {
   inputClass: string;
 };
 
-/**
- * Title search over the graph's nodes. Renders inside the (positioned)
- * control row; the result list anchors below the input.
- */
+// Title search over the graph's nodes; the result list anchors below the input.
 export function GraphSearch({ nodes, onSelect, inputClass }: GraphSearchProps) {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -59,8 +56,7 @@ export function GraphSearch({ nodes, onSelect, inputClass }: GraphSearchProps) {
 
   function onKeyDown(event: React.KeyboardEvent) {
     if (event.key === "Escape") {
-      // Only swallow the key while a search is in progress; otherwise let it
-      // bubble so the graph's own Escape (clear focus) still works.
+      // Bubble when empty so the graph's own Escape (clear focus) still works.
       if (query === "") return;
       event.stopPropagation();
       setQuery("");
@@ -110,8 +106,7 @@ export function GraphSearch({ nodes, onSelect, inputClass }: GraphSearchProps) {
             <li key={index} role="option" aria-selected={position === highlighted}>
               <button
                 type="button"
-                // Mousedown, not click: click fires after blur has already
-                // emptied the query and unmounted this list.
+                // Mousedown, not click: click fires after blur unmounts this list.
                 onMouseDown={(event) => {
                   event.preventDefault();
                   select(index);

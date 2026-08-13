@@ -8,8 +8,7 @@ import { indexGraph, neighbourhood, type Graph } from "@/lib/graph";
 import { drawGraph, hitTest, type View } from "@/lib/graph-draw";
 import { subscribeToTheme } from "@/lib/theme";
 import { FocusChip } from "@/components/focus-chip";
-import { GraphSearch } from "@/components/graph-search";
-import { TagFilter } from "@/components/tag-filter";
+import { GraphToolbar } from "@/components/graph-toolbar";
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 8;
@@ -39,8 +38,7 @@ export function GraphView({
 
   const layout = useMemo(() => createLayout(graph, 1000, 700), [graph]);
 
-  // Solved up front so the camera can be placed once. Fitting to the live
-  // layout each frame reads as the whole graph drifting.
+  // Solved up front to place the camera once; live-fitting reads as drift.
   const target = useMemo(() => solveLayout(graph, 1000, 700), [graph]);
 
   const { edges, neighbours } = useMemo(() => indexGraph(graph), [graph]);
@@ -88,7 +86,6 @@ export function GraphView({
     );
   }, [graph]);
 
-  /** Indices still shown. Null means no filter, which skips every check. */
   const visible = useMemo(() => {
     if (activeTags.length === 0) return null;
     const wanted = new Set(activeTags);
@@ -108,8 +105,7 @@ export function GraphView({
   const pan = useRef<{ x: number; y: number } | null>(null);
   const frame = useRef(0);
   const running = useRef(false);
-  // Both are hoisted out of draw(): getContext and getComputedStyle are cheap
-  // in Chrome but measurably expensive per frame in Firefox.
+  // Hoisted out of draw(): both are expensive per frame in Firefox.
   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
   const colorsRef = useRef({ foreground: "#171717", accent: "#7c3aed" });
 
@@ -124,8 +120,7 @@ export function GraphView({
       const low = Math.floor(count * 0.01);
       const high = Math.min(count - 1, Math.ceil(count * 0.99));
 
-      // Overscan suits the full graph, whose percentile bounds leave a sparse
-      // fringe; a mini graph must show every node, so it fits exactly.
+      // The full graph overscans its percentile bounds; a mini graph fits exactly.
       const overscan = controls ? FIT_OVERSCAN : 1;
       const spanX = Math.max(xs[high] - xs[low], 1);
       const spanY = Math.max(ys[high] - ys[low], 1);
@@ -156,8 +151,7 @@ export function GraphView({
     new Float32Array(graph.nodes.length).fill(1),
   );
   const focusAmount = useRef(0);
-  // Rests at 0, unlike `highlight` which rests at 1. Multiplying highlight by
-  // the focus amount makes every label flash as the two curves cross.
+  // Rests at 0 (highlight rests at 1); multiplying them makes labels flash.
   const labelFocus = useRef<Float32Array>(new Float32Array(graph.nodes.length));
 
   const hoverSet = useRef<{ node: number; set: Set<number> } | null>(null);
@@ -168,8 +162,7 @@ export function GraphView({
     const hoverIndex = hovered.current;
     if (hoverIndex === null) return null;
 
-    // Cached: this runs every frame during a fade, and rebuilding the set each
-    // time allocates for nothing.
+    // Cached: runs every frame during a fade.
     if (hoverSet.current?.node !== hoverIndex) {
       hoverSet.current = {
         node: hoverIndex,
@@ -216,8 +209,7 @@ export function GraphView({
       current.y = goal.y;
     }
 
-    // Geometric, not linear: zoom is perceived multiplicatively, so a linear
-    // ramp between two scales reads as fast-then-crawling.
+    // Geometric: zoom is perceived multiplicatively; linear reads fast-then-crawling.
     const ratio = goal.scale / current.scale;
     if (Math.abs(Math.log(ratio)) > 0.0008) {
       current.scale *= Math.pow(ratio, VIEW_EASE);
@@ -361,8 +353,7 @@ export function GraphView({
     };
   }, [start]);
 
-  // Refs are synced here rather than during render so draw(), which runs
-  // outside React, sees the new focus before the next frame.
+  // Synced in an effect so draw(), outside React, sees the change next frame.
   useEffect(() => {
     focusRef.current = focus;
     seedsRef.current = seeds;
@@ -370,8 +361,7 @@ export function GraphView({
     start();
   }, [focus, seeds, visible, start]);
 
-  // The canvas can't use CSS variables directly, so resolve the theme tokens
-  // whenever <html data-theme> changes (the theme picker's source of truth).
+  // Canvas needs concrete colours: resolve theme tokens on data-theme changes.
   useEffect(() => {
     const sync = () => {
       const style = getComputedStyle(document.documentElement);
@@ -399,8 +389,7 @@ export function GraphView({
     (anchor: { x: number; y: number }, factor: number) => {
       adjusted.current = true;
 
-      // Anchored on the target rather than the rendered view, so a fast
-      // scroll accumulates instead of fighting the in-flight animation.
+      // Anchored on the target so fast scrolls accumulate, not fight the ease.
       const current = viewTarget.current;
       const scale = Math.min(
         MAX_SCALE,
@@ -423,8 +412,7 @@ export function GraphView({
       setDepth(1);
       adjusted.current = true;
 
-      // Frame the whole neighbourhood the focus is about to show, capped so
-      // a node with one or two neighbours doesn't fill the screen.
+      // Frame the neighbourhood, capped so tiny ones don't fill the screen.
       const shown = neighbourhood(neighbours, [node], 1);
       let minX = Infinity;
       let maxX = -Infinity;
@@ -463,9 +451,7 @@ export function GraphView({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Both listeners are native, not React props: onWheel is passive so it
-    // cannot preventDefault the page scroll, and React's contextmenu
-    // delegation does not reliably suppress the browser menu.
+    // Native listeners: React's onWheel is passive; its contextmenu delegation is unreliable.
     function onWheel(event: WheelEvent) {
       event.preventDefault();
       zoomAt(toLocal(event), Math.exp(-event.deltaY * 0.0015));
@@ -598,9 +584,6 @@ export function GraphView({
     zoomAt({ x: width / 2, y: height / 2 }, factor);
   }
 
-  const buttonClass =
-    "h-7 rounded border border-foreground/15 bg-background/70 px-2 backdrop-blur hover:bg-foreground/10";
-
   return (
     <div className="relative h-full w-full">
       {controls && seeds.length > 0 && (
@@ -615,48 +598,22 @@ export function GraphView({
       )}
 
       {controls && (
-        <div className="absolute right-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap justify-end gap-1 text-sm">
-          <GraphSearch
-            nodes={graph.nodes}
-            onSelect={focusNode}
-            inputClass={buttonClass}
-          />
-          <TagFilter
-            tagCounts={tagCounts}
-            activeTags={activeTags}
-            onChange={setActiveTags}
-            visibleCount={visible?.size ?? null}
-            total={graph.nodes.length}
-            buttonClass={buttonClass}
-          />
-          <button
-            type="button"
-            onClick={() => zoomBy(1.3)}
-            className={buttonClass}
-            aria-label="Zoom in"
-          >
-            +
-          </button>
-          <button
-            type="button"
-            onClick={() => zoomBy(1 / 1.3)}
-            className={buttonClass}
-            aria-label="Zoom out"
-          >
-            −
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              adjusted.current = false;
-              fit();
-              start();
-            }}
-            className={buttonClass}
-          >
-            Reset
-          </button>
-        </div>
+        <GraphToolbar
+          nodes={graph.nodes}
+          onSelectNode={focusNode}
+          tagCounts={tagCounts}
+          activeTags={activeTags}
+          onTagsChange={setActiveTags}
+          visibleCount={visible?.size ?? null}
+          total={graph.nodes.length}
+          onZoomIn={() => zoomBy(1.3)}
+          onZoomOut={() => zoomBy(1 / 1.3)}
+          onReset={() => {
+            adjusted.current = false;
+            fit();
+            start();
+          }}
+        />
       )}
 
       <canvas
@@ -669,8 +626,7 @@ export function GraphView({
         onPointerLeave={onPointerLeave}
       />
 
-      {/* A canvas is opaque to keyboards and screen readers, so the nodes also
-          exist as real links here. */}
+      {/* Canvas is opaque to keyboards and screen readers; mirror nodes as links. */}
       <ul className="sr-only">
         {graph.nodes.map((node) => (
           <li key={node.id}>

@@ -4,6 +4,7 @@ export type WikilinkResolver = Map<string, string>;
 
 const WIKILINK_SOURCE = String.raw`\[\[([^\[\]|#]+)(?:#([^\[\]|]+))?(?:\|([^\[\]]+))?\]\]`;
 
+// Fresh instance per call: a shared /g regex carries lastIndex between uses.
 export function wikilinkRegex(): RegExp {
   return new RegExp(WIKILINK_SOURCE, "g");
 }
@@ -63,6 +64,7 @@ function normalise(value: string): string {
   return value.trim().toLowerCase();
 }
 
+// Registered least- to most-specific, so an exact slug beats title/filename.
 export function buildResolver(notes: Note[]): WikilinkResolver {
   const resolver: WikilinkResolver = new Map();
 
