@@ -1,6 +1,12 @@
 "use client";
 
-import { isValidElement, useMemo, useState, type ComponentProps } from "react";
+import {
+  isValidElement,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentProps,
+} from "react";
 import Link from "next/link";
 import Markdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
@@ -11,6 +17,7 @@ import type { Backlink } from "@/lib/backlinks";
 import type { Note } from "@/lib/notes";
 import { remarkTag } from "@/lib/remark-tag";
 import { remarkWikilink } from "@/lib/remark-wikilink";
+import { useSettings } from "@/lib/settings";
 import { noteTags } from "@/lib/tags";
 import { revertNote, updateNote, useOverlay } from "@/lib/vault";
 import { Backlinks } from "@/components/backlinks";
@@ -24,10 +31,18 @@ function Pre({ children }: ComponentProps<"pre">) {
   if (isValidElement(children)) {
     const code = children.props as { className?: string; children?: unknown };
     const text = String(code.children ?? "");
-    if (code.className?.split(" ").includes("language-mermaid")) {
+    const language = code.className
+      ?.split(" ")
+      .find((name) => name.startsWith("language-"))
+      ?.slice("language-".length);
+    if (language === "mermaid") {
       return <MermaidDiagram chart={text} />;
     }
-    return <CodeBlock text={text}>{children}</CodeBlock>;
+    return (
+      <CodeBlock text={text} language={language}>
+        {children}
+      </CodeBlock>
+    );
   }
   return <pre>{children}</pre>;
 }
@@ -44,23 +59,41 @@ export function NoteView({
   note,
   slug,
   resolver,
+  linkTitles,
   backlinks,
 }: {
   note: Note | null;
   slug: string;
   resolver: Record<string, string>;
+  /** Titles of all vault notes, for the editor's `[[` autocomplete. */
+  linkTitles: string[];
   backlinks: Backlink[];
 }) {
   const overlay = useOverlay();
+  const settings = useSettings();
   const local = overlay.notes[slug];
   const body = local?.hidden ? undefined : (local?.body ?? note?.body);
 
-  // Brand-new notes open straight into live editing.
-  const [reading, setReading] = useState(body !== "");
+  // The setting decides the starting mode (empty notes always open in the
+  // editor); the toggle overrides it for this note without persisting.
+  const [startedEmpty] = useState(body === "");
+  const [readingOverride, setReadingOverride] = useState<boolean | null>(null);
+  const vimBarRef = useRef<HTMLDivElement>(null);
+  const reading =
+    readingOverride ?? (startedEmpty ? false : !settings.openInEditMode);
   const resolverMap = useMemo(
     () => new Map(Object.entries(resolver)),
     [resolver],
   );
+  const linkTargets = useMemo(() => {
+    const titles = new Set(linkTitles);
+    for (const [other, entry] of Object.entries(overlay.notes)) {
+      if (!entry.hidden && entry.body !== undefined) {
+        titles.add(other.split("/").pop()!);
+      }
+    }
+    return [...titles].sort((a, b) => a.localeCompare(b));
+  }, [linkTitles, overlay]);
 
   if (body === undefined) {
     return (
@@ -137,17 +170,18 @@ export function NoteView({
                 Revert
               </button>
             )}
-            <Button
-              onClick={() => setReading(!reading)}
-              active={!reading}
-              aria-pressed={!reading}
-              aria-label={reading ? "Edit note" : "Reading view"}
-              title={reading ? "Edit note" : "Reading view"}
-              className="shrink-0"
-            >
-              <PencilIcon />
-            </Button>
           </>
+        }
+        actions={
+          <Button
+            onClick={() => setReadingOverride(!reading)}
+            active={!reading}
+            aria-pressed={!reading}
+            aria-label={reading ? "Edit note" : "Reading view"}
+            title={reading ? "Edit note" : "Reading view"}
+          >
+            <PencilIcon />
+          </Button>
         }
       />
 
@@ -163,12 +197,30 @@ export function NoteView({
               key={slug}
               initialBody={body}
               onChange={(next) => updateNote(slug, next)}
+              linkTargets={linkTargets}
+              vimMode={settings.vimMode}
+              vimStatusBar={() => vimBarRef.current}
             />
           )}
 
           {reading && <Backlinks backlinks={backlinks} />}
         </article>
       </div>
+
+      {/* Vim's command bar, hosted in the same footer plane the find bar
+          uses. CSS keeps it hidden except while a : or / prompt is open,
+          and it overlays rather than resizing the note area. */}
+      {!reading && settings.vimMode && (
+        <div
+          data-seam="top"
+          className="vim-bar absolute inset-x-0 bottom-0 border-t border-foreground/15 bg-background"
+        >
+          <div
+            ref={vimBarRef}
+            className="vim-statusbar flex h-11 items-center gap-2 px-4 font-mono text-xs"
+          />
+        </div>
+      )}
     </>
   );
 }

@@ -25,6 +25,33 @@ export function SettingsForm() {
       </li>
       <li className="flex items-center justify-between gap-6 py-4">
         <div>
+          <p className="font-medium">Start in editing mode</p>
+          <p className="mt-1 text-sm opacity-60">
+            Open notes in the editor instead of the reading view. Empty notes
+            always open in the editor.
+          </p>
+        </div>
+        <Toggle
+          checked={settings.openInEditMode}
+          ariaLabel="Start notes in editing mode"
+          onChange={(checked) => updateSettings({ openInEditMode: checked })}
+        />
+      </li>
+      <li className="flex items-center justify-between gap-6 py-4">
+        <div>
+          <p className="font-medium">Vim keybindings</p>
+          <p className="mt-1 text-sm opacity-60">
+            Edit notes with Vim motions, operators and modes.
+          </p>
+        </div>
+        <Toggle
+          checked={settings.vimMode}
+          ariaLabel="Use Vim keybindings in the editor"
+          onChange={(checked) => updateSettings({ vimMode: checked })}
+        />
+      </li>
+      <li className="flex items-center justify-between gap-6 py-4">
+        <div>
           <p className="font-medium">Search in</p>
           <p className="mt-1 text-sm opacity-60">
             What sidebar search matches by default: note titles only, or note

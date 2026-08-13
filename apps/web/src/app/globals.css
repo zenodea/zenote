@@ -160,6 +160,104 @@ body {
   text-decoration: none;
 }
 
+/* Code token palette, shared by the reading view and the editor. All
+   colors derive from the theme tokens so every theme stays coherent. */
+.tok-keyword,
+.tok-tagName {
+  color: var(--accent);
+}
+.tok-atom,
+.tok-bool,
+.tok-number,
+.tok-literal {
+  color: color-mix(in srgb, var(--accent) 70%, var(--foreground));
+}
+.tok-string,
+.tok-string2 {
+  color: color-mix(in srgb, var(--accent) 45%, var(--foreground));
+}
+.tok-comment {
+  color: color-mix(in srgb, var(--foreground) 55%, transparent);
+  font-style: italic;
+}
+.tok-typeName,
+.tok-className,
+.tok-namespace {
+  color: color-mix(in srgb, var(--accent) 85%, var(--foreground));
+}
+.tok-propertyName,
+.tok-attributeName,
+.tok-macroName,
+.tok-labelName {
+  color: color-mix(in srgb, var(--foreground) 75%, var(--accent));
+}
+.tok-operator,
+.tok-punctuation,
+.tok-meta {
+  color: color-mix(in srgb, var(--foreground) 70%, transparent);
+}
+.tok-invalid {
+  color: #ef4444;
+}
+
+/* Vim block cursor in the theme accent. !important because the vim
+   extension injects its own pink at the editor's highest precedence. */
+.cm-editor .cm-fat-cursor {
+  background: var(--accent) !important;
+  color: var(--background) !important;
+}
+.cm-editor:not(.cm-focused) .cm-fat-cursor {
+  background: none !important;
+  outline: solid 1px var(--accent) !important;
+}
+
+/* Vim's command bar, hosted in the app footer (see NoteView). Hidden
+   unless vim has a dialog open (: / ?); the mode and pending-key spans
+   never show. */
+.vim-bar {
+  display: none;
+}
+.vim-bar:has(.vim-statusbar > div) {
+  display: block;
+}
+.vim-statusbar > span {
+  display: none;
+}
+/* The prompt's spans carry inline styles (generic monospace, gray desc)
+   from the vim engine, hence the !important. The : prefix reads in the
+   accent; the input resets itself to foreground below. */
+.vim-statusbar span {
+  font-family: var(--font-geist-mono), monospace !important;
+  color: var(--accent) !important;
+}
+.vim-statusbar > div {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 0.375rem;
+}
+.vim-statusbar input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--foreground) !important;
+  font: inherit;
+  outline: none;
+}
+
+/* Matches from vim's / search, colored like the find bar's highlights. */
+.cm-editor .cm-searchMatch {
+  background-color: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+/* Vim error messages arrive with an inline `color: red`; align them with
+   the app's one error red (.wikilink-broken, .tok-invalid). */
+.cm-vim-message {
+  color: #ef4444 !important;
+}
+
 ::highlight(find-match) {
   background-color: color-mix(in srgb, var(--accent) 25%, transparent);
 }

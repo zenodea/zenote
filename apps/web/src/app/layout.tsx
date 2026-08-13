@@ -64,7 +64,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="relative flex h-full overflow-hidden">
         <AiAssistantProvider>
           <Sidebar docs={docs} />
-          <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
             {children}
             <FindBar />
           </main>

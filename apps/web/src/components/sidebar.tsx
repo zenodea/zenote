@@ -155,8 +155,12 @@ export function Sidebar({ docs }: { docs: SearchDoc[] }) {
               <LogoIcon />
             </Link>
             <Button
-              onClick={() => setNaming("note")}
+              onClick={() => setNaming(naming === "note" ? null : "note")}
+              // Keeps the naming input's blur-cancel from firing first,
+              // which would make this click reopen instead of toggle off.
+              onMouseDown={(event) => event.preventDefault()}
               active={naming === "note"}
+              aria-pressed={naming === "note"}
               aria-label="New note"
               title="New note"
               className="shrink-0"
@@ -164,8 +168,10 @@ export function Sidebar({ docs }: { docs: SearchDoc[] }) {
               <FilePlusIcon />
             </Button>
             <Button
-              onClick={() => setNaming("folder")}
+              onClick={() => setNaming(naming === "folder" ? null : "folder")}
+              onMouseDown={(event) => event.preventDefault()}
               active={naming === "folder"}
+              aria-pressed={naming === "folder"}
               aria-label="New folder"
               title="New folder"
               className="shrink-0"
@@ -173,7 +179,6 @@ export function Sidebar({ docs }: { docs: SearchDoc[] }) {
               <FolderPlusIcon />
             </Button>
           </>
-
         )}
         <Button
           onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
@@ -600,8 +605,7 @@ function NodeList({
                 onDrop={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
-                  const slug =
-                    event.dataTransfer.getData("application/x-note");
+                  const slug = event.dataTransfer.getData("application/x-note");
                   if (slug) onDrop(slug, node.path);
                 }}
               >

@@ -11,11 +11,15 @@ import type { SearchMode } from "./search";
 export type Settings = {
   showBacklinks: boolean;
   searchMode: SearchMode;
+  openInEditMode: boolean;
+  vimMode: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
   showBacklinks: true,
   searchMode: "titles",
+  openInEditMode: false,
+  vimMode: false,
 };
 
 export const SETTINGS_STORAGE_KEY = "settings";
