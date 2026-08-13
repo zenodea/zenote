@@ -4,6 +4,7 @@ import { AiAssistantProvider, AiPanel } from "@/components/ai-assistant";
 import { FindBar } from "@/components/find-bar";
 import { Junctions } from "@/components/junctions";
 import { Sidebar } from "@/components/sidebar";
+import { ThemeFavicon } from "@/components/theme-favicon";
 import { getAllNotes } from "@/lib/notes";
 import type { SearchDoc } from "@/lib/search";
 import { noteTags } from "@/lib/tags";
@@ -36,7 +37,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "file-visualiser",
+  title: { default: "Zenote", template: "%s — Zenote" },
   description: "Read your notes online",
 };
 
@@ -73,6 +74,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         </AiAssistantProvider>
         {/* Zed-style markers wherever data-seam separators intersect. */}
         <Junctions />
+        <ThemeFavicon />
       </body>
     </html>
   );

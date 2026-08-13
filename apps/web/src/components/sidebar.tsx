@@ -99,9 +99,11 @@ export function Sidebar({
         ) : (
           <Link
             href="/"
-            className="min-w-0 flex-1 truncate font-semibold hover:opacity-70"
+            aria-label="Zenote home"
+            title="Zenote"
+            className="flex min-w-0 flex-1 items-center hover:opacity-70"
           >
-            Z-Notes
+            <LogoIcon />
           </Link>
         )}
         <Button
@@ -184,6 +186,32 @@ export function Sidebar({
         <AiButton />
       </div>
     </nav>
+  );
+}
+
+function LogoIcon() {
+  return (
+    <svg
+      width="28"
+      height="28"
+      viewBox="0 0 64 64"
+      fill="none"
+      aria-hidden
+      className="block shrink-0"
+    >
+      <path
+        d="M16 16h32M16 32h22M16 48h32"
+        stroke="var(--foreground)"
+        strokeWidth="6.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M51 13 13 51"
+        stroke="var(--accent)"
+        strokeWidth="6.5"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 
