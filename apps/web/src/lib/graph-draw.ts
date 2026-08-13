@@ -5,9 +5,11 @@ import type { GraphNode } from "@/lib/graph";
 // scale once past its threshold. Below LABEL_HUB_SCALE there is no text.
 // Importance is squared, so the widest gap sits between the top tier and the
 // next — lesser tiers bunch progressively closer to LABEL_SCALE.
+// All three are relative to the fitted zoom, so label timing is independent
+// of how large the layout happens to be.
 const LABEL_SCALE = 2.0;
-const LABEL_HUB_SCALE = 0.75;
-const LABEL_FADE = 0.25;
+const LABEL_HUB_SCALE = 0.8;
+const LABEL_FADE = 0.2;
 // Continuous per-node alpha would cost one draw call per node; 12 steps is
 // indistinguishable in motion and keeps the canvas batched.
 const BUCKETS = 12;
@@ -23,6 +25,8 @@ export type DrawParams = {
    * colours, so the caller reads them from the active theme. */
   foreground: string;
   accent: string;
+  /** Scale at which the whole graph fits the viewport; anchors label zoom. */
+  fitScale: number;
   /** Node positions, indexed like `nodes`. */
   x: Float64Array;
   y: Float64Array;
@@ -52,6 +56,7 @@ export function drawGraph({
   view,
   foreground,
   accent,
+  fitScale,
   x,
   y,
   nodes,
@@ -165,12 +170,16 @@ export function drawGraph({
   context.textBaseline = "top";
   context.fillStyle = foreground;
 
+  const relativeScale = scale / Math.max(fitScale, 1e-6);
   for (let i = 0; i < nodes.length; i++) {
     if (!isShown(i)) continue;
     const importance = Math.min(nodes[i].degree, 8) / 8;
     const startAt =
       LABEL_SCALE - (LABEL_SCALE - LABEL_HUB_SCALE) * importance * importance;
-    const zoomAlpha = Math.min(1, Math.max(0, (scale - startAt) / LABEL_FADE));
+    const zoomAlpha = Math.min(
+      1,
+      Math.max(0, (relativeScale - startAt) / LABEL_FADE),
+    );
     const alpha = Math.max(labelFocus[i], zoomAlpha * (1 - focusAmount));
     if (alpha < 0.02) continue;
 

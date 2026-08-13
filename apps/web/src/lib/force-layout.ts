@@ -27,22 +27,22 @@ export function createLayout(
   width: number,
   height: number,
   {
-    linkDistance = 45,
+    linkDistance = 100,
     charge = -500,
-    velocityDecay = 0.6,
-    centering = 0,
-    distanceMax = 120,
+    velocityDecay = 0.5,
+    centering = 0.02,
+    distanceMax = Infinity,
   }: LayoutOptions = {},
 ): Layout {
   const count = graph.nodes.length;
 
-  // distanceMax is what contains the layout. With no long-range repulsion
-  // nothing pushes outward forever, so no bounding box is needed.
   const targetRadius = Math.min(width, height) * 0.42;
   const pull = centering;
 
   const maxSpeed = targetRadius * 0.06;
   const distanceMaxSquared = distanceMax * distanceMax;
+  const focusRadiusSquared = (linkDistance * 2.5) ** 2;
+  let focused = -1;
   const index = new Map(graph.nodes.map((node, i) => [node.id, i]));
 
   const x = new Float64Array(count);
@@ -66,13 +66,17 @@ export function createLayout(
   );
 
   const degrees = new Int32Array(count);
+  const neighbours: number[][] = Array.from({ length: count }, () => []);
   for (const [a, b] of edges) {
     degrees[a]++;
     degrees[b]++;
+    neighbours[a].push(b);
+    neighbours[b].push(a);
   }
+  const focusFloor = new Float32Array(count);
 
   const strengths = edges.map(
-    ([a, b]) => 1 / Math.max(1, Math.min(degrees[a], degrees[b])),
+    ([a, b]) => 0.5 / Math.max(1, Math.min(degrees[a], degrees[b])),
   );
   const biases = edges.map(
     ([a, b]) => degrees[a] / Math.max(1, degrees[a] + degrees[b]),
@@ -142,22 +146,18 @@ export function createLayout(
     for (let i = 0; i < count; i++) {
       sumX += x[i];
       sumY += y[i];
-      vx[i] += (width / 2 - x[i]) * pull * alpha;
-      vy[i] += (height / 2 - y[i]) * pull * alpha;
     }
-
-    // Recentre by translation, not by force: a centring force strong enough to
-    // contain the layout also packs it into a uniform disc and hides structure.
-    const shiftX = sumX / Math.max(count, 1) - width / 2;
-    const shiftY = sumY / Math.max(count, 1) - height / 2;
+    const cx = sumX / Math.max(count, 1);
+    const cy = sumY / Math.max(count, 1);
     for (let i = 0; i < count; i++) {
-      x[i] -= shiftX;
-      y[i] -= shiftY;
+      vx[i] += (cx - x[i]) * pull * alpha;
+      vy[i] += (cy - y[i]) * pull * alpha;
     }
   }
 
   function step(): boolean {
     alpha += (alphaTarget - alpha) * ALPHA_DECAY;
+    if (focused >= 0 && !fixed[focused] && alpha < 0.005) focused = -1;
 
     repel();
     springs();
@@ -168,6 +168,14 @@ export function createLayout(
         vx[i] = 0;
         vy[i] = 0;
         continue;
+      }
+      if (focused >= 0) {
+        const dx = x[i] - x[focused];
+        const dy = y[i] - y[focused];
+        const ratio = (dx * dx + dy * dy) / focusRadiusSquared;
+        const falloff = Math.max(focusFloor[i], 1 / (1 + ratio));
+        vx[i] *= falloff;
+        vy[i] *= falloff;
       }
       vx[i] *= velocityDecay;
       vy[i] *= velocityDecay;
@@ -187,6 +195,16 @@ export function createLayout(
 
   function pin(i: number, nextX: number, nextY: number) {
     fixed[i] = 1;
+    if (focused !== i) {
+      focused = i;
+      focusFloor.fill(0);
+      for (const j of neighbours[i]) {
+        focusFloor[j] = 1;
+        for (const k of neighbours[j]) {
+          if (k !== i && focusFloor[k] < 0.4) focusFloor[k] = 0.4;
+        }
+      }
+    }
     x[i] = nextX;
     y[i] = nextY;
     vx[i] = 0;
@@ -195,6 +213,7 @@ export function createLayout(
 
   function unpin(i: number) {
     fixed[i] = 0;
+    alpha = Math.min(alpha, 0.03);
   }
 
   function reheat(value = 0.3) {

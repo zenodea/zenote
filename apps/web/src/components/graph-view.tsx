@@ -18,7 +18,7 @@ const FADE = 0.18;
 const VIEW_EASE = 0.22;
 const FRICTION = 0.88;
 const MIN_VELOCITY = 0.08;
-const DRAG_ALPHA = 0.06;
+const DRAG_ALPHA = 0.1;
 const CLICK_SLOP = 4;
 
 export function GraphView({ graph }: { graph: Graph }) {
@@ -68,9 +68,11 @@ export function GraphView({ graph }: { graph: Graph }) {
 
   const view = useRef<View>({ x: 0, y: 0, scale: 1 });
   const viewTarget = useRef<View>({ x: 0, y: 0, scale: 1 });
+  const fitScale = useRef(1);
   const velocity = useRef({ x: 0, y: 0 });
   const size = useRef({ width: 0, height: 0 });
   const hovered = useRef<number | null>(null);
+  const pointer = useRef<{ x: number; y: number } | null>(null);
   const [seeds, setSeeds] = useState<number[]>([]);
   const [depth, setDepth] = useState(1);
   const seedsRef = useRef<number[]>([]);
@@ -122,7 +124,9 @@ export function GraphView({ graph }: { graph: Graph }) {
   const visibleRef = useRef<Set<number> | null>(null);
   const focusRef = useRef<Set<number> | null>(null);
   const adjusted = useRef(false);
-  const drag = useRef<{ node: number; moved: number } | null>(null);
+  const drag = useRef<{ node: number; moved: number; active: boolean } | null>(
+    null,
+  );
   const pan = useRef<{ x: number; y: number } | null>(null);
   const frame = useRef(0);
   const running = useRef(false);
@@ -159,6 +163,7 @@ export function GraphView({ graph }: { graph: Graph }) {
       y: height / 2 - ((ys[low] + ys[high]) / 2) * scale,
     };
 
+    fitScale.current = scale;
     viewTarget.current = next;
     velocity.current = { x: 0, y: 0 };
     if (instant) view.current = { ...next };
@@ -288,6 +293,7 @@ export function GraphView({ graph }: { graph: Graph }) {
       view: view.current,
       foreground: colorsRef.current.foreground,
       accent: colorsRef.current.accent,
+      fitScale: fitScale.current,
       x: layout.x,
       y: layout.y,
       nodes: graph.nodes,
@@ -301,6 +307,35 @@ export function GraphView({ graph }: { graph: Graph }) {
     });
   }, [layout, edges, graph, baseRadius]);
 
+  const toLocal = useCallback((event: { clientX: number; clientY: number }) => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return { x: 0, y: 0 };
+    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+  }, []);
+
+  const nodeAt = useCallback(
+    (point: { x: number; y: number }) => {
+      const { x: tx, y: ty, scale } = view.current;
+      let best: number | null = null;
+      let bestDistance = Infinity;
+
+      for (let i = 0; i < layout.x.length; i++) {
+        if (visibleRef.current !== null && !visibleRef.current.has(i)) continue;
+        const dx = layout.x[i] * scale + tx - point.x;
+        const dy = layout.y[i] * scale + ty - point.y;
+        const distance = Math.hypot(dx, dy);
+        const radius = nodeRadius(graph.nodes[i].degree, baseRadius);
+
+        if (distance < Math.max(radius + 6, 12) && distance < bestDistance) {
+          best = i;
+          bestDistance = distance;
+        }
+      }
+      return best;
+    },
+    [layout, graph, baseRadius],
+  );
+
   const start = useCallback(() => {
     if (running.current) return;
     running.current = true;
@@ -308,11 +343,20 @@ export function GraphView({ graph }: { graph: Graph }) {
     function run() {
       let moving = false;
       if (!physicsDone.current) {
-        const steps = drag.current ? 1 : STEPS_PER_FRAME;
-        for (let i = 0; i < steps; i++) {
+        for (let i = 0; i < STEPS_PER_FRAME; i++) {
           moving = layout.step() || moving;
         }
         if (!moving) physicsDone.current = true;
+      }
+
+      if (!drag.current && !pan.current && pointer.current) {
+        const node = nodeAt(pointer.current);
+        if (node !== hovered.current) {
+          hovered.current = node;
+          if (canvasRef.current) {
+            canvasRef.current.style.cursor = node === null ? "grab" : "pointer";
+          }
+        }
       }
 
       const fading = advanceFade();
@@ -327,7 +371,7 @@ export function GraphView({ graph }: { graph: Graph }) {
     }
 
     frame.current = requestAnimationFrame(run);
-  }, [layout, draw, advanceFade, advanceView]);
+  }, [layout, draw, advanceFade, advanceView, nodeAt]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -405,35 +449,6 @@ export function GraphView({ graph }: { graph: Graph }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  const toLocal = useCallback((event: { clientX: number; clientY: number }) => {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return { x: 0, y: 0 };
-    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
-  }, []);
-
-  const nodeAt = useCallback(
-    (point: { x: number; y: number }) => {
-      const { x: tx, y: ty, scale } = view.current;
-      let best: number | null = null;
-      let bestDistance = Infinity;
-
-      for (let i = 0; i < layout.x.length; i++) {
-        if (visibleRef.current !== null && !visibleRef.current.has(i)) continue;
-        const dx = layout.x[i] * scale + tx - point.x;
-        const dy = layout.y[i] * scale + ty - point.y;
-        const distance = Math.hypot(dx, dy);
-        const radius = nodeRadius(graph.nodes[i].degree, baseRadius);
-
-        if (distance < Math.max(radius + 6, 12) && distance < bestDistance) {
-          best = i;
-          bestDistance = distance;
-        }
-      }
-      return best;
-    },
-    [layout, graph, baseRadius],
-  );
-
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -493,14 +508,12 @@ export function GraphView({ graph }: { graph: Graph }) {
     if (event.button === 2) return;
 
     const point = toLocal(event);
+    pointer.current = point;
     const node = nodeAt(point);
     canvasRef.current?.setPointerCapture(event.pointerId);
 
     if (node !== null) {
-      drag.current = { node, moved: 0 };
-      physicsDone.current = false;
-      layout.setAlphaTarget(DRAG_ALPHA);
-      start();
+      drag.current = { node, moved: 0, active: false };
     } else {
       pan.current = point;
       velocity.current = { x: 0, y: 0 };
@@ -510,10 +523,18 @@ export function GraphView({ graph }: { graph: Graph }) {
 
   function onPointerMove(event: React.PointerEvent) {
     const point = toLocal(event);
+    pointer.current = point;
     const { x: tx, y: ty, scale } = view.current;
 
     if (drag.current) {
       drag.current.moved += Math.hypot(event.movementX, event.movementY);
+      if (drag.current.moved < CLICK_SLOP) return;
+      if (!drag.current.active) {
+        drag.current.active = true;
+        physicsDone.current = false;
+        layout.setAlphaTarget(DRAG_ALPHA);
+        layout.reheat(DRAG_ALPHA);
+      }
       layout.pin(drag.current.node, (point.x - tx) / scale, (point.y - ty) / scale);
       start();
       return;
@@ -553,17 +574,30 @@ export function GraphView({ graph }: { graph: Graph }) {
 
   function onPointerUp() {
     if (drag.current) {
-      const { node, moved } = drag.current;
-      layout.unpin(node);
-      layout.setAlphaTarget(0);
-      physicsDone.current = false;
+      const { node, active } = drag.current;
       drag.current = null;
-      if (moved < CLICK_SLOP) router.push(`/notes/${graph.nodes[node].id}`);
+      if (active) {
+        layout.unpin(node);
+        layout.setAlphaTarget(0);
+        physicsDone.current = false;
+      } else {
+        router.push(`/notes/${graph.nodes[node].id}`);
+      }
       start();
     }
 
     if (pan.current) {
       pan.current = null;
+      start();
+    }
+  }
+
+  function onPointerLeave() {
+    onPointerUp();
+    pointer.current = null;
+    if (hovered.current !== null) {
+      hovered.current = null;
+      if (canvasRef.current) canvasRef.current.style.cursor = "grab";
       start();
     }
   }
@@ -639,7 +673,7 @@ export function GraphView({ graph }: { graph: Graph }) {
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerLeave={onPointerUp}
+        onPointerLeave={onPointerLeave}
       />
 
       {/* A canvas is opaque to keyboards and screen readers, so the nodes also
