@@ -130,6 +130,7 @@ function FindBarInner() {
   return (
     <div
       ref={barRef}
+      data-seam={open ? "top" : undefined}
       className={open ? "shrink-0 border-t border-foreground/15" : "hidden"}
     >
       {open && (

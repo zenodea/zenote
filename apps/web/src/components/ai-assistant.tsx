@@ -71,9 +71,7 @@ export function AiButton() {
       aria-pressed={open}
       aria-label={open ? "Close AI assistant" : "Ask AI about this note"}
       title={
-        slug
-          ? "Ask AI about this note"
-          : "Open a note to use the AI assistant"
+        slug ? "Ask AI about this note" : "Open a note to use the AI assistant"
       }
       className={open && busy ? "animate-pulse" : undefined}
     >
@@ -172,8 +170,14 @@ export function AiPanel({ titles }: { titles: Record<string, string> }) {
         show ? "w-96" : "w-0"
       }`}
     >
-      <div className="flex h-full w-96 flex-col border-l border-foreground/15 text-sm">
-        <div className="flex h-14 shrink-0 items-center gap-2 border-b border-foreground/15 px-4">
+      <div
+        data-seam={show ? "left" : undefined}
+        className="flex h-full w-96 flex-col border-l border-foreground/15 text-sm"
+      >
+        <div
+          data-seam={show ? "bottom" : undefined}
+          className="flex h-14 shrink-0 items-center gap-2 border-b border-foreground/15 px-4"
+        >
           <div className="min-w-0 flex-1">
             <p className="font-semibold">AI Assistant</p>
             <p className="truncate text-xs opacity-60">
@@ -223,6 +227,7 @@ export function AiPanel({ titles }: { titles: Record<string, string> }) {
             event.preventDefault();
             send();
           }}
+          data-seam={show ? "top" : undefined}
           // h-[45px]: 44px row + 1px border, level with the other footers.
           className="flex h-[45px] shrink-0 items-center gap-2 border-t border-foreground/15 px-3"
         >

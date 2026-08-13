@@ -75,8 +75,14 @@ export function Sidebar({
   }
 
   return (
-    <nav className="flex w-64 shrink-0 flex-col border-r border-foreground/15 text-sm">
-      <div className="flex h-14 shrink-0 items-center gap-2 border-b border-foreground/15 px-4">
+    <nav
+      data-seam="right"
+      className="flex w-64 shrink-0 flex-col border-r border-foreground/15 text-sm"
+    >
+      <div
+        data-seam="bottom"
+        className="flex h-14 shrink-0 items-center gap-2 border-b border-foreground/15 px-4"
+      >
         {searchOpen ? (
           <input
             autoFocus
@@ -158,7 +164,10 @@ export function Sidebar({
           />
         )}
       </div>
-      <div className="flex shrink-0 items-center justify-between border-t border-foreground/15 p-2">
+      <div
+        data-seam="top"
+        className="flex shrink-0 items-center justify-between border-t border-foreground/15 p-2"
+      >
         <Link
           href="/settings"
           aria-label="Settings"

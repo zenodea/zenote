@@ -8,7 +8,10 @@ export function PageHeader({
   meta?: ReactNode;
 }) {
   return (
-    <header className="h-14 shrink-0 border-b border-foreground/15 bg-background">
+    <header
+      data-seam="bottom"
+      className="h-14 shrink-0 border-b border-foreground/15 bg-background"
+    >
       <div className="flex h-full w-full max-w-3xl items-center gap-3 px-6">
         <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight">
           {title}
