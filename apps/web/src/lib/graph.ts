@@ -63,6 +63,23 @@ export function indexGraph(graph: Graph): IndexedGraph {
   return { edges, neighbours };
 }
 
+/** The subgraph within `depth` hops of `id`: those nodes and the links
+ * between them. Node degrees stay as in the full graph. */
+export function localGraph(graph: Graph, id: string, depth = 1): Graph {
+  const centre = graph.nodes.findIndex((node) => node.id === id);
+  if (centre < 0) return { nodes: [], links: [] };
+
+  const kept = neighbourhood(indexGraph(graph).neighbours, [centre], depth);
+  const ids = new Set([...kept].map((index) => graph.nodes[index].id));
+
+  return {
+    nodes: graph.nodes.filter((node) => ids.has(node.id)),
+    links: graph.links.filter(
+      (link) => ids.has(link.source) && ids.has(link.target),
+    ),
+  };
+}
+
 /** Every node within `depth` hops of the seeds, seeds included. */
 export function neighbourhood(
   neighbours: number[][],

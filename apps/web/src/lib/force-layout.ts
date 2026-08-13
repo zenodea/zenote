@@ -49,8 +49,6 @@ export function createLayout(
   const vy = new Float64Array(count);
   const fixed = new Uint8Array(count);
 
-  // Deterministic seeding, not random: the server render and the first client
-  // render must agree or React reports a hydration mismatch.
   const goldenAngle = Math.PI * (3 - Math.sqrt(5));
   for (let i = 0; i < count; i++) {
     const radius = 18 * Math.sqrt(0.5 + i);
@@ -117,7 +115,8 @@ export function createLayout(
 
       // Rest length: pushes apart below linkDistance, pulls above it. Without
       // it a connected graph collapses into a knot.
-      const push = ((distance - linkDistance) / distance) * alpha * strengths[e];
+      const push =
+        ((distance - linkDistance) / distance) * alpha * strengths[e];
       dx *= push;
       dy *= push;
 

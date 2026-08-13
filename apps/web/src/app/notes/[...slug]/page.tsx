@@ -1,5 +1,6 @@
 import { NoteView } from "@/components/note-view";
 import { buildBacklinks } from "@/lib/backlinks";
+import { buildGraph, localGraph } from "@/lib/graph";
 import { getAllNotes, getNote } from "@/lib/notes";
 import { buildResolver } from "@/lib/wikilinks";
 
@@ -31,6 +32,7 @@ export default async function NotePage({
   const backlinks = note
     ? (buildBacklinks(notes, resolver).get(note.slug) ?? [])
     : [];
+  const neighbourhood = localGraph(buildGraph(notes, resolver), joined);
 
   return (
     <NoteView
@@ -40,6 +42,7 @@ export default async function NotePage({
       resolver={Object.fromEntries(resolver)}
       linkTitles={notes.map((entry) => entry.title)}
       backlinks={backlinks}
+      neighbourhood={neighbourhood}
     />
   );
 }

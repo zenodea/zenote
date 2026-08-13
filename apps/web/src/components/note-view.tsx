@@ -14,6 +14,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import "katex/dist/katex.min.css";
 import type { Backlink } from "@/lib/backlinks";
+import type { Graph } from "@/lib/graph";
 import type { Note } from "@/lib/notes";
 import { remarkTag } from "@/lib/remark-tag";
 import { remarkWikilink } from "@/lib/remark-wikilink";
@@ -23,6 +24,7 @@ import { revertNote, updateNote, useOverlay } from "@/lib/vault";
 import { Backlinks } from "@/components/backlinks";
 import { Button } from "@/components/button";
 import { CodeBlock } from "@/components/code-block";
+import { GraphView } from "@/components/graph-view";
 import { MarkdownEditor } from "@/components/markdown-editor";
 import { MermaidDiagram } from "@/components/mermaid-diagram";
 import { PageHeader } from "@/components/page-header";
@@ -61,6 +63,7 @@ export function NoteView({
   resolver,
   linkTitles,
   backlinks,
+  neighbourhood,
 }: {
   note: Note | null;
   slug: string;
@@ -68,6 +71,7 @@ export function NoteView({
   /** Titles of all vault notes, for the editor's `[[` autocomplete. */
   linkTitles: string[];
   backlinks: Backlink[];
+  neighbourhood: Graph;
 }) {
   const overlay = useOverlay();
   const settings = useSettings();
@@ -200,6 +204,21 @@ export function NoteView({
               vimMode={settings.vimMode}
               vimStatusBar={() => vimBarRef.current}
             />
+          )}
+
+          {reading && neighbourhood.nodes.length > 1 && (
+            <section className="mt-16 border-t border-foreground/15 pt-6">
+              <h2 className="text-sm font-semibold uppercase tracking-wide opacity-60">
+                Graph
+              </h2>
+              <div className="mt-3 h-72 overflow-hidden rounded border border-foreground/15">
+                <GraphView
+                  graph={neighbourhood}
+                  focusId={slug}
+                  controls={false}
+                />
+              </div>
+            </section>
           )}
 
           {reading && <Backlinks backlinks={backlinks} />}

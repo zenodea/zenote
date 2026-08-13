@@ -23,7 +23,17 @@ const MIN_VELOCITY = 0.08;
 const DRAG_ALPHA = 0.1;
 const CLICK_SLOP = 4;
 
-export function GraphView({ graph }: { graph: Graph }) {
+export function GraphView({
+  graph,
+  focusId,
+  controls = true,
+}: {
+  graph: Graph;
+  /** Node id to focus from the start, e.g. the mini graph's own note. */
+  focusId?: string;
+  /** When false, hides the search/filter/zoom chrome and the focus chip. */
+  controls?: boolean;
+}) {
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -47,7 +57,12 @@ export function GraphView({ graph }: { graph: Graph }) {
   const size = useRef({ width: 0, height: 0 });
   const hovered = useRef<number | null>(null);
   const pointer = useRef<{ x: number; y: number } | null>(null);
-  const [seeds, setSeeds] = useState<number[]>([]);
+  const [seeds, setSeeds] = useState<number[]>(() => {
+    const index = focusId
+      ? graph.nodes.findIndex((node) => node.id === focusId)
+      : -1;
+    return index < 0 ? [] : [index];
+  });
   const [depth, setDepth] = useState(1);
   const seedsRef = useRef<number[]>([]);
 
@@ -98,38 +113,44 @@ export function GraphView({ graph }: { graph: Graph }) {
   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
   const colorsRef = useRef({ foreground: "#171717", accent: "#7c3aed" });
 
-  const fit = useCallback((instant = false) => {
-    const count = target.x.length;
-    const { width, height } = size.current;
-    if (!count || !width || !height) return;
+  const fit = useCallback(
+    (instant = false) => {
+      const count = target.x.length;
+      const { width, height } = size.current;
+      if (!count || !width || !height) return;
 
-    const xs = Float64Array.from(target.x).sort();
-    const ys = Float64Array.from(target.y).sort();
-    const low = Math.floor(count * 0.01);
-    const high = Math.min(count - 1, Math.ceil(count * 0.99));
+      const xs = Float64Array.from(target.x).sort();
+      const ys = Float64Array.from(target.y).sort();
+      const low = Math.floor(count * 0.01);
+      const high = Math.min(count - 1, Math.ceil(count * 0.99));
 
-    const spanX = Math.max(xs[high] - xs[low], 1);
-    const spanY = Math.max(ys[high] - ys[low], 1);
-    const scale = Math.max(
-      MIN_SCALE,
-      Math.min(
-        MAX_SCALE,
-        ((width - FIT_PADDING * 2) / spanX) * FIT_OVERSCAN,
-        ((height - FIT_PADDING * 2) / spanY) * FIT_OVERSCAN,
-      ),
-    );
+      // Overscan suits the full graph, whose percentile bounds leave a sparse
+      // fringe; a mini graph must show every node, so it fits exactly.
+      const overscan = controls ? FIT_OVERSCAN : 1;
+      const spanX = Math.max(xs[high] - xs[low], 1);
+      const spanY = Math.max(ys[high] - ys[low], 1);
+      const scale = Math.max(
+        MIN_SCALE,
+        Math.min(
+          MAX_SCALE,
+          ((width - FIT_PADDING * 2) / spanX) * overscan,
+          ((height - FIT_PADDING * 2) / spanY) * overscan,
+        ),
+      );
 
-    const next = {
-      scale,
-      x: width / 2 - ((xs[low] + xs[high]) / 2) * scale,
-      y: height / 2 - ((ys[low] + ys[high]) / 2) * scale,
-    };
+      const next = {
+        scale,
+        x: width / 2 - ((xs[low] + xs[high]) / 2) * scale,
+        y: height / 2 - ((ys[low] + ys[high]) / 2) * scale,
+      };
 
-    fitScale.current = scale;
-    viewTarget.current = next;
-    velocity.current = { x: 0, y: 0 };
-    if (instant) view.current = { ...next };
-  }, [target]);
+      fitScale.current = scale;
+      viewTarget.current = next;
+      velocity.current = { x: 0, y: 0 };
+      if (instant) view.current = { ...next };
+    },
+    [target, controls],
+  );
 
   const highlight = useRef<Float32Array>(
     new Float32Array(graph.nodes.length).fill(1),
@@ -137,9 +158,7 @@ export function GraphView({ graph }: { graph: Graph }) {
   const focusAmount = useRef(0);
   // Rests at 0, unlike `highlight` which rests at 1. Multiplying highlight by
   // the focus amount makes every label flash as the two curves cross.
-  const labelFocus = useRef<Float32Array>(
-    new Float32Array(graph.nodes.length),
-  );
+  const labelFocus = useRef<Float32Array>(new Float32Array(graph.nodes.length));
 
   const hoverSet = useRef<{ node: number; set: Set<number> } | null>(null);
 
@@ -368,12 +387,13 @@ export function GraphView({ graph }: { graph: Graph }) {
   }, [draw]);
 
   useEffect(() => {
+    if (!controls) return;
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") clearFocus();
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [clearFocus]);
+  }, [clearFocus, controls]);
 
   const zoomAt = useCallback(
     (anchor: { x: number; y: number }, factor: number) => {
@@ -470,12 +490,12 @@ export function GraphView({ graph }: { graph: Graph }) {
     }
 
     canvas.addEventListener("wheel", onWheel, { passive: false });
-    canvas.addEventListener("contextmenu", onContextMenu);
+    if (controls) canvas.addEventListener("contextmenu", onContextMenu);
     return () => {
       canvas.removeEventListener("wheel", onWheel);
       canvas.removeEventListener("contextmenu", onContextMenu);
     };
-  }, [toLocal, nodeAt, zoomAt, clearFocus]);
+  }, [toLocal, nodeAt, zoomAt, clearFocus, controls]);
 
   function onPointerDown(event: React.PointerEvent) {
     if (event.button === 2) return;
@@ -507,7 +527,11 @@ export function GraphView({ graph }: { graph: Graph }) {
         layout.setAlphaTarget(DRAG_ALPHA);
         layout.reheat(DRAG_ALPHA);
       }
-      layout.pin(drag.current.node, (point.x - tx) / scale, (point.y - ty) / scale);
+      layout.pin(
+        drag.current.node,
+        (point.x - tx) / scale,
+        (point.y - ty) / scale,
+      );
       start();
       return;
     }
@@ -579,7 +603,7 @@ export function GraphView({ graph }: { graph: Graph }) {
 
   return (
     <div className="relative h-full w-full">
-      {seeds.length > 0 && (
+      {controls && seeds.length > 0 && (
         <FocusChip
           label={seeds.map((seed) => graph.nodes[seed].title).join(", ")}
           depth={depth}
@@ -590,38 +614,50 @@ export function GraphView({ graph }: { graph: Graph }) {
         />
       )}
 
-      <div className="absolute right-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap justify-end gap-1 text-sm">
-        <GraphSearch
-          nodes={graph.nodes}
-          onSelect={focusNode}
-          inputClass={buttonClass}
-        />
-        <TagFilter
-          tagCounts={tagCounts}
-          activeTags={activeTags}
-          onChange={setActiveTags}
-          visibleCount={visible?.size ?? null}
-          total={graph.nodes.length}
-          buttonClass={buttonClass}
-        />
-        <button type="button" onClick={() => zoomBy(1.3)} className={buttonClass} aria-label="Zoom in">
-          +
-        </button>
-        <button type="button" onClick={() => zoomBy(1 / 1.3)} className={buttonClass} aria-label="Zoom out">
-          −
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            adjusted.current = false;
-            fit();
-            start();
-          }}
-          className={buttonClass}
-        >
-          Reset
-        </button>
-      </div>
+      {controls && (
+        <div className="absolute right-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap justify-end gap-1 text-sm">
+          <GraphSearch
+            nodes={graph.nodes}
+            onSelect={focusNode}
+            inputClass={buttonClass}
+          />
+          <TagFilter
+            tagCounts={tagCounts}
+            activeTags={activeTags}
+            onChange={setActiveTags}
+            visibleCount={visible?.size ?? null}
+            total={graph.nodes.length}
+            buttonClass={buttonClass}
+          />
+          <button
+            type="button"
+            onClick={() => zoomBy(1.3)}
+            className={buttonClass}
+            aria-label="Zoom in"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            onClick={() => zoomBy(1 / 1.3)}
+            className={buttonClass}
+            aria-label="Zoom out"
+          >
+            −
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              adjusted.current = false;
+              fit();
+              start();
+            }}
+            className={buttonClass}
+          >
+            Reset
+          </button>
+        </div>
+      )}
 
       <canvas
         ref={canvasRef}
