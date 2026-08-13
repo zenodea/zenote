@@ -1,32 +1,48 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  SEARCH_MODES,
+  parseQuery,
+  prepareDocs,
+  searchDocs,
+  type SearchDoc,
+  type SearchMode,
+  type SearchResult,
+} from "@/lib/search";
+import { useSettings } from "@/lib/settings";
 import type { TreeNode } from "@/lib/tree";
 import { AiButton } from "@/components/ai-assistant";
 import { Button } from "@/components/button";
+import { ChevronIcon } from "@/components/chevron-icon";
+import { Dropdown } from "@/components/dropdown";
+import { Segmented } from "@/components/segmented";
 
-function filterTree(nodes: TreeNode[], query: string): TreeNode[] {
-  const result: TreeNode[] = [];
-  for (const node of nodes) {
-    if (node.kind === "folder") {
-      const children = filterTree(node.children, query);
-      if (children.length > 0) result.push({ ...node, children });
-    } else if (node.name.toLowerCase().includes(query)) {
-      result.push(node);
-    }
-  }
-  return result;
-}
+const TAG_LIST_LIMIT = 100;
 
-const NONE_COLLAPSED: Set<string> = new Set();
-
-export function Sidebar({ tree }: { tree: TreeNode[] }) {
+export function Sidebar({
+  tree,
+  docs,
+}: {
+  tree: TreeNode[];
+  docs: SearchDoc[];
+}) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [modeOverride, setModeOverride] = useState<SearchMode | null>(null);
+  const [tagFilter, setTagFilter] = useState("");
   const pathname = usePathname();
+  const settings = useSettings();
+  const mode = modeOverride ?? settings.searchMode;
+
+  const prepared = useMemo(() => prepareDocs(docs), [docs]);
+  const allTags = useMemo(
+    () => [...new Set(docs.flatMap((doc) => doc.tags))].sort(),
+    [docs],
+  );
 
   function closeSearch() {
     setSearchOpen(false);
@@ -41,14 +57,22 @@ export function Sidebar({ tree }: { tree: TreeNode[] }) {
     });
   }
 
-  const trimmed = query.trim().toLowerCase();
-  const searching = trimmed.length > 0;
-  // In search mode the tree starts empty and fills in as matches appear.
-  const shown = searchOpen
-    ? searching
-      ? filterTree(tree, trimmed)
-      : []
-    : tree;
+  const parsed = parseQuery(query);
+  const searching = parsed.terms.length > 0 || parsed.tags.length > 0;
+  const results = useMemo(
+    () => searchDocs(prepared, parseQuery(query), mode === "content"),
+    [prepared, query, mode],
+  );
+
+  function toggleTag(tag: string) {
+    const token = `#${tag}`;
+    const tokens = query.split(/\s+/).filter(Boolean);
+    const has = tokens.some((t) => t.toLowerCase() === token);
+    const next = has
+      ? tokens.filter((t) => t.toLowerCase() !== token)
+      : [...tokens, token];
+    setQuery(next.join(" "));
+  }
 
   return (
     <nav className="flex w-64 shrink-0 flex-col border-r border-foreground/15 text-sm">
@@ -85,15 +109,50 @@ export function Sidebar({ tree }: { tree: TreeNode[] }) {
         </Button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
-        {searchOpen && !searching ? (
-          <p className="opacity-50">Type to find files…</p>
-        ) : searching && shown.length === 0 ? (
-          <p className="opacity-50">No files found</p>
+        {searchOpen ? (
+          <>
+            <Segmented
+              options={SEARCH_MODES}
+              value={mode}
+              onChange={setModeOverride}
+              ariaLabel="Search in"
+              className="mb-3"
+            />
+            {allTags.length > 0 && (
+              <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                <TagPicker
+                  allTags={allTags}
+                  activeTags={parsed.tags}
+                  filter={tagFilter}
+                  onFilter={setTagFilter}
+                  onToggle={toggleTag}
+                />
+                {parsed.tags.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => toggleTag(tag)}
+                    aria-label={`Remove tag filter ${tag}`}
+                    className="rounded-full bg-foreground/10 px-2 py-0.5 text-xs text-accent hover:opacity-70"
+                  >
+                    #{tag} ×
+                  </button>
+                ))}
+              </div>
+            )}
+            {!searching ? (
+              <p className="opacity-50">Type to search, or pick a tag…</p>
+            ) : results.length === 0 ? (
+              <p className="opacity-50">No matches</p>
+            ) : (
+              <ResultList results={results} pathname={pathname} />
+            )}
+          </>
         ) : (
           <NodeList
-            nodes={shown}
+            nodes={tree}
             depth={0}
-            collapsed={searching ? NONE_COLLAPSED : collapsed}
+            collapsed={collapsed}
             onToggle={toggle}
             pathname={pathname}
           />
@@ -116,25 +175,6 @@ export function Sidebar({ tree }: { tree: TreeNode[] }) {
         <AiButton />
       </div>
     </nav>
-  );
-}
-
-function ChevronIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-      className={className}
-    >
-      <path d="m6 3.5 4.5 4.5L6 12.5" />
-    </svg>
   );
 }
 
@@ -175,6 +215,142 @@ function SearchIcon() {
       <circle cx="7" cy="7" r="4.5" />
       <path d="m10.5 10.5 3.5 3.5" />
     </svg>
+  );
+}
+
+function TagPicker({
+  allTags,
+  activeTags,
+  filter,
+  onFilter,
+  onToggle,
+}: {
+  allTags: string[];
+  activeTags: string[];
+  filter: string;
+  onFilter: (value: string) => void;
+  onToggle: (tag: string) => void;
+}) {
+  const needle = filter.trim().toLowerCase();
+  const matching = needle
+    ? allTags.filter((tag) => tag.includes(needle))
+    : allTags;
+  const shown = matching.slice(0, TAG_LIST_LIMIT);
+
+  return (
+    <Dropdown
+      label={
+        <span className="flex items-center gap-1">
+          Tags{activeTags.length > 0 ? ` (${activeTags.length})` : ""}
+          <ChevronIcon className="w-3 rotate-90" />
+        </span>
+      }
+      align="left"
+      closeOnClick={false}
+      ariaLabel="Filter by tag"
+    >
+      {allTags.length > 8 && (
+        <input
+          autoFocus
+          type="search"
+          value={filter}
+          onChange={(event) => onFilter(event.target.value)}
+          placeholder="Find tag…"
+          aria-label="Find tag"
+          className="mb-1 w-full rounded border border-foreground/15 bg-background px-2 py-1 text-xs placeholder:opacity-50 focus:border-foreground/40 focus:outline-none"
+        />
+      )}
+      <ul className="max-h-60 overflow-y-auto overscroll-contain">
+        {shown.map((tag) => (
+          <li key={tag}>
+            <Button
+              variant="row"
+              active={activeTags.includes(tag)}
+              onClick={() => onToggle(tag)}
+              className="pl-2"
+            >
+              #{tag}
+            </Button>
+          </li>
+        ))}
+        {shown.length === 0 && (
+          <li className="px-2 py-1.5 opacity-50">No tags found</li>
+        )}
+      </ul>
+      {matching.length > shown.length && (
+        <p className="px-2 py-1 text-xs opacity-50">
+          {matching.length - shown.length} more — type to narrow
+        </p>
+      )}
+    </Dropdown>
+  );
+}
+
+function ResultList({
+  results,
+  pathname,
+}: {
+  results: SearchResult[];
+  pathname: string;
+}) {
+  return (
+    <ul className="space-y-0.5">
+      {results.map((result) => {
+        const href = `/notes/${result.slug}`;
+        return (
+          <li key={result.slug}>
+            <Link
+              href={href}
+              aria-current={pathname === href ? "page" : undefined}
+              className={`block rounded px-2 py-1.5 hover:bg-foreground/10 ${
+                pathname === href ? "bg-foreground/10" : ""
+              }`}
+            >
+              <span className="block truncate">
+                <TitleHighlight
+                  title={result.title}
+                  indices={result.titleIndices}
+                />
+                {result.folder && (
+                  <span className="ml-2 text-xs opacity-50">
+                    {result.folder}
+                  </span>
+                )}
+              </span>
+              {result.snippet && (
+                <span className="block truncate text-xs opacity-60">
+                  {result.snippet.before}
+                  <span className="font-medium text-accent">
+                    {result.snippet.match}
+                  </span>
+                  {result.snippet.after}
+                </span>
+              )}
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function TitleHighlight({
+  title,
+  indices,
+}: {
+  title: string;
+  indices: number[] | null;
+}) {
+  if (!indices) return title;
+  const marked = new Set(indices);
+  return [...title].map((char, index) =>
+    marked.has(index) ? (
+      <span key={index} className="font-medium text-accent">
+        {char}
+      </span>
+    ) : (
+      char
+    ),
   );
 }
 

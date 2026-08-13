@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import type { SearchMode } from "./search";
 
 /**
  * User settings, stored as a single JSON blob so the shape can later move to a
@@ -9,10 +10,12 @@ import { useSyncExternalStore } from "react";
  */
 export type Settings = {
   showBacklinks: boolean;
+  searchMode: SearchMode;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
   showBacklinks: true,
+  searchMode: "titles",
 };
 
 export const SETTINGS_STORAGE_KEY = "settings";

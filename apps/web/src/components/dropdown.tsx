@@ -7,6 +7,7 @@ export function Dropdown({
   children,
   align = "right",
   direction = "down",
+  closeOnClick = true,
   ariaLabel,
   triggerClassName,
 }: {
@@ -14,6 +15,7 @@ export function Dropdown({
   children: ReactNode;
   align?: "left" | "right" | "center";
   direction?: "down" | "up";
+  closeOnClick?: boolean;
   ariaLabel?: string;
   triggerClassName?: string;
 }) {
@@ -57,7 +59,7 @@ export function Dropdown({
       {open && (
         <div
           role="menu"
-          onClick={() => setOpen(false)}
+          onClick={closeOnClick ? () => setOpen(false) : undefined}
           className={`absolute z-20 min-w-36 rounded border border-foreground/15 bg-background p-1 text-sm shadow-lg ${
             direction === "up" ? "bottom-full mb-1" : "top-full mt-1"
           } ${

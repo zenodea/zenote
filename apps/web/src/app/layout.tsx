@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { AiAssistantProvider, AiPanel } from "@/components/ai-assistant";
 import { Sidebar } from "@/components/sidebar";
 import { getAllNotes } from "@/lib/notes";
+import type { SearchDoc } from "@/lib/search";
+import { noteTags } from "@/lib/tags";
 import { THEME_IDS, THEME_STORAGE_KEY } from "@/lib/theme";
 import { buildTree } from "@/lib/tree";
 import "./globals.css";
@@ -42,6 +44,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const titles = Object.fromEntries(
     notes.map((note) => [note.slug, note.title]),
   );
+  const docs: SearchDoc[] = notes.map((note) => ({
+    slug: note.slug,
+    title: note.title,
+    tags: noteTags(note),
+    body: note.body,
+  }));
 
   return (
     <html
@@ -54,7 +62,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="flex h-full overflow-hidden">
         <AiAssistantProvider>
-          <Sidebar tree={tree} />
+          <Sidebar tree={tree} docs={docs} />
           <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
             {children}
           </main>

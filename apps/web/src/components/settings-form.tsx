@@ -1,6 +1,8 @@
 "use client";
 
+import { SEARCH_MODES } from "@/lib/search";
 import { updateSettings, useSettings } from "@/lib/settings";
+import { Segmented } from "@/components/segmented";
 
 export function SettingsForm() {
   const settings = useSettings();
@@ -19,6 +21,22 @@ export function SettingsForm() {
           checked={settings.showBacklinks}
           ariaLabel="Show Linked from section"
           onChange={(checked) => updateSettings({ showBacklinks: checked })}
+        />
+      </li>
+      <li className="flex items-center justify-between gap-6 py-4">
+        <div>
+          <p className="font-medium">Search in</p>
+          <p className="mt-1 text-sm opacity-60">
+            What sidebar search matches by default: note titles only, or note
+            content too.
+          </p>
+        </div>
+        <Segmented
+          options={SEARCH_MODES}
+          value={settings.searchMode}
+          onChange={(searchMode) => updateSettings({ searchMode })}
+          ariaLabel="Default search mode"
+          className="shrink-0"
         />
       </li>
     </ul>

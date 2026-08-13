@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ChevronIcon } from "@/components/chevron-icon";
 import { PageHeader } from "@/components/page-header";
 import { SettingsForm } from "@/components/settings-form";
 import { ThemeSettings } from "@/components/theme-settings";
@@ -21,10 +22,7 @@ export default function SettingsPage() {
 
           <details className="group mt-10">
             <summary className="flex cursor-pointer list-none items-center gap-1 text-sm font-semibold uppercase tracking-wide opacity-60 hover:opacity-100 [&::-webkit-details-marker]:hidden">
-              <span aria-hidden className="inline-block w-3">
-                <span className="group-open:hidden">▸</span>
-                <span className="hidden group-open:inline">▾</span>
-              </span>
+              <ChevronIcon className="w-3 shrink-0 transition-transform group-open:rotate-90" />
               Colour theme
             </summary>
             <div className="mt-4">
