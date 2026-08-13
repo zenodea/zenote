@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AiAssistantProvider, AiPanel } from "@/components/ai-assistant";
+import { FindBar } from "@/components/find-bar";
+import { Junctions } from "@/components/junctions";
 import { Sidebar } from "@/components/sidebar";
+import { ThemeFavicon } from "@/components/theme-favicon";
 import { getAllNotes } from "@/lib/notes";
+import type { SearchDoc } from "@/lib/search";
+import { noteTags } from "@/lib/tags";
 import { THEME_IDS, THEME_STORAGE_KEY } from "@/lib/theme";
-import { buildTree } from "@/lib/tree";
 import "./globals.css";
 
 // Runs before paint so the stored theme applies without a flash.
@@ -32,16 +36,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "file-visualiser",
+  title: { default: "Zenote", template: "%s — Zenote" },
   description: "Read your notes online",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const notes = await getAllNotes();
-  const tree = buildTree(notes);
   const titles = Object.fromEntries(
     notes.map((note) => [note.slug, note.title]),
   );
+  const docs: SearchDoc[] = notes.map((note) => ({
+    slug: note.slug,
+    title: note.title,
+    tags: noteTags(note),
+    body: note.body,
+  }));
 
   return (
     <html
@@ -52,14 +61,18 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
       </head>
-      <body className="flex h-full overflow-hidden">
+      <body className="relative flex h-full overflow-hidden">
         <AiAssistantProvider>
-          <Sidebar tree={tree} />
-          <main className="min-w-0 flex-1 overflow-y-auto overscroll-contain">
+          <Sidebar docs={docs} />
+          <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
             {children}
+            <FindBar />
           </main>
           <AiPanel titles={titles} />
         </AiAssistantProvider>
+        {/* Zed-style markers wherever data-seam separators intersect. */}
+        <Junctions />
+        <ThemeFavicon />
       </body>
     </html>
   );

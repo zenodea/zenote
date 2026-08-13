@@ -1,0 +1,206 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+import { Button } from "@/components/button";
+import { ChevronIcon } from "@/components/chevron-icon";
+
+const MATCH_HIGHLIGHT = "find-match";
+const CURRENT_HIGHLIGHT = "find-current";
+
+function supportsHighlights() {
+  return typeof CSS !== "undefined" && "highlights" in CSS;
+}
+
+function clearHighlights() {
+  if (!supportsHighlights()) return;
+  CSS.highlights.delete(MATCH_HIGHLIGHT);
+  CSS.highlights.delete(CURRENT_HIGHLIGHT);
+}
+
+function collectRanges(root: Node, needle: string, skip: Node | null): Range[] {
+  const ranges: Range[] = [];
+  const lower = needle.toLowerCase();
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (skip?.contains(node)) continue;
+    const haystack = (node.textContent ?? "").toLowerCase();
+    let at = haystack.indexOf(lower);
+    while (at !== -1) {
+      const range = document.createRange();
+      range.setStart(node, at);
+      range.setEnd(node, at + needle.length);
+      ranges.push(range);
+      at = haystack.indexOf(lower, at + needle.length);
+    }
+  }
+
+  return ranges;
+}
+
+export function FindBar() {
+  // Remounting per route closes the bar and drops highlights on navigation,
+  // like a browser's find dialog.
+  return <FindBarInner key={usePathname()} />;
+}
+
+function FindBarInner() {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [ranges, setRanges] = useState<Range[]>([]);
+  const [index, setIndex] = useState(0);
+  const barRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function runSearch(needle: string) {
+    if (!needle.trim()) {
+      clearHighlights();
+      setRanges([]);
+      setIndex(0);
+      return;
+    }
+
+    const root = barRef.current?.closest("main");
+    if (!root) return;
+
+    const found = collectRanges(root, needle, barRef.current);
+    setRanges(found);
+    setIndex(0);
+    if (supportsHighlights()) {
+      CSS.highlights.set(MATCH_HIGHLIGHT, new Highlight(...found));
+    }
+  }
+
+  function close() {
+    clearHighlights();
+    setOpen(false);
+    setRanges([]);
+    setIndex(0);
+  }
+
+  // Take over Cmd/Ctrl+F from the browser's own find dialog.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key === "f") {
+        event.preventDefault();
+        if (!open) {
+          setOpen(true);
+          runSearch(query);
+        }
+        inputRef.current?.select();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  });
+
+  useEffect(() => {
+    if (open) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (ranges.length === 0) {
+      if (supportsHighlights()) CSS.highlights.delete(CURRENT_HIGHLIGHT);
+      return;
+    }
+
+    const current = ranges[Math.min(index, ranges.length - 1)];
+    if (supportsHighlights()) {
+      CSS.highlights.set(CURRENT_HIGHLIGHT, new Highlight(current));
+    }
+    current.startContainer.parentElement?.scrollIntoView({
+      block: "center",
+      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+    });
+  }, [ranges, index]);
+
+  useEffect(() => clearHighlights, []);
+
+  function step(delta: number) {
+    if (ranges.length === 0) return;
+    setIndex((current) => (current + delta + ranges.length) % ranges.length);
+  }
+
+  return (
+    <div
+      ref={barRef}
+      data-seam={open ? "top" : undefined}
+      className={open ? "shrink-0 border-t border-foreground/15" : "hidden"}
+    >
+      {open && (
+        <div className="flex h-11 items-center gap-2 px-4 text-sm">
+          <input
+            ref={inputRef}
+            type="search"
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              runSearch(event.target.value);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") step(event.shiftKey ? -1 : 1);
+              if (event.key === "Escape") close();
+            }}
+            placeholder="Find in page…"
+            aria-label="Find in page"
+            className="h-7 min-w-0 flex-1 rounded border border-foreground/15 bg-background px-2 placeholder:opacity-50 focus:border-foreground/40 focus:outline-none"
+          />
+          {query.trim() && (
+            <span className="shrink-0 text-xs tabular-nums opacity-60">
+              {ranges.length === 0
+                ? "No matches"
+                : `${index + 1} of ${ranges.length}`}
+            </span>
+          )}
+          <Button
+            onClick={() => step(-1)}
+            disabled={ranges.length === 0}
+            aria-label="Previous match"
+            className="shrink-0"
+          >
+            <ChevronIcon className="-rotate-90" />
+          </Button>
+          <Button
+            onClick={() => step(1)}
+            disabled={ranges.length === 0}
+            aria-label="Next match"
+            className="shrink-0"
+          >
+            <ChevronIcon className="rotate-90" />
+          </Button>
+          <Button
+            onClick={close}
+            aria-label="Close find bar"
+            className="shrink-0"
+          >
+            <CloseIcon />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      aria-hidden
+      className="block"
+    >
+      <path d="m4 4 8 8M12 4l-8 8" />
+    </svg>
+  );
+}

@@ -1,4 +1,3 @@
-import { notFound } from "next/navigation";
 import { NoteView } from "@/components/note-view";
 import { buildBacklinks } from "@/lib/backlinks";
 import { getAllNotes, getNote } from "@/lib/notes";
@@ -13,20 +12,34 @@ export async function generateMetadata({
   params,
 }: PageProps<"/notes/[...slug]">) {
   const { slug } = await params;
-  const note = await getNote(slug.join("/"));
-  return { title: note ? note.title : "Not found" };
+  const note = await getNote(slug.map(decodeURIComponent).join("/"));
+
+  return {
+    title: note ? note.title : decodeURIComponent(slug[slug.length - 1]),
+  };
 }
 
 export default async function NotePage({
   params,
 }: PageProps<"/notes/[...slug]">) {
   const { slug } = await params;
-  const note = await getNote(slug.join("/"));
-  if (!note) notFound();
+  const joined = slug.map(decodeURIComponent).join("/");
+  const note = await getNote(joined);
 
   const notes = await getAllNotes();
   const resolver = buildResolver(notes);
-  const backlinks = buildBacklinks(notes, resolver).get(note.slug) ?? [];
+  const backlinks = note
+    ? (buildBacklinks(notes, resolver).get(note.slug) ?? [])
+    : [];
 
-  return <NoteView note={note} resolver={resolver} backlinks={backlinks} />;
+  return (
+    <NoteView
+      key={joined}
+      note={note}
+      slug={joined}
+      resolver={Object.fromEntries(resolver)}
+      linkTitles={notes.map((entry) => entry.title)}
+      backlinks={backlinks}
+    />
+  );
 }

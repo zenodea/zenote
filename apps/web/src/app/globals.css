@@ -26,14 +26,14 @@
   }
 }
 
-:root[data-theme="default-dark"] {
+[data-theme="default-dark"] {
   --background: #0a0a0a;
   --foreground: #ededed;
   --accent: #a78bfa;
   color-scheme: dark;
 }
 
-:root[data-theme="dracula-dark"] {
+[data-theme="dracula-dark"] {
   --background: #282a36;
   --foreground: #f8f8f2;
   --accent: #bd93f9;
@@ -41,14 +41,14 @@
 }
 
 /* Alucard, Dracula's official light counterpart. */
-:root[data-theme="dracula-light"] {
+[data-theme="dracula-light"] {
   --background: #fffbeb;
   --foreground: #1f1f1f;
   --accent: #644ac9;
   color-scheme: light;
 }
 
-:root[data-theme="tokyo-night-dark"] {
+[data-theme="tokyo-night-dark"] {
   --background: #1a1b26;
   --foreground: #c0caf5;
   --accent: #7aa2f7;
@@ -56,35 +56,35 @@
 }
 
 /* Tokyo Night Day. */
-:root[data-theme="tokyo-night-light"] {
+[data-theme="tokyo-night-light"] {
   --background: #e1e2e7;
   --foreground: #3760bf;
   --accent: #2e7de9;
   color-scheme: light;
 }
 
-:root[data-theme="gruvbox-dark"] {
+[data-theme="gruvbox-dark"] {
   --background: #282828;
   --foreground: #ebdbb2;
   --accent: #d79921;
   color-scheme: dark;
 }
 
-:root[data-theme="gruvbox-light"] {
+[data-theme="gruvbox-light"] {
   --background: #fbf1c7;
   --foreground: #3c3836;
   --accent: #b57614;
   color-scheme: light;
 }
 
-:root[data-theme="everforest-dark"] {
+[data-theme="everforest-dark"] {
   --background: #2d353b;
   --foreground: #d3c6aa;
   --accent: #a7c080;
   color-scheme: dark;
 }
 
-:root[data-theme="everforest-light"] {
+[data-theme="everforest-light"] {
   --background: #fdf6e3;
   --foreground: #5c6a72;
   --accent: #8da101;
@@ -92,7 +92,7 @@
 }
 
 /* Catppuccin Mocha. */
-:root[data-theme="catppuccin-dark"] {
+[data-theme="catppuccin-dark"] {
   --background: #1e1e2e;
   --foreground: #cdd6f4;
   --accent: #cba6f7;
@@ -100,7 +100,7 @@
 }
 
 /* Catppuccin Latte. */
-:root[data-theme="catppuccin-light"] {
+[data-theme="catppuccin-light"] {
   --background: #eff1f5;
   --foreground: #4c4f69;
   --accent: #8839ef;
@@ -158,6 +158,105 @@ body {
   color: var(--accent);
   font-size: 0.9em;
   text-decoration: none;
+}
+
+/* Code token palette, shared by the editor and reading view. */
+.tok-keyword,
+.tok-tagName {
+  color: var(--accent);
+}
+.tok-atom,
+.tok-bool,
+.tok-number,
+.tok-literal {
+  color: color-mix(in srgb, var(--accent) 70%, var(--foreground));
+}
+.tok-string,
+.tok-string2 {
+  color: color-mix(in srgb, var(--accent) 45%, var(--foreground));
+}
+.tok-comment {
+  color: color-mix(in srgb, var(--foreground) 55%, transparent);
+  font-style: italic;
+}
+.tok-typeName,
+.tok-className,
+.tok-namespace {
+  color: color-mix(in srgb, var(--accent) 85%, var(--foreground));
+}
+.tok-propertyName,
+.tok-attributeName,
+.tok-macroName,
+.tok-labelName {
+  color: color-mix(in srgb, var(--foreground) 75%, var(--accent));
+}
+.tok-operator,
+.tok-punctuation,
+.tok-meta {
+  color: color-mix(in srgb, var(--foreground) 70%, transparent);
+}
+.tok-invalid {
+  color: #ef4444;
+}
+
+/* Vim block cursor; !important beats the extension's hardcoded pink. */
+.cm-editor .cm-fat-cursor {
+  background: var(--accent) !important;
+  color: var(--background) !important;
+}
+.cm-editor:not(.cm-focused) .cm-fat-cursor {
+  background: none !important;
+  outline: solid 1px var(--accent) !important;
+}
+
+/* Vim's footer command bar: only visible while a : or / prompt is open. */
+.vim-bar {
+  display: none;
+}
+.vim-bar:has(.vim-statusbar > div) {
+  display: block;
+}
+.vim-statusbar > span {
+  display: none;
+}
+/* !important beats the prompt's inline styles from the vim engine. */
+.vim-statusbar span {
+  font-family: var(--font-geist-mono), monospace !important;
+  color: var(--accent) !important;
+}
+.vim-statusbar > div {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 0.375rem;
+}
+.vim-statusbar input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--foreground) !important;
+  font: inherit;
+  outline: none;
+}
+
+/* Matches from vim's / search, colored like the find bar's highlights. */
+.cm-editor .cm-searchMatch {
+  background-color: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+/* Vim errors ship inline `color: red`; align with the app's error red. */
+.cm-vim-message {
+  color: #ef4444 !important;
+}
+
+::highlight(find-match) {
+  background-color: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+::highlight(find-current) {
+  background-color: color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 .wikilink-broken {

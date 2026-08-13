@@ -1,6 +1,6 @@
 /**
  * Colour themes, as dark/light pairs. Each id matches a
- * `:root[data-theme="..."]` block in globals.css that defines the full token
+ * `[data-theme="..."]` block in globals.css that defines the full token
  * set (--background, --foreground, --accent); everything else derives from
  * those, so a new theme is one CSS block there and one family entry here.
  */

@@ -1,20 +1,20 @@
-import type { Note } from "./notes";
+type TreeNote = { slug: string; title: string };
 
 export type TreeNode =
   | { kind: "folder"; name: string; path: string; children: TreeNode[] }
   | { kind: "note"; name: string; slug: string };
 
 type FolderDraft = {
-  children: Map<string, FolderDraft | Note>;
+  children: Map<string, FolderDraft | TreeNote>;
 };
 
-export function buildTree(notes: Note[]): TreeNode[] {
+export function buildTree(
+  notes: TreeNote[],
+  folders: string[] = [],
+): TreeNode[] {
   const root: FolderDraft = { children: new Map() };
 
-  for (const note of notes) {
-    const segments = note.slug.split("/");
-    const filename = segments.pop()!;
-
+  function ensureFolder(segments: string[]): FolderDraft {
     let cursor = root;
     for (const segment of segments) {
       let next = cursor.children.get(segment);
@@ -24,14 +24,23 @@ export function buildTree(notes: Note[]): TreeNode[] {
       }
       cursor = next;
     }
+    return cursor;
+  }
 
-    cursor.children.set(filename, note);
+  for (const folder of folders) {
+    ensureFolder(folder.split("/"));
+  }
+
+  for (const note of notes) {
+    const segments = note.slug.split("/");
+    const filename = segments.pop()!;
+    ensureFolder(segments).children.set(filename, note);
   }
 
   return toNodes(root, "");
 }
 
-function isFolder(value: FolderDraft | Note): value is FolderDraft {
+function isFolder(value: FolderDraft | TreeNote): value is FolderDraft {
   return "children" in value;
 }
 

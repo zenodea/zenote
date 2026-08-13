@@ -11,6 +11,7 @@ import {
 import { usePathname } from "next/navigation";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Button } from "@/components/button";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -63,25 +64,19 @@ export function AiButton() {
   const slug = useNoteSlug();
 
   return (
-    <button
-      type="button"
+    <Button
       onClick={() => setOpen(!open)}
       disabled={!slug}
+      active={open}
       aria-pressed={open}
       aria-label={open ? "Close AI assistant" : "Ask AI about this note"}
       title={
-        slug
-          ? "Ask AI about this note"
-          : "Open a note to use the AI assistant"
+        slug ? "Ask AI about this note" : "Open a note to use the AI assistant"
       }
-      className={`rounded p-1.5 ${
-        open
-          ? `bg-foreground/10 text-accent ${busy ? "animate-pulse" : ""}`
-          : "opacity-60 hover:bg-foreground/10 hover:opacity-100 disabled:opacity-25 disabled:hover:bg-transparent"
-      }`}
+      className={open && busy ? "animate-pulse" : undefined}
     >
       <SparkleIcon />
-    </button>
+    </Button>
   );
 }
 
@@ -175,22 +170,27 @@ export function AiPanel({ titles }: { titles: Record<string, string> }) {
         show ? "w-96" : "w-0"
       }`}
     >
-      <div className="flex h-full w-96 flex-col border-l border-foreground/15 text-sm">
-        <div className="flex h-14 shrink-0 items-center gap-2 border-b border-foreground/15 px-4">
+      <div
+        data-seam={show ? "left" : undefined}
+        className="flex h-full w-96 flex-col border-l border-foreground/15 text-sm"
+      >
+        <div
+          data-seam={show ? "bottom" : undefined}
+          className="flex h-14 shrink-0 items-center gap-2 border-b border-foreground/15 px-4"
+        >
           <div className="min-w-0 flex-1">
             <p className="font-semibold">AI Assistant</p>
             <p className="truncate text-xs opacity-60">
               {slug ? (titles[slug] ?? slug) : ""}
             </p>
           </div>
-          <button
-            type="button"
+          <Button
             onClick={() => setOpen(false)}
             aria-label="Close assistant"
-            className="shrink-0 rounded p-1 opacity-60 hover:bg-foreground/10 hover:opacity-100"
+            className="shrink-0"
           >
-            ✕
-          </button>
+            <XIcon />
+          </Button>
         </div>
 
         <div
@@ -227,7 +227,9 @@ export function AiPanel({ titles }: { titles: Record<string, string> }) {
             event.preventDefault();
             send();
           }}
-          className="flex shrink-0 gap-2 border-t border-foreground/15 p-3"
+          data-seam={show ? "top" : undefined}
+          // h-[45px]: 44px row + 1px border, level with the other footers.
+          className="flex h-[45px] shrink-0 items-center gap-2 border-t border-foreground/15 px-3"
         >
           <input
             type="text"
@@ -235,18 +237,56 @@ export function AiPanel({ titles }: { titles: Record<string, string> }) {
             onChange={(event) => setInput(event.target.value)}
             placeholder="Ask about this note…"
             aria-label="Message the assistant"
-            className="min-w-0 flex-1 rounded border border-foreground/15 bg-background px-2 py-1.5 placeholder:opacity-50 focus:border-foreground/40 focus:outline-none"
+            className="min-w-0 flex-1 bg-transparent placeholder:opacity-50 focus:outline-none"
           />
-          <button
+          <Button
             type="submit"
             disabled={busy || input.trim().length === 0}
-            className="shrink-0 rounded bg-foreground/10 px-3 py-1.5 font-medium hover:bg-foreground/15 disabled:opacity-40 disabled:hover:bg-foreground/10"
+            aria-label="Send"
+            className="shrink-0"
           >
-            Send
-          </button>
+            <SendIcon />
+          </Button>
         </form>
       </div>
     </aside>
+  );
+}
+
+function XIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      aria-hidden
+      className="block"
+    >
+      <path d="m4 4 8 8M12 4l-8 8" />
+    </svg>
+  );
+}
+
+function SendIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="block"
+    >
+      <path d="M8 13.5v-11M3.5 7 8 2.5 12.5 7" />
+    </svg>
   );
 }
 

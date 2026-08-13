@@ -1,12 +1,15 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
+import { HighlightedCode } from "@/components/highlighted-code";
 
 export function CodeBlock({
   text,
+  language,
   children,
 }: {
   text: string;
+  language?: string;
   children: ReactNode;
 }) {
   const [copied, setCopied] = useState(false);
@@ -25,7 +28,15 @@ export function CodeBlock({
 
   return (
     <div className="group relative">
-      <pre>{children}</pre>
+      <pre>
+        {language ? (
+          <code>
+            <HighlightedCode code={text} language={language} />
+          </code>
+        ) : (
+          children
+        )}
+      </pre>
       <button
         type="button"
         onClick={copy}
