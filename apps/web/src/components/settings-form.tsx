@@ -21,6 +21,16 @@ export function SettingsForm() {
         />
       </Row>
       <Row
+        title="Graph"
+        description="Show a local graph of linked notes at the bottom of the document."
+      >
+        <Toggle
+          checked={settings.showGraph}
+          ariaLabel="Show Graph section"
+          onChange={(checked) => updateSettings({ showGraph: checked })}
+        />
+      </Row>
+      <Row
         title="Start in editing mode"
         description="Open notes in the editor instead of the reading view. Empty notes always open in the editor."
       >

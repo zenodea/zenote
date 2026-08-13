@@ -24,9 +24,9 @@ import { revertNote, updateNote, useOverlay } from "@/lib/vault";
 import { Backlinks } from "@/components/backlinks";
 import { Button } from "@/components/button";
 import { CodeBlock } from "@/components/code-block";
-import { GraphView } from "@/components/graph-view";
 import { MarkdownEditor } from "@/components/markdown-editor";
 import { MermaidDiagram } from "@/components/mermaid-diagram";
+import { NoteGraph } from "@/components/note-graph";
 import { PageHeader } from "@/components/page-header";
 
 function Pre({ children }: ComponentProps<"pre">) {
@@ -206,20 +206,7 @@ export function NoteView({
             />
           )}
 
-          {reading && neighbourhood.nodes.length > 1 && (
-            <section className="mt-16 border-t border-foreground/15 pt-6">
-              <h2 className="text-sm font-semibold uppercase tracking-wide opacity-60">
-                Graph
-              </h2>
-              <div className="mt-3 h-72 overflow-hidden rounded border border-foreground/15">
-                <GraphView
-                  graph={neighbourhood}
-                  focusId={slug}
-                  controls={false}
-                />
-              </div>
-            </section>
-          )}
+          {reading && <NoteGraph graph={neighbourhood} focusId={slug} />}
 
           {reading && <Backlinks backlinks={backlinks} />}
         </article>

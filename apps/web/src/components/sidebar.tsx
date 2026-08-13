@@ -287,26 +287,25 @@ export function Sidebar({ docs }: { docs: SearchDoc[] }) {
         data-seam="top"
         className="flex shrink-0 items-center justify-between border-t border-foreground/15 p-2"
       >
+        <Link
+          href="/settings"
+          aria-label="Settings"
+          aria-current={pathname === "/settings" ? "page" : undefined}
+          // Mirrors the Button icon variant, active state included.
+          className={`block rounded p-1.5 ${
+            pathname === "/settings"
+              ? "bg-foreground/10 text-accent"
+              : "opacity-60 hover:bg-foreground/10 hover:opacity-100"
+          }`}
+        >
+          <SlidersIcon />
+        </Link>
         <div className="flex items-center gap-1">
-          <Link
-            href="/settings"
-            aria-label="Settings"
-            aria-current={pathname === "/settings" ? "page" : undefined}
-            // Mirrors the Button icon variant, active state included.
-            className={`block rounded p-1.5 ${
-              pathname === "/settings"
-                ? "bg-foreground/10 text-accent"
-                : "opacity-60 hover:bg-foreground/10 hover:opacity-100"
-            }`}
-          >
-            <SlidersIcon />
-          </Link>
           <Link
             href="/graph"
             aria-label="Graph"
             title="Graph"
             aria-current={pathname === "/graph" ? "page" : undefined}
-            // Mirrors the Button icon variant, active state included.
             className={`block rounded p-1.5 ${
               pathname === "/graph"
                 ? "bg-foreground/10 text-accent"
@@ -315,8 +314,8 @@ export function Sidebar({ docs }: { docs: SearchDoc[] }) {
           >
             <GraphIcon />
           </Link>
+          <AiButton />
         </div>
-        <AiButton />
       </div>
     </nav>
   );
