@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createLayout } from "@/lib/force-layout";
-import type { Graph } from "@/lib/graph";
-import { drawGraph, nodeRadius, type View } from "@/lib/graph-draw";
+import { createLayout, solveLayout } from "@/lib/force-layout";
+import { indexGraph, neighbourhood, type Graph } from "@/lib/graph";
+import { drawGraph, hitTest, type View } from "@/lib/graph-draw";
+import { subscribeToTheme } from "@/lib/theme";
 import { FocusChip } from "@/components/focus-chip";
 import { TagFilter } from "@/components/tag-filter";
 
@@ -27,39 +28,11 @@ export function GraphView({ graph }: { graph: Graph }) {
 
   const layout = useMemo(() => createLayout(graph, 1000, 700), [graph]);
 
-  const target = useMemo(() => {
-    // Solved up front so the camera can be placed once. Fitting to the live
-    // layout each frame reads as the whole graph drifting.
-    const solved = createLayout(graph, 1000, 700);
-    let guard = 0;
-    while (solved.step() && guard++ < 1000) {}
-    return { x: Float64Array.from(solved.x), y: Float64Array.from(solved.y) };
-  }, [graph]);
-  const index = useMemo(
-    () => new Map(graph.nodes.map((node, i) => [node.id, i])),
-    [graph],
-  );
+  // Solved up front so the camera can be placed once. Fitting to the live
+  // layout each frame reads as the whole graph drifting.
+  const target = useMemo(() => solveLayout(graph, 1000, 700), [graph]);
 
-  const neighbours = useMemo(() => {
-    const map = new Map<number, Set<number>>();
-    for (const link of graph.links) {
-      const a = index.get(link.source)!;
-      const b = index.get(link.target)!;
-      if (!map.has(a)) map.set(a, new Set());
-      if (!map.has(b)) map.set(b, new Set());
-      map.get(a)!.add(b);
-      map.get(b)!.add(a);
-    }
-    return map;
-  }, [graph, index]);
-
-  const edges = useMemo(
-    () =>
-      graph.links.map(
-        (link) => [index.get(link.source)!, index.get(link.target)!] as const,
-      ),
-    [graph, index],
-  );
+  const { edges, neighbours } = useMemo(() => indexGraph(graph), [graph]);
 
   const baseRadius = Math.max(
     1.8,
@@ -77,26 +50,15 @@ export function GraphView({ graph }: { graph: Graph }) {
   const [depth, setDepth] = useState(1);
   const seedsRef = useRef<number[]>([]);
 
-  const focus = useMemo(() => {
-    if (seeds.length === 0) return null;
+  const focus = useMemo(
+    () => (seeds.length === 0 ? null : neighbourhood(neighbours, seeds, depth)),
+    [seeds, depth, neighbours],
+  );
 
-    const reached = new Set<number>(seeds);
-    let frontier = [...seeds];
-
-    for (let hop = 0; hop < depth; hop++) {
-      const next: number[] = [];
-      for (const node of frontier) {
-        for (const neighbour of neighbours.get(node) ?? []) {
-          if (reached.has(neighbour)) continue;
-          reached.add(neighbour);
-          next.push(neighbour);
-        }
-      }
-      if (next.length === 0) break;
-      frontier = next;
-    }
-    return reached;
-  }, [seeds, depth, neighbours]);
+  const clearFocus = useCallback(() => {
+    setSeeds([]);
+    setDepth(1);
+  }, []);
 
   const [activeTags, setActiveTags] = useState<string[]>([]);
 
@@ -130,7 +92,6 @@ export function GraphView({ graph }: { graph: Graph }) {
   const pan = useRef<{ x: number; y: number } | null>(null);
   const frame = useRef(0);
   const running = useRef(false);
-  const physicsDone = useRef(false);
   // Both are hoisted out of draw(): getContext and getComputedStyle are cheap
   // in Chrome but measurably expensive per frame in Firefox.
   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -192,30 +153,36 @@ export function GraphView({ graph }: { graph: Graph }) {
     if (hoverSet.current?.node !== hoverIndex) {
       hoverSet.current = {
         node: hoverIndex,
-        set: new Set<number>([
-          hoverIndex,
-          ...(neighbours.get(hoverIndex) ?? []),
-        ]),
+        set: new Set<number>([hoverIndex, ...neighbours[hoverIndex]]),
       };
     }
     return hoverSet.current.set;
   }, [neighbours]);
+
+  const setHovered = useCallback((node: number | null) => {
+    hovered.current = node;
+    if (canvasRef.current) {
+      canvasRef.current.style.cursor = node === null ? "grab" : "pointer";
+    }
+  }, []);
 
   const advanceView = useCallback(() => {
     const current = view.current;
     const goal = viewTarget.current;
     let moving = false;
 
-    const speed = Math.hypot(velocity.current.x, velocity.current.y);
-    if (!pan.current && speed > MIN_VELOCITY) {
-      goal.x += velocity.current.x;
-      goal.y += velocity.current.y;
-      velocity.current.x *= FRICTION;
-      velocity.current.y *= FRICTION;
-      moving = true;
-    } else if (!pan.current) {
-      velocity.current.x = 0;
-      velocity.current.y = 0;
+    if (!pan.current) {
+      const speed = Math.hypot(velocity.current.x, velocity.current.y);
+      if (speed > MIN_VELOCITY) {
+        goal.x += velocity.current.x;
+        goal.y += velocity.current.y;
+        velocity.current.x *= FRICTION;
+        velocity.current.y *= FRICTION;
+        moving = true;
+      } else {
+        velocity.current.x = 0;
+        velocity.current.y = 0;
+      }
     }
 
     const dx = goal.x - current.x;
@@ -248,36 +215,19 @@ export function GraphView({ graph }: { graph: Graph }) {
     const labels = labelFocus.current;
     let moving = false;
 
+    // One FADE step toward `target`, snapping once close enough.
+    const ease = (value: number, target: number) => {
+      if (Math.abs(target - value) < 0.004) return target;
+      moving = true;
+      return value + (target - value) * FADE;
+    };
+
     for (let i = 0; i < values.length; i++) {
       const inFocus = near !== null && near.has(i);
-
-      const target = near === null || inFocus ? 1 : 0;
-      const delta = target - values[i];
-      if (Math.abs(delta) < 0.004) {
-        values[i] = target;
-      } else {
-        values[i] += delta * FADE;
-        moving = true;
-      }
-
-      const labelTarget = inFocus ? 1 : 0;
-      const labelDelta = labelTarget - labels[i];
-      if (Math.abs(labelDelta) < 0.004) {
-        labels[i] = labelTarget;
-      } else {
-        labels[i] += labelDelta * FADE;
-        moving = true;
-      }
+      values[i] = ease(values[i], near === null || inFocus ? 1 : 0);
+      labels[i] = ease(labels[i], inFocus ? 1 : 0);
     }
-
-    const focusTarget = near === null ? 0 : 1;
-    const focusDelta = focusTarget - focusAmount.current;
-    if (Math.abs(focusDelta) < 0.004) {
-      focusAmount.current = focusTarget;
-    } else {
-      focusAmount.current += focusDelta * FADE;
-      moving = true;
-    }
+    focusAmount.current = ease(focusAmount.current, near === null ? 0 : 1);
 
     return moving;
   }, [activeSet]);
@@ -314,25 +264,16 @@ export function GraphView({ graph }: { graph: Graph }) {
   }, []);
 
   const nodeAt = useCallback(
-    (point: { x: number; y: number }) => {
-      const { x: tx, y: ty, scale } = view.current;
-      let best: number | null = null;
-      let bestDistance = Infinity;
-
-      for (let i = 0; i < layout.x.length; i++) {
-        if (visibleRef.current !== null && !visibleRef.current.has(i)) continue;
-        const dx = layout.x[i] * scale + tx - point.x;
-        const dy = layout.y[i] * scale + ty - point.y;
-        const distance = Math.hypot(dx, dy);
-        const radius = nodeRadius(graph.nodes[i].degree, baseRadius);
-
-        if (distance < Math.max(radius + 6, 12) && distance < bestDistance) {
-          best = i;
-          bestDistance = distance;
-        }
-      }
-      return best;
-    },
+    (point: { x: number; y: number }) =>
+      hitTest(
+        point,
+        view.current,
+        layout.x,
+        layout.y,
+        graph.nodes,
+        baseRadius,
+        visibleRef.current,
+      ),
     [layout, graph, baseRadius],
   );
 
@@ -342,21 +283,13 @@ export function GraphView({ graph }: { graph: Graph }) {
 
     function run() {
       let moving = false;
-      if (!physicsDone.current) {
-        for (let i = 0; i < STEPS_PER_FRAME; i++) {
-          moving = layout.step() || moving;
-        }
-        if (!moving) physicsDone.current = true;
+      for (let i = 0; i < STEPS_PER_FRAME; i++) {
+        moving = layout.step() || moving;
       }
 
       if (!drag.current && !pan.current && pointer.current) {
         const node = nodeAt(pointer.current);
-        if (node !== hovered.current) {
-          hovered.current = node;
-          if (canvasRef.current) {
-            canvasRef.current.style.cursor = node === null ? "grab" : "pointer";
-          }
-        }
+        if (node !== hovered.current) setHovered(node);
       }
 
       const fading = advanceFade();
@@ -371,7 +304,7 @@ export function GraphView({ graph }: { graph: Graph }) {
     }
 
     frame.current = requestAnimationFrame(run);
-  }, [layout, draw, advanceFade, advanceView, nodeAt]);
+  }, [layout, draw, advanceFade, advanceView, nodeAt, setHovered]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -430,24 +363,38 @@ export function GraphView({ graph }: { graph: Graph }) {
     };
 
     sync();
-    const observer = new MutationObserver(sync);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["data-theme"],
-    });
-    return () => observer.disconnect();
+    return subscribeToTheme(sync);
   }, [draw]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setSeeds([]);
-        setDepth(1);
-      }
+      if (event.key === "Escape") clearFocus();
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [clearFocus]);
+
+  const zoomAt = useCallback(
+    (anchor: { x: number; y: number }, factor: number) => {
+      adjusted.current = true;
+
+      // Anchored on the target rather than the rendered view, so a fast
+      // scroll accumulates instead of fighting the in-flight animation.
+      const current = viewTarget.current;
+      const scale = Math.min(
+        MAX_SCALE,
+        Math.max(MIN_SCALE, current.scale * factor),
+      );
+
+      viewTarget.current = {
+        scale,
+        x: anchor.x - ((anchor.x - current.x) / current.scale) * scale,
+        y: anchor.y - ((anchor.y - current.y) / current.scale) * scale,
+      };
+      start();
+    },
+    [start],
+  );
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -458,23 +405,7 @@ export function GraphView({ graph }: { graph: Graph }) {
     // delegation does not reliably suppress the browser menu.
     function onWheel(event: WheelEvent) {
       event.preventDefault();
-      adjusted.current = true;
-
-      // Anchored on the target rather than the rendered view, so a fast scroll
-      // accumulates instead of fighting the in-flight animation.
-      const current = viewTarget.current;
-      const next = Math.min(
-        MAX_SCALE,
-        Math.max(MIN_SCALE, current.scale * Math.exp(-event.deltaY * 0.0015)),
-      );
-
-      const point = toLocal(event);
-      viewTarget.current = {
-        scale: next,
-        x: point.x - ((point.x - current.x) / current.scale) * next,
-        y: point.y - ((point.y - current.y) / current.scale) * next,
-      };
-      start();
+      zoomAt(toLocal(event), Math.exp(-event.deltaY * 0.0015));
     }
 
     function onContextMenu(event: MouseEvent) {
@@ -484,8 +415,7 @@ export function GraphView({ graph }: { graph: Graph }) {
       const node = nodeAt(toLocal(event));
 
       if (node === null) {
-        setSeeds([]);
-        setDepth(1);
+        clearFocus();
         return;
       }
 
@@ -502,7 +432,7 @@ export function GraphView({ graph }: { graph: Graph }) {
       canvas.removeEventListener("wheel", onWheel);
       canvas.removeEventListener("contextmenu", onContextMenu);
     };
-  }, [toLocal, nodeAt, start]);
+  }, [toLocal, nodeAt, zoomAt, clearFocus]);
 
   function onPointerDown(event: React.PointerEvent) {
     if (event.button === 2) return;
@@ -531,7 +461,6 @@ export function GraphView({ graph }: { graph: Graph }) {
       if (drag.current.moved < CLICK_SLOP) return;
       if (!drag.current.active) {
         drag.current.active = true;
-        physicsDone.current = false;
         layout.setAlphaTarget(DRAG_ALPHA);
         layout.reheat(DRAG_ALPHA);
       }
@@ -564,10 +493,7 @@ export function GraphView({ graph }: { graph: Graph }) {
 
     const node = nodeAt(point);
     if (node !== hovered.current) {
-      hovered.current = node;
-      if (canvasRef.current) {
-        canvasRef.current.style.cursor = node === null ? "grab" : "pointer";
-      }
+      setHovered(node);
       if (seedsRef.current.length === 0) start();
     }
   }
@@ -579,7 +505,6 @@ export function GraphView({ graph }: { graph: Graph }) {
       if (active) {
         layout.unpin(node);
         layout.setAlphaTarget(0);
-        physicsDone.current = false;
       } else {
         router.push(`/notes/${graph.nodes[node].id}`);
       }
@@ -596,27 +521,14 @@ export function GraphView({ graph }: { graph: Graph }) {
     onPointerUp();
     pointer.current = null;
     if (hovered.current !== null) {
-      hovered.current = null;
-      if (canvasRef.current) canvasRef.current.style.cursor = "grab";
+      setHovered(null);
       start();
     }
   }
 
   function zoomBy(factor: number) {
-    adjusted.current = true;
     const { width, height } = size.current;
-    const current = viewTarget.current;
-    const next = Math.min(
-      MAX_SCALE,
-      Math.max(MIN_SCALE, current.scale * factor),
-    );
-
-    viewTarget.current = {
-      scale: next,
-      x: width / 2 - ((width / 2 - current.x) / current.scale) * next,
-      y: height / 2 - ((height / 2 - current.y) / current.scale) * next,
-    };
-    start();
+    zoomAt({ x: width / 2, y: height / 2 }, factor);
   }
 
   const buttonClass =
@@ -631,10 +543,7 @@ export function GraphView({ graph }: { graph: Graph }) {
           noteCount={focus?.size ?? 0}
           onExpand={() => setDepth((current) => current + 1)}
           onShrink={() => setDepth((current) => Math.max(1, current - 1))}
-          onClear={() => {
-            setSeeds([]);
-            setDepth(1);
-          }}
+          onClear={clearFocus}
         />
       )}
 

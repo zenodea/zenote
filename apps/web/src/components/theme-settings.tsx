@@ -5,17 +5,9 @@ import {
   THEME_FAMILIES,
   applyTheme,
   isThemeId,
+  subscribeToTheme,
   type ThemeId,
 } from "@/lib/theme";
-
-function subscribe(onChange: () => void) {
-  const observer = new MutationObserver(onChange);
-  observer.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ["data-theme"],
-  });
-  return () => observer.disconnect();
-}
 
 function getSnapshot(): ThemeId {
   const current = document.documentElement.dataset.theme;
@@ -27,7 +19,11 @@ function getServerSnapshot(): ThemeId {
 }
 
 export function ThemeSettings() {
-  const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const theme = useSyncExternalStore(
+    subscribeToTheme,
+    getSnapshot,
+    getServerSnapshot,
+  );
 
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">

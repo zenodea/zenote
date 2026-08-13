@@ -49,6 +49,40 @@ export function nodeRadius(degree: number, baseRadius: number) {
   return baseRadius * (1 + Math.min(degree, 8) * 0.12);
 }
 
+/** Which alpha bucket a 0..1 fade value falls in. */
+function bucketOf(value: number) {
+  return Math.min(BUCKETS - 1, Math.floor(value * BUCKETS));
+}
+
+/** The node under `point` (screen space), or null. Padded for small nodes. */
+export function hitTest(
+  point: { x: number; y: number },
+  view: View,
+  x: Float64Array,
+  y: Float64Array,
+  nodes: GraphNode[],
+  baseRadius: number,
+  visible: Set<number> | null,
+): number | null {
+  const { x: tx, y: ty, scale } = view;
+  let best: number | null = null;
+  let bestSquared = Infinity;
+
+  for (let i = 0; i < x.length; i++) {
+    if (visible !== null && !visible.has(i)) continue;
+    const dx = x[i] * scale + tx - point.x;
+    const dy = y[i] * scale + ty - point.y;
+    const squared = dx * dx + dy * dy;
+    const reach = Math.max(nodeRadius(nodes[i].degree, baseRadius) + 6, 12);
+
+    if (squared < reach * reach && squared < bestSquared) {
+      best = i;
+      bestSquared = squared;
+    }
+  }
+  return best;
+}
+
 export function drawGraph({
   context,
   width,
@@ -91,26 +125,20 @@ export function drawGraph({
   if (focusAmount > 0.01) {
     context.lineWidth = 1;
 
-    for (let bucket = 1; bucket <= BUCKETS; bucket++) {
-      const lower = (bucket - 1) / BUCKETS;
-      const upper = bucket / BUCKETS;
+    for (let bucket = 0; bucket < BUCKETS; bucket++) {
       context.beginPath();
       let drew = false;
 
       for (const [a, b] of edges) {
         if (!isShown(a) || !isShown(b)) continue;
-        const strength = Math.min(highlight[a], highlight[b]);
-        // The bottom bucket keeps strength-0 edges (mirroring the node loop
-        // below); dropping them would step a notch dimmer once the fade snaps.
-        if (strength > upper) continue;
-        if (bucket === 1 ? strength < lower : strength <= lower) continue;
+        if (bucketOf(Math.min(highlight[a], highlight[b])) !== bucket) continue;
         context.moveTo(screenX(a), screenY(a));
         context.lineTo(screenX(b), screenY(b));
         drew = true;
       }
 
       if (!drew) continue;
-      context.globalAlpha = 0.75 * upper * focusAmount;
+      context.globalAlpha = 0.75 * ((bucket + 1) / BUCKETS) * focusAmount;
       context.stroke();
     }
   }
@@ -120,20 +148,13 @@ export function drawGraph({
 
   for (const isolated of [true, false]) {
     for (let bucket = 0; bucket < buckets; bucket++) {
-      const lower = buckets === 1 ? 0 : bucket / buckets;
-      const upper = buckets === 1 ? 1 : (bucket + 1) / buckets;
       context.beginPath();
       let drew = false;
 
       for (let i = 0; i < nodes.length; i++) {
         if (!isShown(i)) continue;
         if ((nodes[i].degree === 0) !== isolated) continue;
-        const value = highlight[i];
-        if (
-          buckets > 1 &&
-          (value < lower || (value >= upper && bucket < buckets - 1))
-        )
-          continue;
+        if (buckets > 1 && bucketOf(highlight[i]) !== bucket) continue;
 
         const radius = radiusOf(i);
         context.moveTo(screenX(i) + radius, screenY(i));
@@ -143,6 +164,7 @@ export function drawGraph({
 
       if (!drew) continue;
       // Isolated notes render in muted foreground rather than accent.
+      const upper = (bucket + 1) / buckets;
       context.globalAlpha = (0.15 + 0.85 * upper) * (isolated ? 0.55 : 1);
       context.fillStyle = isolated ? foreground : accent;
       context.fill();
@@ -173,6 +195,11 @@ export function drawGraph({
   const relativeScale = scale / Math.max(fitScale, 1e-6);
   for (let i = 0; i < nodes.length; i++) {
     if (!isShown(i)) continue;
+
+    const px = screenX(i);
+    const py = screenY(i);
+    if (px < -80 || px > width + 80 || py < -20 || py > height + 20) continue;
+
     const importance = Math.min(nodes[i].degree, 8) / 8;
     const startAt =
       LABEL_SCALE - (LABEL_SCALE - LABEL_HUB_SCALE) * importance * importance;
@@ -182,10 +209,6 @@ export function drawGraph({
     );
     const alpha = Math.max(labelFocus[i], zoomAlpha * (1 - focusAmount));
     if (alpha < 0.02) continue;
-
-    const px = screenX(i);
-    const py = screenY(i);
-    if (px < -80 || px > width + 80 || py < -20 || py > height + 20) continue;
 
     context.globalAlpha = alpha;
     context.fillText(nodes[i].title, px, py + radiusOf(i) + 3);

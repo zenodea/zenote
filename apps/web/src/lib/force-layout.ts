@@ -1,4 +1,4 @@
-import type { Graph } from "./graph";
+import { indexGraph, type Graph } from "./graph";
 
 export type Layout = {
   x: Float64Array;
@@ -37,13 +37,11 @@ export function createLayout(
   const count = graph.nodes.length;
 
   const targetRadius = Math.min(width, height) * 0.42;
-  const pull = centering;
 
   const maxSpeed = targetRadius * 0.06;
   const distanceMaxSquared = distanceMax * distanceMax;
   const focusRadiusSquared = (linkDistance * 2.5) ** 2;
   let focused = -1;
-  const index = new Map(graph.nodes.map((node, i) => [node.id, i]));
 
   const x = new Float64Array(count);
   const y = new Float64Array(count);
@@ -61,18 +59,8 @@ export function createLayout(
     y[i] = height / 2 + radius * Math.sin(angle);
   }
 
-  const edges = graph.links.map(
-    (link) => [index.get(link.source)!, index.get(link.target)!] as const,
-  );
-
-  const degrees = new Int32Array(count);
-  const neighbours: number[][] = Array.from({ length: count }, () => []);
-  for (const [a, b] of edges) {
-    degrees[a]++;
-    degrees[b]++;
-    neighbours[a].push(b);
-    neighbours[b].push(a);
-  }
+  const { edges, neighbours } = indexGraph(graph);
+  const degrees = neighbours.map((list) => list.length);
   const focusFloor = new Float32Array(count);
 
   const strengths = edges.map(
@@ -150,12 +138,17 @@ export function createLayout(
     const cx = sumX / Math.max(count, 1);
     const cy = sumY / Math.max(count, 1);
     for (let i = 0; i < count; i++) {
-      vx[i] += (cx - x[i]) * pull * alpha;
-      vy[i] += (cy - y[i]) * pull * alpha;
+      vx[i] += (cx - x[i]) * centering * alpha;
+      vy[i] += (cy - y[i]) * centering * alpha;
     }
   }
 
   function step(): boolean {
+    // Settled and nothing keeping it warm: skip the pass entirely. pin,
+    // unpin, reheat and setAlphaTarget all raise alpha (or the target), so
+    // any of them un-settles the simulation without callers tracking it.
+    if (alpha <= ALPHA_MIN && alphaTarget <= 0) return false;
+
     alpha += (alphaTarget - alpha) * ALPHA_DECAY;
     if (focused >= 0 && !fixed[focused] && alpha < 0.005) focused = -1;
 
@@ -225,4 +218,17 @@ export function createLayout(
   }
 
   return { x, y, step, pin, unpin, reheat, setAlphaTarget };
+}
+
+/** Runs a fresh simulation to rest and returns the settled positions. */
+export function solveLayout(
+  graph: Graph,
+  width: number,
+  height: number,
+  options?: LayoutOptions,
+): { x: Float64Array; y: Float64Array } {
+  const layout = createLayout(graph, width, height, options);
+  let guard = 0;
+  while (layout.step() && guard++ < 1000) {}
+  return { x: layout.x, y: layout.y };
 }

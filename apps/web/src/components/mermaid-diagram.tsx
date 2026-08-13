@@ -1,16 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState, useSyncExternalStore } from "react";
-
-/* Diagrams re-render when the active theme changes. */
-function subscribe(onChange: () => void) {
-  const observer = new MutationObserver(onChange);
-  observer.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ["data-theme"],
-  });
-  return () => observer.disconnect();
-}
+import { subscribeToTheme } from "@/lib/theme";
 
 function getThemeSnapshot() {
   return document.documentElement.dataset.theme ?? "";
@@ -39,8 +30,9 @@ function mix(top: string, bottom: string, weight: number): string {
 
 export function MermaidDiagram({ chart }: { chart: string }) {
   const id = useId();
+  // Diagrams re-render when the active theme changes.
   const theme = useSyncExternalStore(
-    subscribe,
+    subscribeToTheme,
     getThemeSnapshot,
     getServerThemeSnapshot,
   );

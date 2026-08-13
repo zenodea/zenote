@@ -45,3 +45,16 @@ export function resolveWikilink(
 ): string | null {
   return resolver.get(normalise(target)) ?? null;
 }
+
+/** A note's wikilink targets as resolved slugs: deduped, self-links dropped. */
+export function resolvedTargets(
+  note: Note,
+  resolver: WikilinkResolver,
+): Set<string> {
+  const targets = new Set<string>();
+  for (const target of extractTargets(note.body)) {
+    const slug = resolveWikilink(resolver, target);
+    if (slug !== null && slug !== note.slug) targets.add(slug);
+  }
+  return targets;
+}
