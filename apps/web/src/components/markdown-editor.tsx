@@ -26,13 +26,7 @@ import {
 import { classHighlighter, tags } from "@lezer/highlight";
 import { getCM, vim } from "@replit/codemirror-vim";
 
-/**
- * Obsidian-style live preview: one continuous editable plane where
- * markdown is styled inline and the syntax marks (#, **, `, link parens)
- * are hidden unless the cursor is inside the construct they belong to.
- */
-
-// Node names of syntax marks worth hiding when the cursor is elsewhere.
+// Live preview: syntax marks hidden unless the cursor is in their construct.
 const HIDDEN_MARKS = new Set([
   "HeaderMark",
   "EmphasisMark",
@@ -44,49 +38,45 @@ const HIDDEN_MARKS = new Set([
 
 const codeLine = Decoration.line({ class: "cm-codeblock" });
 
+// Whole doc on purpose: these change line heights, so viewport-scoped ones shift layout on scroll.
 function buildDecorations(view: EditorView): DecorationSet {
   const decorations: Range<Decoration>[] = [];
   const { selection } = view.state;
-  const codeLines = new Set<number>();
 
-  for (const { from, to } of view.visibleRanges) {
-    syntaxTree(view.state).iterate({
-      from,
-      to,
-      enter: (node) => {
-        if (node.name === "FencedCode") {
-          const first = view.state.doc.lineAt(node.from).number;
-          const last = view.state.doc.lineAt(node.to).number;
-          for (let line = first; line <= last; line++) {
-            if (codeLines.has(line)) continue;
-            codeLines.add(line);
-            decorations.push(codeLine.range(view.state.doc.line(line).from));
-          }
-          return;
+  syntaxTree(view.state).iterate({
+    from: 0,
+    to: view.state.doc.length,
+    enter: (node) => {
+      if (node.name === "FencedCode") {
+        const first = view.state.doc.lineAt(node.from).number;
+        const last = view.state.doc.lineAt(node.to).number;
+        for (let line = first; line <= last; line++) {
+          decorations.push(codeLine.range(view.state.doc.line(line).from));
         }
-        if (!HIDDEN_MARKS.has(node.name)) return;
+        return;
+      }
+      if (!HIDDEN_MARKS.has(node.name)) return;
 
-        // Reveal the marks while the cursor touches their construct.
-        const parent = node.node.parent;
-        const extentFrom = parent?.from ?? node.from;
-        const extentTo = parent?.to ?? node.to;
-        const active = selection.ranges.some(
-          (range) => range.from <= extentTo && range.to >= extentFrom,
-        );
-        if (active) return;
+      // Reveal the marks while the cursor touches their construct.
+      const parent = node.node.parent;
+      const extentFrom = parent?.from ?? node.from;
+      const extentTo = parent?.to ?? node.to;
+      const active = selection.ranges.some(
+        (range) => range.from <= extentTo && range.to >= extentFrom,
+      );
+      if (active) return;
 
-        // A heading's mark swallows its following space too.
-        let hideTo = node.to;
-        if (
-          node.name === "HeaderMark" &&
-          view.state.sliceDoc(hideTo, hideTo + 1) === " "
-        ) {
-          hideTo += 1;
-        }
-        decorations.push(Decoration.replace({}).range(node.from, hideTo));
-      },
-    });
-  }
+      // A heading's mark swallows its following space too.
+      let hideTo = node.to;
+      if (
+        node.name === "HeaderMark" &&
+        view.state.sliceDoc(hideTo, hideTo + 1) === " "
+      ) {
+        hideTo += 1;
+      }
+      decorations.push(Decoration.replace({}).range(node.from, hideTo));
+    },
+  });
 
   return Decoration.set(decorations, true);
 }
@@ -100,11 +90,7 @@ const livePreview = ViewPlugin.fromClass(
     }
 
     update(update: ViewUpdate) {
-      if (
-        update.docChanged ||
-        update.selectionSet ||
-        update.viewportChanged
-      ) {
+      if (update.docChanged || update.selectionSet || update.viewportChanged) {
         this.decorations = buildDecorations(update.view);
       }
     }
@@ -160,8 +146,7 @@ function wikilinkCompletions(targets: string[]) {
 const editorTheme = EditorView.theme({
   "&": { backgroundColor: "transparent", fontSize: "1rem" },
   "&.cm-focused": { outline: "none" },
-  // CodeMirror's base theme puts `monospace` on .cm-scroller; override
-  // there, or .cm-content's `inherit` picks the monospace up.
+  // Overrides CM's monospace default on .cm-scroller with the app font.
   ".cm-scroller": { fontFamily: "inherit", lineHeight: "1.75" },
   ".cm-content": {
     padding: "0",
@@ -171,11 +156,12 @@ const editorTheme = EditorView.theme({
   ".cm-line.cm-codeblock": {
     fontFamily: "var(--font-geist-mono), monospace",
     fontSize: "0.9em",
-    backgroundColor: "color-mix(in srgb, var(--foreground) 6%, var(--background))",
+    backgroundColor:
+      "color-mix(in srgb, var(--foreground) 6%, var(--background))",
   },
   ".cm-cursor": { borderLeftColor: "var(--accent)" },
-  // Vim's statusbar lives in the app footer instead (see NoteView).
-  ".cm-panels": { display: "none" },
+  // Never display:none: a zero panel rect becomes a viewport-sized scroll margin (vim j/k stranding).
+  ".cm-panels": { border: "none", backgroundColor: "transparent" },
   ".cm-tooltip": {
     backgroundColor: "var(--background)",
     color: "var(--foreground)",
@@ -192,13 +178,10 @@ const editorTheme = EditorView.theme({
   },
 });
 
-// status:true gives vim a persistent statusbar (mode, pending keys, and
-// the : / search dialogs). Its DOM is retargeted into the app footer via
-// cm.state.statusbar; the in-editor panel is hidden by the theme above.
+// status:true hosts vim's mode/keys/dialogs in a statusbar we retarget.
 const vimExtensions = [vim({ status: true })];
 
-/** Points vim's statusbar at the app footer instead of the hidden
- * in-editor panel that created it. */
+// Points vim's statusbar at the app footer instead of the in-editor panel.
 function adoptStatusBar(
   view: EditorView | null,
   bar: HTMLElement | null | undefined,
@@ -209,6 +192,10 @@ function adoptStatusBar(
     statusbar?: HTMLElement;
     vimPlugin?: { updateStatus: () => void };
   };
+  // The in-editor panel may hold stale mode text from before adoption.
+  if (state.statusbar && state.statusbar !== bar) {
+    state.statusbar.textContent = "";
+  }
   state.statusbar = bar;
   state.vimPlugin?.updateStatus();
 }
@@ -272,7 +259,6 @@ export function MarkdownEditor({
           }),
           EditorView.lineWrapping,
           syntaxHighlighting(markdownHighlight),
-          // tok-* classes; colored in globals.css, shared with reading view.
           syntaxHighlighting(classHighlighter),
           livePreview,
           editorTheme,

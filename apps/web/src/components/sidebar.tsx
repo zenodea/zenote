@@ -105,11 +105,11 @@ export function Sidebar({ docs }: { docs: SearchDoc[] }) {
     });
   }
 
-  const parsed = parseQuery(query);
+  const parsed = useMemo(() => parseQuery(query), [query]);
   const searching = parsed.terms.length > 0 || parsed.tags.length > 0;
   const results = useMemo(
-    () => searchDocs(prepared, parseQuery(query), mode === "content"),
-    [prepared, query, mode],
+    () => searchDocs(prepared, parsed, mode === "content"),
+    [prepared, parsed, mode],
   );
 
   function toggleTag(tag: string) {
@@ -156,8 +156,7 @@ export function Sidebar({ docs }: { docs: SearchDoc[] }) {
             </Link>
             <Button
               onClick={() => setNaming(naming === "note" ? null : "note")}
-              // Keeps the naming input's blur-cancel from firing first,
-              // which would make this click reopen instead of toggle off.
+              // mousedown-preventDefault: else the input's blur-cancel makes this click reopen.
               onMouseDown={(event) => event.preventDefault()}
               active={naming === "note"}
               aria-pressed={naming === "note"}

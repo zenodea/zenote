@@ -160,8 +160,7 @@ body {
   text-decoration: none;
 }
 
-/* Code token palette, shared by the reading view and the editor. All
-   colors derive from the theme tokens so every theme stays coherent. */
+/* Code token palette, shared by the editor and reading view. */
 .tok-keyword,
 .tok-tagName {
   color: var(--accent);
@@ -200,8 +199,7 @@ body {
   color: #ef4444;
 }
 
-/* Vim block cursor in the theme accent. !important because the vim
-   extension injects its own pink at the editor's highest precedence. */
+/* Vim block cursor; !important beats the extension's hardcoded pink. */
 .cm-editor .cm-fat-cursor {
   background: var(--accent) !important;
   color: var(--background) !important;
@@ -211,9 +209,7 @@ body {
   outline: solid 1px var(--accent) !important;
 }
 
-/* Vim's command bar, hosted in the app footer (see NoteView). Hidden
-   unless vim has a dialog open (: / ?); the mode and pending-key spans
-   never show. */
+/* Vim's footer command bar: only visible while a : or / prompt is open. */
 .vim-bar {
   display: none;
 }
@@ -223,9 +219,7 @@ body {
 .vim-statusbar > span {
   display: none;
 }
-/* The prompt's spans carry inline styles (generic monospace, gray desc)
-   from the vim engine, hence the !important. The : prefix reads in the
-   accent; the input resets itself to foreground below. */
+/* !important beats the prompt's inline styles from the vim engine. */
 .vim-statusbar span {
   font-family: var(--font-geist-mono), monospace !important;
   color: var(--accent) !important;
@@ -252,8 +246,7 @@ body {
   background-color: color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
-/* Vim error messages arrive with an inline `color: red`; align them with
-   the app's one error red (.wikilink-broken, .tok-invalid). */
+/* Vim errors ship inline `color: red`; align with the app's error red. */
 .cm-vim-message {
   color: #ef4444 !important;
 }

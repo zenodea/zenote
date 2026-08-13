@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { SEARCH_MODES } from "@/lib/search";
 import { updateSettings, useSettings } from "@/lib/settings";
 import { Segmented } from "@/components/segmented";
@@ -9,55 +10,40 @@ export function SettingsForm() {
 
   return (
     <ul className="divide-y divide-foreground/15">
-      <li className="flex items-center justify-between gap-6 py-4">
-        <div>
-          <p className="font-medium">Linked from</p>
-          <p className="mt-1 text-sm opacity-60">
-            Show the notes that link to the current note at the bottom of the
-            document.
-          </p>
-        </div>
+      <Row
+        title="Linked from"
+        description="Show the notes that link to the current note at the bottom of the document."
+      >
         <Toggle
           checked={settings.showBacklinks}
           ariaLabel="Show Linked from section"
           onChange={(checked) => updateSettings({ showBacklinks: checked })}
         />
-      </li>
-      <li className="flex items-center justify-between gap-6 py-4">
-        <div>
-          <p className="font-medium">Start in editing mode</p>
-          <p className="mt-1 text-sm opacity-60">
-            Open notes in the editor instead of the reading view. Empty notes
-            always open in the editor.
-          </p>
-        </div>
+      </Row>
+      <Row
+        title="Start in editing mode"
+        description="Open notes in the editor instead of the reading view. Empty notes always open in the editor."
+      >
         <Toggle
           checked={settings.openInEditMode}
           ariaLabel="Start notes in editing mode"
           onChange={(checked) => updateSettings({ openInEditMode: checked })}
         />
-      </li>
-      <li className="flex items-center justify-between gap-6 py-4">
-        <div>
-          <p className="font-medium">Vim keybindings</p>
-          <p className="mt-1 text-sm opacity-60">
-            Edit notes with Vim motions, operators and modes.
-          </p>
-        </div>
+      </Row>
+      <Row
+        title="Vim keybindings"
+        description="Edit notes with Vim motions, operators and modes."
+      >
         <Toggle
           checked={settings.vimMode}
           ariaLabel="Use Vim keybindings in the editor"
           onChange={(checked) => updateSettings({ vimMode: checked })}
         />
-      </li>
-      <li className="flex items-center justify-between gap-6 py-4">
-        <div>
-          <p className="font-medium">Search in</p>
-          <p className="mt-1 text-sm opacity-60">
-            What sidebar search matches by default: note titles only, or note
-            content too.
-          </p>
-        </div>
+      </Row>
+      <Row
+        title="Search in"
+        description="What sidebar search matches by default: note titles only, or note content too."
+      >
         <Segmented
           options={SEARCH_MODES}
           value={settings.searchMode}
@@ -66,8 +52,28 @@ export function SettingsForm() {
           className="shrink-0"
           size="md"
         />
-      </li>
+      </Row>
     </ul>
+  );
+}
+
+function Row({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <li className="flex items-center justify-between gap-6 py-4">
+      <div>
+        <p className="font-medium">{title}</p>
+        <p className="mt-1 text-sm opacity-60">{description}</p>
+      </div>
+      {children}
+    </li>
   );
 }
 

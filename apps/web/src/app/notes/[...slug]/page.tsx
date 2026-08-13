@@ -34,7 +34,6 @@ export default async function NotePage({
 
   return (
     <NoteView
-      // Keyed so mode state and the empty-note check reset per note.
       key={joined}
       note={note}
       slug={joined}

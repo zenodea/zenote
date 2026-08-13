@@ -83,7 +83,16 @@ export function Junctions() {
     }
 
     schedule();
-    const observer = new MutationObserver(schedule);
+    const observer = new MutationObserver((records) => {
+      const relevant = records.some((record) => {
+        const target =
+          record.target instanceof Element
+            ? record.target
+            : record.target.parentElement;
+        return !target?.closest(".cm-editor, .vim-statusbar, .cm-tooltip");
+      });
+      if (relevant) schedule();
+    });
     observer.observe(document.body, {
       subtree: true,
       childList: true,

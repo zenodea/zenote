@@ -74,8 +74,7 @@ export function NoteView({
   const local = overlay.notes[slug];
   const body = local?.hidden ? undefined : (local?.body ?? note?.body);
 
-  // The setting decides the starting mode (empty notes always open in the
-  // editor); the toggle overrides it for this note without persisting.
+  // Empty notes open in the editor; else the setting decides, pencil overrides.
   const [startedEmpty] = useState(body === "");
   const [readingOverride, setReadingOverride] = useState<boolean | null>(null);
   const vimBarRef = useRef<HTMLDivElement>(null);
@@ -207,9 +206,7 @@ export function NoteView({
         </article>
       </div>
 
-      {/* Vim's command bar, hosted in the same footer plane the find bar
-          uses. CSS keeps it hidden except while a : or / prompt is open,
-          and it overlays rather than resizing the note area. */}
+      {/* Vim's : and / prompts, in the same footer plane the find bar uses. */}
       {!reading && settings.vimMode && (
         <div
           data-seam="top"

@@ -5,11 +5,6 @@ import { LanguageDescription } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
 import { classHighlighter, highlightCode } from "@lezer/highlight";
 
-/**
- * Highlights code with the same lezer parsers and tok-* classes the editor
- * uses, so reading view and editor share one palette (globals.css). Shows
- * plain text until the language pack lazy-loads or when it's unknown.
- */
 export function HighlightedCode({
   code,
   language,

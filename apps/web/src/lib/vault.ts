@@ -4,6 +4,8 @@ import { useMemo, useSyncExternalStore } from "react";
 import type { SearchDoc } from "./search";
 import { noteTags } from "./tags";
 
+// Local overlay over the read-only git vault; these mutations become
+// Supabase Storage calls once notes move server-side.
 type OverlayNote = {
   body?: string;
   hidden?: boolean;
@@ -16,7 +18,7 @@ type Overlay = {
 
 const EMPTY_OVERLAY: Overlay = { notes: {}, folders: [] };
 
-export const VAULT_STORAGE_KEY = "vault-overlay";
+const VAULT_STORAGE_KEY = "vault-overlay";
 
 const listeners = new Set<() => void>();
 
@@ -102,6 +104,7 @@ export function moveNote(
   const overlay = getOverlay();
   const notes = { ...overlay.notes };
 
+  // Base notes leave a tombstone; overlay-only notes just move.
   if (options.isBaseNote) notes[slug] = { hidden: true };
   else delete notes[slug];
   notes[next] = { body: options.body };
@@ -112,13 +115,11 @@ export function discardOverlay() {
   writeOverlay(EMPTY_OVERLAY);
 }
 
-export function overlayChangeCount(overlay: Overlay): number {
-  const tombstones = Object.values(overlay.notes).filter(
-    (note) => note.hidden,
-  ).length;
-  return (
-    Object.keys(overlay.notes).length - tombstones + overlay.folders.length
-  );
+// A move writes two entries (tombstone + copy) but reads as one change.
+function overlayChangeCount(overlay: Overlay): number {
+  const entries = Object.values(overlay.notes);
+  const tombstones = entries.filter((note) => note.hidden).length;
+  return entries.length - tombstones + overlay.folders.length;
 }
 
 function overlayDoc(slug: string, body: string): SearchDoc {
