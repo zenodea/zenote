@@ -185,7 +185,7 @@ export function AiPanel({ titles }: { titles: Record<string, string> }) {
             aria-label="Close assistant"
             className="shrink-0"
           >
-            ✕
+            <XIcon />
           </Button>
         </div>
 
@@ -244,6 +244,24 @@ export function AiPanel({ titles }: { titles: Record<string, string> }) {
         </form>
       </div>
     </aside>
+  );
+}
+
+function XIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      aria-hidden
+      className="block"
+    >
+      <path d="m4 4 8 8M12 4l-8 8" />
+    </svg>
   );
 }
 

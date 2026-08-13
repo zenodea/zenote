@@ -55,7 +55,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex h-full overflow-hidden">
         <AiAssistantProvider>
           <Sidebar tree={tree} />
-          <main className="min-w-0 flex-1 overflow-y-auto overscroll-contain">
+          <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
             {children}
           </main>
           <AiPanel titles={titles} />

@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import type { TreeNode } from "@/lib/tree";
 import { AiButton } from "@/components/ai-assistant";
 import { Button } from "@/components/button";
-import { Text } from "@/components/text";
 
 function filterTree(nodes: TreeNode[], query: string): TreeNode[] {
   const result: TreeNode[] = [];
@@ -120,6 +119,25 @@ export function Sidebar({ tree }: { tree: TreeNode[] }) {
   );
 }
 
+function ChevronIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className={className}
+    >
+      <path d="m6 3.5 4.5 4.5L6 12.5" />
+    </svg>
+  );
+}
+
 function SlidersIcon() {
   return (
     <svg
@@ -176,9 +194,10 @@ function NodeList({
   pathname,
 }: NodeListProps) {
   return (
-    <ul>
+    <ul className="space-y-0.5">
       {nodes.map((node) => {
-        const indent = { paddingLeft: `${depth * 0.75}rem` };
+        const folderIndent = { paddingLeft: `${depth * 0.75 + 0.5}rem` };
+        const fileIndent = { paddingLeft: `${depth * 0.75 + 1.5}rem` };
 
         if (node.kind === "folder") {
           const isCollapsed = collapsed.has(node.path);
@@ -188,12 +207,14 @@ function NodeList({
               <Button
                 variant="row"
                 onClick={() => onToggle(node.path)}
-                style={indent}
+                style={folderIndent}
                 aria-expanded={!isCollapsed}
               >
-                <Text className="inline-block w-3">
-                  {isCollapsed ? "▸" : "▾"}
-                </Text>
+                <ChevronIcon
+                  className={`w-3 shrink-0 transition-transform ${
+                    isCollapsed ? "" : "rotate-90"
+                  }`}
+                />
                 {node.name}
               </Button>
 
@@ -217,10 +238,10 @@ function NodeList({
           <li key={node.slug}>
             <Link
               href={href}
-              style={indent}
+              style={fileIndent}
               aria-current={isActive ? "page" : undefined}
-              className={`block rounded py-1 pl-4 hover:bg-foreground/10 ${
-                isActive ? "bg-foreground/10 font-medium" : ""
+              className={`block truncate rounded py-1.5 pr-2 hover:bg-foreground/10 ${
+                isActive ? "bg-foreground/10" : ""
               }`}
             >
               {node.name}

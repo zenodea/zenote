@@ -28,6 +28,14 @@ function Pre({ children }: ComponentProps<"pre">) {
   return <pre>{children}</pre>;
 }
 
+function stripTitleHeading(note: Note): string {
+  const match = note.body.match(/^#\s+(.+?)\s*(?:\r?\n+|$)/);
+  if (match && match[1].toLowerCase() === note.title.trim().toLowerCase()) {
+    return note.body.slice(match[0].length);
+  }
+  return note.body;
+}
+
 export function NoteView({
   note,
   resolver,
@@ -65,24 +73,26 @@ export function NoteView({
         }
       />
 
-      <article className="mx-auto w-full max-w-3xl px-6 py-12">
-        <div className="prose max-w-none">
-          <Markdown
-            remarkPlugins={[
-              remarkGfm,
-              remarkMath,
-              [remarkWikilink, { resolver }],
-              remarkTag,
-            ]}
-            rehypePlugins={[rehypeKatex]}
-            components={{ pre: Pre }}
-          >
-            {note.body}
-          </Markdown>
-        </div>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <article className="mx-auto w-full max-w-3xl px-6 py-12">
+          <div className="prose max-w-none">
+            <Markdown
+              remarkPlugins={[
+                remarkGfm,
+                remarkMath,
+                [remarkWikilink, { resolver }],
+                remarkTag,
+              ]}
+              rehypePlugins={[rehypeKatex]}
+              components={{ pre: Pre }}
+            >
+              {stripTitleHeading(note)}
+            </Markdown>
+          </div>
 
-        <Backlinks backlinks={backlinks} />
-      </article>
+          <Backlinks backlinks={backlinks} />
+        </article>
+      </div>
     </>
   );
 }
