@@ -1,18 +1,24 @@
 "use client";
 
-/** Segmented control with a highlight that slides to the selected option. */
+const SIZES = {
+  sm: "px-2 py-1 text-xs",
+  md: "px-4 py-1.5 text-sm",
+} as const;
+
 export function Segmented<T extends string>({
   options,
   value,
   onChange,
   ariaLabel,
   className,
+  size = "sm",
 }: {
   options: readonly T[];
   value: T;
   onChange: (value: T) => void;
   ariaLabel?: string;
   className?: string;
+  size?: keyof typeof SIZES;
 }) {
   const index = Math.max(0, options.indexOf(value));
   const count = options.length;
@@ -21,7 +27,7 @@ export function Segmented<T extends string>({
     <div
       role="group"
       aria-label={ariaLabel}
-      className={`relative flex gap-1 rounded border border-foreground/15 p-0.5${
+      className={`relative grid auto-cols-fr grid-flow-col gap-1 rounded border border-foreground/15 p-0.5${
         className ? ` ${className}` : ""
       }`}
     >
@@ -39,7 +45,7 @@ export function Segmented<T extends string>({
           type="button"
           onClick={() => onChange(option)}
           aria-pressed={option === value}
-          className={`relative flex-1 rounded px-2 py-1 text-xs capitalize transition-colors duration-200 ${
+          className={`relative rounded ${SIZES[size]} capitalize transition-colors duration-200 ${
             option === value ? "text-accent" : "opacity-60 hover:opacity-100"
           }`}
         >

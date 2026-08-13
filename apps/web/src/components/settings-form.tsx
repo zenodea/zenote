@@ -37,6 +37,7 @@ export function SettingsForm() {
           onChange={(searchMode) => updateSettings({ searchMode })}
           ariaLabel="Default search mode"
           className="shrink-0"
+          size="md"
         />
       </li>
     </ul>
