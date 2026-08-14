@@ -183,7 +183,7 @@ function ResultList({
   );
 }
 
-function TitleHighlight({
+export function TitleHighlight({
   title,
   indices,
 }: {

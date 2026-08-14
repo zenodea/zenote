@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { AiAssistantProvider, AiPanel } from "@/components/AiAssistant";
 import { FindBar } from "@/components/navigation/FindBar";
 import { Junctions } from "@/components/frame/Junctions";
+import { QuickSwitcher } from "@/components/navigation/QuickSwitcher";
 import { Sidebar } from "@/components/navigation/Sidebar";
 import { ThemeFavicon } from "@/components/frame/ThemeFavicon";
 import { getAllNotes } from "@/lib/notes";
@@ -73,6 +74,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         {/* Zed-style markers wherever data-seam separators intersect. */}
         <Junctions />
         <ThemeFavicon />
+        <QuickSwitcher docs={docs} />
       </body>
     </html>
   );

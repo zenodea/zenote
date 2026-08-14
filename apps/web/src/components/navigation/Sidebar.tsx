@@ -17,6 +17,7 @@ import {
   createNote,
   discardOverlay,
   moveNote,
+  sanitizeName,
   useVaultDocs,
 } from "@/lib/vault";
 import { AiButton } from "@/components/AiAssistant";
@@ -31,18 +32,6 @@ import {
   SearchIcon,
   SlidersIcon,
 } from "@/components/ui/Icons";
-
-/** "note.md" → "note"; rejects empty and path-escaping names. */
-function sanitizeName(raw: string): string | null {
-  const name = raw
-    .trim()
-    .replace(/\.md$/i, "")
-    .replace(/^\/+|\/+$/g, "");
-  if (!name || name.split("/").some((s) => !s.trim() || s === "..")) {
-    return null;
-  }
-  return name;
-}
 
 export function Sidebar({ docs }: { docs: SearchDoc[] }) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
