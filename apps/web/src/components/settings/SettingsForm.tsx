@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { SEARCH_MODES } from "@/lib/search";
 import { updateSettings, useSettings } from "@/lib/settings";
-import { Segmented } from "@/components/segmented";
+import { Segmented } from "@/components/ui/Segmented";
 
 export function SettingsForm() {
   const settings = useSettings();
@@ -18,6 +18,16 @@ export function SettingsForm() {
           checked={settings.showBacklinks}
           ariaLabel="Show Linked from section"
           onChange={(checked) => updateSettings({ showBacklinks: checked })}
+        />
+      </Row>
+      <Row
+        title="Graph"
+        description="Show a local graph of linked notes at the bottom of the document."
+      >
+        <Toggle
+          checked={settings.showGraph}
+          ariaLabel="Show Graph section"
+          onChange={(checked) => updateSettings({ showGraph: checked })}
         />
       </Row>
       <Row

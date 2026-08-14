@@ -1,24 +1,9 @@
 "use client";
 
-import { useEffect, useId, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useState } from "react";
+import { useThemeId } from "@/lib/use-theme";
 
-/* Diagrams re-render when the active theme changes. */
-function subscribe(onChange: () => void) {
-  const observer = new MutationObserver(onChange);
-  observer.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ["data-theme"],
-  });
-  return () => observer.disconnect();
-}
 
-function getThemeSnapshot() {
-  return document.documentElement.dataset.theme ?? "";
-}
-
-function getServerThemeSnapshot() {
-  return "";
-}
 
 /* Mermaid needs concrete colours, so approximate CSS color-mix in JS. */
 function mix(top: string, bottom: string, weight: number): string {
@@ -39,11 +24,8 @@ function mix(top: string, bottom: string, weight: number): string {
 
 export function MermaidDiagram({ chart }: { chart: string }) {
   const id = useId();
-  const theme = useSyncExternalStore(
-    subscribe,
-    getThemeSnapshot,
-    getServerThemeSnapshot,
-  );
+  // Diagrams re-render when the active theme changes.
+  const theme = useThemeId();
   const [svg, setSvg] = useState<string | null>(null);
 
   useEffect(() => {

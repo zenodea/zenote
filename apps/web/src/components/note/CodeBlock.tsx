@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
-import { HighlightedCode } from "@/components/highlighted-code";
+import { HighlightedCode } from "@/components/note/HighlightedCode";
 
 export function CodeBlock({
   text,

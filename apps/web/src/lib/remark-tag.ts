@@ -12,7 +12,7 @@ export function remarkTag() {
           type: "link",
           url: `/tags/${normaliseTag(tag)}`,
           data: { hProperties: { className: ["tag"] } },
-          children: [{ type: "text", value: `#${tag}` }],
+          children: [{ type: "text", value: `` }],
         }),
       ],
       { ignore: ["link", "linkReference", "heading"] },

@@ -8,24 +8,37 @@ import {
   type ComponentProps,
 } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Markdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import "katex/dist/katex.min.css";
 import type { Backlink } from "@/lib/backlinks";
+import type { Graph } from "@/lib/graph/model";
 import type { Note } from "@/lib/notes";
 import { remarkTag } from "@/lib/remark-tag";
 import { remarkWikilink } from "@/lib/remark-wikilink";
 import { useSettings } from "@/lib/settings";
 import { noteTags } from "@/lib/tags";
-import { revertNote, updateNote, useOverlay } from "@/lib/vault";
-import { Backlinks } from "@/components/backlinks";
-import { Button } from "@/components/button";
-import { CodeBlock } from "@/components/code-block";
-import { MarkdownEditor } from "@/components/markdown-editor";
-import { MermaidDiagram } from "@/components/mermaid-diagram";
-import { PageHeader } from "@/components/page-header";
+import {
+  deleteNote,
+  renameNote,
+  revertNote,
+  sanitizeName,
+  updateNote,
+  useOverlay,
+} from "@/lib/vault";
+import { Backlinks } from "@/components/note/Backlinks";
+import { Button } from "@/components/ui/Button";
+import { Dropdown } from "@/components/ui/Dropdown";
+import { Modal } from "@/components/ui/Modal";
+import { EllipsisIcon, PencilIcon } from "@/components/ui/Icons";
+import { CodeBlock } from "@/components/note/CodeBlock";
+import { MarkdownEditor } from "@/components/note/MarkdownEditor";
+import { MermaidDiagram } from "@/components/note/MermaidDiagram";
+import { NoteGraph } from "@/components/note/NoteGraph";
+import { PageHeader } from "@/components/frame/PageHeader";
 
 function Pre({ children }: ComponentProps<"pre">) {
   if (isValidElement(children)) {
@@ -61,6 +74,7 @@ export function NoteView({
   resolver,
   linkTitles,
   backlinks,
+  neighbourhood,
 }: {
   note: Note | null;
   slug: string;
@@ -68,7 +82,9 @@ export function NoteView({
   /** Titles of all vault notes, for the editor's `[[` autocomplete. */
   linkTitles: string[];
   backlinks: Backlink[];
+  neighbourhood: Graph;
 }) {
+  const router = useRouter();
   const overlay = useOverlay();
   const settings = useSettings();
   const local = overlay.notes[slug];
@@ -76,6 +92,8 @@ export function NoteView({
 
   // Empty notes open in the editor; else the setting decides, pencil overrides.
   const [startedEmpty] = useState(body === "");
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [readingOverride, setReadingOverride] = useState<boolean | null>(null);
   const vimBarRef = useRef<HTMLDivElement>(null);
   const reading =
@@ -95,13 +113,27 @@ export function NoteView({
   }, [linkTitles, overlay]);
 
   if (body === undefined) {
+    const deletedLocally = Boolean(local?.hidden && !local.movedTo && note);
     return (
       <>
         <PageHeader title="Not found" />
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          <p className="mx-auto w-full max-w-3xl px-6 py-12 opacity-60">
-            There is no note at “{slug}”.
-          </p>
+          <div className="mx-auto w-full max-w-3xl px-6 py-12">
+            <p className="opacity-60">
+              {deletedLocally
+                ? `“${slug}” was deleted locally.`
+                : `There is no note at “${slug}”.`}
+            </p>
+            {deletedLocally && (
+              <button
+                type="button"
+                onClick={() => revertNote(slug)}
+                className="mt-3 rounded border border-foreground/15 px-2 py-1 text-sm hover:bg-foreground/10"
+              >
+                Restore note
+              </button>
+            )}
+          </div>
         </div>
       </>
     );
@@ -111,6 +143,20 @@ export function NoteView({
     ? { ...note, body }
     : { slug, title: slug.split("/").pop()!, tags: [], created: null, body };
   const isLocal = local?.body !== undefined;
+
+  function submitRename() {
+    const next = renaming === null ? null : sanitizeName(renaming);
+    setRenaming(null);
+    if (!next || next === slug) return;
+    renameNote(slug, next, { body: effective.body, isBaseNote: note !== null });
+    router.push(`/notes/${next}`);
+  }
+
+  function submitDelete() {
+    setDeleting(false);
+    deleteNote(slug, note !== null);
+    router.push("/");
+  }
 
   const markdown = (source: string) => (
     <Markdown
@@ -172,15 +218,37 @@ export function NoteView({
           </>
         }
         actions={
-          <Button
-            onClick={() => setReadingOverride(!reading)}
-            active={!reading}
-            aria-pressed={!reading}
-            aria-label={reading ? "Edit note" : "Reading view"}
-            title={reading ? "Edit note" : "Reading view"}
-          >
-            <PencilIcon />
-          </Button>
+          <>
+            <Button
+              onClick={() => setReadingOverride(!reading)}
+              active={!reading}
+              aria-pressed={!reading}
+              aria-label={reading ? "Edit note" : "Reading view"}
+              title={reading ? "Edit note" : "Reading view"}
+            >
+              <PencilIcon />
+            </Button>
+            <Dropdown
+              label={<EllipsisIcon />}
+              ariaLabel="Note actions"
+              triggerClassName="rounded p-1.5 opacity-60 hover:bg-foreground/10 hover:opacity-100"
+            >
+              <button
+                type="button"
+                onClick={() => setRenaming(slug)}
+                className="block w-full rounded px-2 py-1 text-left hover:bg-foreground/10"
+              >
+                Rename…
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleting(true)}
+                className="block w-full rounded px-2 py-1 text-left text-[#ef4444] hover:bg-foreground/10"
+              >
+                Delete
+              </button>
+            </Dropdown>
+          </>
         }
       />
 
@@ -202,9 +270,71 @@ export function NoteView({
             />
           )}
 
+          {reading && <NoteGraph graph={neighbourhood} focusId={slug} />}
+
           {reading && <Backlinks backlinks={backlinks} />}
         </article>
       </div>
+
+      {renaming !== null && (
+        <Modal title="Rename note" onClose={() => setRenaming(null)}>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              submitRename();
+            }}
+            className="mt-3 flex flex-col gap-3"
+          >
+            <input
+              autoFocus
+              value={renaming}
+              onChange={(event) => setRenaming(event.target.value)}
+              aria-label="New note name"
+              className="w-full rounded border border-foreground/15 bg-background px-2 py-1 placeholder:opacity-50 focus:border-foreground/40 focus:outline-none"
+            />
+            <p className="text-xs opacity-60">
+              Include a path to move it, e.g. ideas/spark.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setRenaming(null)}
+                className="rounded px-2 py-1 opacity-60 hover:bg-foreground/10 hover:opacity-100"
+              >
+                Cancel
+              </button>
+              <Button variant="solid" type="submit">
+                Rename
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {deleting && (
+        <Modal title="Delete note" onClose={() => setDeleting(false)}>
+          <p className="mt-3 opacity-70">
+            Delete “{effective.title}”?
+            {note ? " You can restore it from this page until you sync." : ""}
+          </p>
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setDeleting(false)}
+              className="rounded px-2 py-1 opacity-60 hover:bg-foreground/10 hover:opacity-100"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={submitDelete}
+              className="rounded border border-[#ef4444]/40 px-3 py-1.5 font-medium text-[#ef4444] hover:bg-[#ef4444]/10"
+            >
+              Delete
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {/* Vim's : and / prompts, in the same footer plane the find bar uses. */}
       {!reading && settings.vimMode && (
@@ -222,22 +352,4 @@ export function NoteView({
   );
 }
 
-function PencilIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-      className="block"
-    >
-      <path d="M11.5 2 14 4.5 5.5 13 2 14l1-3.5L11.5 2Z" />
-    </svg>
-  );
-}
 

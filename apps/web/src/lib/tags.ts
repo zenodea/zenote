@@ -15,7 +15,6 @@ function extractInlineTags(body: string): string[] {
   return [...prose.matchAll(tagRegex())].map((match) => match[1]);
 }
 
-/** Frontmatter tags and inline #tags, merged and deduplicated. */
 export function noteTags(note: Note): string[] {
   const tags = [...note.tags, ...extractInlineTags(note.body)].map(normaliseTag);
   return [...new Set(tags)].sort();

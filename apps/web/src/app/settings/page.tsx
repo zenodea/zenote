@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { ChevronIcon } from "@/components/chevron-icon";
-import { PageHeader } from "@/components/page-header";
-import { SettingsForm } from "@/components/settings-form";
-import { ThemeSettings } from "@/components/theme-settings";
+import { ChevronIcon } from "@/components/ui/Icons";
+import { PageHeader } from "@/components/frame/PageHeader";
+import { SettingsForm } from "@/components/settings/SettingsForm";
+import { ThemeSettings } from "@/components/settings/ThemeSettings";
 
 export const metadata: Metadata = { title: "Settings" };
 

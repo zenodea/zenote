@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getAllNotes } from "@/lib/notes";
-import { PageHeader } from "@/components/page-header";
-import { Text } from "@/components/text";
+import { PageHeader } from "@/components/frame/PageHeader";
+import { Text } from "@/components/ui/Text";
 
 export default async function Home() {
   const notes = await getAllNotes();

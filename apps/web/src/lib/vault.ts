@@ -6,9 +6,23 @@ import { noteTags } from "./tags";
 
 // Local overlay over the read-only git vault; these mutations become
 // Supabase Storage calls once notes move server-side.
+
+/** "note.md" → "note"; rejects empty and path-escaping names. */
+export function sanitizeName(raw: string): string | null {
+  const name = raw
+    .trim()
+    .replace(/\.md$/i, "")
+    .replace(/^\/+|\/+$/g, "");
+  if (!name || name.split("/").some((s) => !s.trim() || s === "..")) {
+    return null;
+  }
+  return name;
+}
 type OverlayNote = {
   body?: string;
   hidden?: boolean;
+  /** Set on move/rename tombstones; absent on plain deletes. */
+  movedTo?: string;
 };
 
 type Overlay = {
@@ -89,25 +103,35 @@ export function revertNote(slug: string) {
   writeOverlay({ ...overlay, notes });
 }
 
-export function moveNote(
-  slug: string,
-  folder: string,
-  options: {
-    body: string;
-    isBaseNote: boolean;
-  },
-) {
-  const filename = slug.split("/").pop()!;
-  const next = folder ? `${folder}/${filename}` : filename;
+type RelocateOptions = { body: string; isBaseNote: boolean };
+
+function relocate(slug: string, next: string, options: RelocateOptions) {
   if (next === slug) return;
 
   const overlay = getOverlay();
   const notes = { ...overlay.notes };
 
   // Base notes leave a tombstone; overlay-only notes just move.
-  if (options.isBaseNote) notes[slug] = { hidden: true };
+  if (options.isBaseNote) notes[slug] = { hidden: true, movedTo: next };
   else delete notes[slug];
   notes[next] = { body: options.body };
+  writeOverlay({ ...overlay, notes });
+}
+
+export function moveNote(slug: string, folder: string, options: RelocateOptions) {
+  const filename = slug.split("/").pop()!;
+  relocate(slug, folder ? `${folder}/${filename}` : filename, options);
+}
+
+export function renameNote(slug: string, next: string, options: RelocateOptions) {
+  relocate(slug, next, options);
+}
+
+export function deleteNote(slug: string, isBaseNote: boolean) {
+  const overlay = getOverlay();
+  const notes = { ...overlay.notes };
+  if (isBaseNote) notes[slug] = { hidden: true };
+  else delete notes[slug];
   writeOverlay({ ...overlay, notes });
 }
 
@@ -115,11 +139,13 @@ export function discardOverlay() {
   writeOverlay(EMPTY_OVERLAY);
 }
 
-// A move writes two entries (tombstone + copy) but reads as one change.
+// Moves count once via their copy; delete tombstones count themselves.
 function overlayChangeCount(overlay: Overlay): number {
   const entries = Object.values(overlay.notes);
-  const tombstones = entries.filter((note) => note.hidden).length;
-  return entries.length - tombstones + overlay.folders.length;
+  const changes = entries.filter(
+    (note) => note.body !== undefined || (note.hidden && !note.movedTo),
+  ).length;
+  return changes + overlay.folders.length;
 }
 
 function overlayDoc(slug: string, body: string): SearchDoc {

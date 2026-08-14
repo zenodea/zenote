@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { AiAssistantProvider, AiPanel } from "@/components/ai-assistant";
-import { FindBar } from "@/components/find-bar";
-import { Junctions } from "@/components/junctions";
-import { Sidebar } from "@/components/sidebar";
-import { ThemeFavicon } from "@/components/theme-favicon";
+import { AiAssistantProvider, AiPanel } from "@/components/AiAssistant";
+import { FindBar } from "@/components/navigation/FindBar";
+import { Junctions } from "@/components/frame/Junctions";
+import { QuickSwitcher } from "@/components/navigation/QuickSwitcher";
+import { Sidebar } from "@/components/navigation/Sidebar";
+import { ThemeFavicon } from "@/components/frame/ThemeFavicon";
 import { getAllNotes } from "@/lib/notes";
 import type { SearchDoc } from "@/lib/search";
 import { noteTags } from "@/lib/tags";
@@ -73,6 +74,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         {/* Zed-style markers wherever data-seam separators intersect. */}
         <Junctions />
         <ThemeFavicon />
+        <QuickSwitcher docs={docs} />
       </body>
     </html>
   );
