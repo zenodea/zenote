@@ -4,13 +4,13 @@ import { useState } from "react";
 import Link from "next/link";
 import type { TreeNode } from "@/lib/tree";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import {
   ChevronIcon,
   FilePlusIcon,
   FolderPlusIcon,
 } from "@/components/ui/Icons";
 
-// The sidebar's folder tree: naming row, drag-to-move, modified markers.
 export function NoteTree({
   tree,
   collapsed,
@@ -93,7 +93,7 @@ function NamingRow({
       <span className="shrink-0 opacity-60">
         {kind === "note" ? <FilePlusIcon /> : <FolderPlusIcon />}
       </span>
-      <input
+      <Input
         autoFocus
         value={name}
         onChange={(event) => setName(event.target.value)}
@@ -104,7 +104,7 @@ function NamingRow({
         onBlur={onCancel}
         placeholder={kind === "note" ? "Note name…" : "Folder name…"}
         aria-label={kind === "note" ? "New note name" : "New folder name"}
-        className="min-w-0 flex-1 rounded border border-foreground/15 bg-background px-2 py-1 placeholder:opacity-50 focus:border-foreground/40 focus:outline-none"
+        className="min-w-0 flex-1"
       />
     </div>
   );

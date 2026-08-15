@@ -32,8 +32,7 @@ export async function middleware(request: NextRequest) {
   const onLogin = pathname === LOGIN;
 
   if (!user) {
-    // A redirect here would be a method-preserving 307, so `fetch` would POST
-    // to /login and stream its HTML back to the caller as if it were a reply.
+    // A redirect here is a method-preserving 307, so fetch would POST to /login and stream its HTML back.
     if (pathname.startsWith("/api/")) {
       return carry(
         NextResponse.json({ error: "Not authenticated." }, { status: 401 }),
@@ -54,21 +53,17 @@ function redirect(request: NextRequest, to: string, carrying: NextResponse) {
 
   url.pathname = to;
   url.search = "";
-  // Remember where they were headed; Frame sends them on after signing in.
   if (to === LOGIN && from !== "/") url.searchParams.set(RETURN_PARAM, from);
 
   return carry(NextResponse.redirect(url), carrying);
 }
 
-/** Keeps any refreshed auth cookies from being dropped by the new response. */
 function carry(response: NextResponse, carrying: NextResponse) {
   for (const cookie of carrying.cookies.getAll()) response.cookies.set(cookie);
   return response;
 }
 
 export const config = {
-  // Only genuinely static, unauthenticated assets are exempt. An open-ended
-  // `.*\.svg$` would exempt *any* route ending in .svg — /notes/secret.svg
-  // included — and middleware is the outermost auth boundary.
+  // An open-ended `.*\.svg$` would exempt any route ending in .svg, not just static assets.
   matcher: ["/((?!_next/static|_next/image|favicon\\.ico$|icon\\.svg$).*)"],
 };

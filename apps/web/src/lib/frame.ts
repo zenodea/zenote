@@ -1,6 +1,4 @@
-// Cross-fade between Frame's seams and the real chrome, in both directions.
-// Keep in step with the body[data-leaving] / body[data-entering] rules in
-// globals.css, which can't read these.
+// Keep in step with the body[data-leaving]/[data-entering] rules in app/styles/frame.css.
 export const LEAVE_MS = 260;
 export const ENTER_MS = 260;
 
@@ -8,11 +6,7 @@ export const HEADER_HEIGHT = 56;
 export const SIDEBAR_WIDTH = 256;
 export const SIDEBAR_COLLAPSED_WIDTH = 60;
 
-// Sidebar footer, measured off the JSX: 1px border-t + p-2 (8px twice) around
-// a row that is as tall as its tallest child — the AI button, whose 16px
-// SparkleIcon and p-1.5 make it 28px (the settings/graph links are 26px).
-// Collapsed stacks all three with gap-1: 26 + 4 + 26 + 4 + 28 = 88.
-// Only used for a cold login; a sign-out measures the real thing.
+// 1px border-t + p-2 around a 28px row; collapsed stacks three with gap-1. Cold login only.
 export const FOOTER_HEIGHT = 45;
 export const FOOTER_COLLAPSED_HEIGHT = 105;
 
@@ -45,8 +39,7 @@ export function fallbackGeometry(
   };
 }
 
-// Same rects and half-pixel offsets computeJunctions() uses, scoped to the
-// sidebar so other `top`/`bottom` seams (note, find bar, AI panel) can't match.
+// Scoped to the sidebar so other top/bottom seams can't match.
 export function measureGeometry(): Geometry | null {
   const nav = document.querySelector<HTMLElement>('nav[data-seam="right"]');
   const head = nav?.querySelector<HTMLElement>('[data-seam="bottom"]');

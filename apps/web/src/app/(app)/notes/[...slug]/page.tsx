@@ -1,8 +1,7 @@
 import { NoteView } from "@/components/note/NoteView";
-import { buildBacklinks } from "@/lib/backlinks";
-import { buildGraph, localGraph } from "@/lib/graph/model";
-import { getAllNotes, getNote } from "@/lib/notes";
-import { buildResolver } from "@/lib/wikilinks";
+import { localGraph } from "@/lib/graph/model";
+import { getAllNotes, getNote } from "@/lib/server/notes";
+import { getBacklinks, getGraph, getResolver } from "@/lib/server/vault-data";
 
 export async function generateStaticParams() {
   const notes = await getAllNotes();
@@ -13,7 +12,8 @@ export async function generateMetadata({
   params,
 }: PageProps<"/notes/[...slug]">) {
   const { slug } = await params;
-  const note = await getNote(slug.map(decodeURIComponent).join("/"));
+  const joined = slug.map(decodeURIComponent).join("/");
+  const note = await getNote(joined);
 
   return {
     title: note ? note.title : decodeURIComponent(slug[slug.length - 1]),
@@ -25,14 +25,14 @@ export default async function NotePage({
 }: PageProps<"/notes/[...slug]">) {
   const { slug } = await params;
   const joined = slug.map(decodeURIComponent).join("/");
-  const note = await getNote(joined);
 
-  const notes = await getAllNotes();
-  const resolver = buildResolver(notes);
-  const backlinks = note
-    ? (buildBacklinks(notes, resolver).get(note.slug) ?? [])
-    : [];
-  const neighbourhood = localGraph(buildGraph(notes, resolver), joined);
+  const [note, notes, resolver, backlinks, graph] = await Promise.all([
+    getNote(joined),
+    getAllNotes(),
+    getResolver(),
+    getBacklinks(),
+    getGraph(),
+  ]);
 
   return (
     <NoteView
@@ -41,8 +41,8 @@ export default async function NotePage({
       slug={joined}
       resolver={Object.fromEntries(resolver)}
       linkTitles={notes.map((entry) => entry.title)}
-      backlinks={backlinks}
-      neighbourhood={neighbourhood}
+      backlinks={note ? (backlinks.get(note.slug) ?? []) : []}
+      neighbourhood={localGraph(graph, joined)}
     />
   );
 }

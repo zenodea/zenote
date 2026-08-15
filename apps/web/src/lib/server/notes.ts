@@ -1,5 +1,7 @@
+import "server-only";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { cache } from "react";
 import matter from "gray-matter";
 
 const CONTENT_DIR = path.join(process.cwd(), "content");
@@ -46,7 +48,7 @@ function toSlug(absolute: string): string {
     .join("/");
 }
 
-export async function getNote(slug: string): Promise<Note | null> {
+export const getNote = cache(async (slug: string): Promise<Note | null> => {
   const target = path.join(CONTENT_DIR, `${slug}.md`);
 
   if (!target.startsWith(CONTENT_DIR + path.sep)) return null;
@@ -56,14 +58,16 @@ export async function getNote(slug: string): Promise<Note | null> {
   } catch {
     return null;
   }
-}
+});
 
-export async function getAllNotes(): Promise<Note[]> {
+export const getAllNotes = cache(async (): Promise<Note[]> => {
   const files = await walk(CONTENT_DIR);
 
   const notes = await Promise.all(
-    files.map(async (file) => toNote(toSlug(file), await fs.readFile(file, "utf8"))),
+    files.map(async (file) =>
+      toNote(toSlug(file), await fs.readFile(file, "utf8")),
+    ),
   );
 
   return notes.sort((a, b) => a.slug.localeCompare(b.slug));
-}
+});

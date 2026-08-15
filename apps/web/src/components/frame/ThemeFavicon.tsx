@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { subscribeToTheme } from "@/lib/theme";
 
 function shade(hex: string, amount: number): string {
   const value = hex.replace("#", "");
@@ -60,15 +61,11 @@ export function ThemeFavicon() {
     }
 
     update();
-    const themeObserver = new MutationObserver(update);
-    themeObserver.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["data-theme"],
-    });
+    const unsubscribeTheme = subscribeToTheme(update);
     const headObserver = new MutationObserver(update);
     headObserver.observe(document.head, { childList: true });
     return () => {
-      themeObserver.disconnect();
+      unsubscribeTheme();
       headObserver.disconnect();
       document.getElementById(LINK_ID)?.remove();
     };

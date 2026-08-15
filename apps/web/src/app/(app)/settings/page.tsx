@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getUser } from "@/lib/supabase/server";
+import { getUser } from "@/lib/server/supabase";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { ChevronIcon } from "@/components/ui/Icons";
 import { Scroller } from "@/components/ui/Scroller";

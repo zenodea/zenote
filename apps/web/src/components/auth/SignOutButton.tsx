@@ -4,11 +4,9 @@ import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { signOut } from "@/app/actions/auth";
 import { Button } from "@/components/ui/Button";
 import { LEAVE_MS } from "@/lib/frame";
-import { endLeaving, startLeaving } from "@/lib/leaving";
+import { prefersReducedMotion } from "@/lib/motion";
+import { endLeaving, startLeaving } from "@/lib/stores/leaving";
 
-// A successful sign-out unmounts this button, which cancels both timers below.
-// Still being here well after that means the action failed, and the chrome is
-// sitting at opacity 0 with nothing coming to replace it.
 const RECOVER_MS = 6000;
 
 export function SignOutButton() {
@@ -18,9 +16,9 @@ export function SignOutButton() {
   useEffect(() => {
     if (!leaving) return;
 
-    // Hold the submit while the chrome fades and Frame takes over the seams.
     startLeaving();
     const submit = setTimeout(() => form.current?.requestSubmit(), LEAVE_MS);
+    // A successful sign-out unmounts this and cancels both; still here means the action failed.
     const recover = setTimeout(() => {
       setLeaving(false);
       endLeaving();
@@ -33,13 +31,11 @@ export function SignOutButton() {
   }, [leaving]);
 
   function onClick(event: MouseEvent<HTMLButtonElement>) {
-    // Anything that isn't "submit right now" has to stop the native submit --
-    // otherwise a second click posts the action again, mid-fade.
     if (leaving) {
       event.preventDefault();
       return;
     }
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (prefersReducedMotion()) return;
 
     event.preventDefault();
     setLeaving(true);

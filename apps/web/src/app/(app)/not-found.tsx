@@ -2,8 +2,6 @@ import Link from "next/link";
 import { PageHeader } from "@/components/frame/PageHeader";
 import { Text } from "@/components/ui/Text";
 
-// Inside the group so a missing note or tag still renders within the sidebar
-// and seams, the way it did when the chrome lived in the root layout.
 export const metadata = { title: "Not found" };
 
 export default function NotFound() {

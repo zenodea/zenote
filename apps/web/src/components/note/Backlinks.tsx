@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { Backlink } from "@/lib/backlinks";
-import { useSettings } from "@/lib/settings";
+import { useSettings } from "@/lib/stores/settings";
 
 export function Backlinks({ backlinks }: { backlinks: Backlink[] }) {
   const settings = useSettings();

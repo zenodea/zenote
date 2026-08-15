@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { supabaseEnv } from "./env";
+import { supabaseEnv } from "../supabase/env";
 
 export const createClient = cache(async () => {
   const store = await cookies();

@@ -7,20 +7,20 @@ import {
   useState,
   type CSSProperties,
   type FormEvent,
-  type ReactNode,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/Button";
-import { LogoIcon } from "@/components/ui/Icons";
+import { LoginForm } from "@/components/auth/LoginForm";
+import { Centered, Mark, Seam, Trace } from "@/components/frame/Seams";
 import {
   ENTER_MS,
   LEAVE_MS,
   fallbackGeometry,
   type Geometry,
 } from "@/lib/frame";
-import { endLeaving, useLeaving } from "@/lib/leaving";
+import { prefersReducedMotion } from "@/lib/motion";
 import { RETURN_PARAM, safeReturnTo } from "@/lib/return-to";
-import { useSettings } from "@/lib/settings";
+import { endLeaving, useLeaving } from "@/lib/stores/leaving";
+import { useSettings } from "@/lib/stores/settings";
 import { createClient } from "@/lib/supabase/client";
 
 const LOGIN = "/login";
@@ -35,8 +35,7 @@ const WARM_TIMEOUT_MS = 8000;
 const ENTER_FAILSAFE_MS = 8000;
 const EASE = "cubic-bezier(0.7, 0, 0.2, 1)";
 
-// Sign in:  idle → working → closing → framing → app
-// Sign out: app → (leaving) → unframing → opening → idle
+// in: idle→working→closing→framing→app   out: app→(leaving)→unframing→opening→idle
 type Phase =
   | "app"
   | "unframing"
@@ -50,11 +49,7 @@ type Env = { width: number; height: number; reduce: boolean };
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/**
- * Where middleware was taking them before it stopped at /login. Read off the
- * URL at submit time rather than through useSearchParams, which would force a
- * Suspense boundary around Frame in the root layout.
- */
+// Read off the URL, not useSearchParams, which would force a Suspense boundary in the root layout.
 function returnTo(): string {
   const param = new URLSearchParams(window.location.search).get(RETURN_PARAM);
   return safeReturnTo(param) ?? "/";
@@ -64,22 +59,14 @@ export function Frame() {
   const router = useRouter();
   const settings = useSettings();
   const leaving = useLeaving();
-  // Read from the URL rather than passed down from the root layout: that layout
-  // is shared with /login and so is not re-rendered by the sign-in navigation,
-  // which would leave a server-passed prop stale. Middleware keeps /login and
-  // "signed out" equivalent.
+  // From the URL, not a prop: the root layout is shared with /login and isn't re-rendered by sign-in.
   const authed = usePathname() !== LOGIN;
   const [env, setEnv] = useState<Env | null>(null);
   const [rawPhase, setPhase] = useState<Phase>(authed ? "app" : "idle");
   const [error, setError] = useState<string | null>(null);
-  // True only for the length of the arrival cross-fade.
   const [entering, setEntering] = useState(false);
 
-  // Frame outlives soft navigations, so the state can still say "app" after we
-  // arrive logged-out by a route nothing choreographed — a reduced-motion sign
-  // out, or a session that expired mid-navigation. Left alone, the form would
-  // render but onSubmit's `phase !== "idle"` guard would swallow every attempt
-  // until a hard reload.
+  // An unchoreographed logged-out arrival would otherwise strand "app" and deaden the form.
   const phase: Phase =
     !authed && !leaving.active && rawPhase === "app" ? "idle" : rawPhase;
 
@@ -90,7 +77,7 @@ export function Frame() {
       setEnv({
         width: window.innerWidth,
         height: window.innerHeight,
-        reduce: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+        reduce: prefersReducedMotion(),
       });
     measure();
     window.addEventListener("resize", measure);
@@ -100,25 +87,18 @@ export function Frame() {
   useEffect(
     () => () => {
       clearTimeout(timer.current ?? undefined);
-      // Frame lives in the root layout and shouldn't unmount, but leaving this
-      // behind would animate every later mount of the app chrome.
       delete document.body.dataset.entering;
     },
     [],
   );
 
-  // Signed back in: the real chrome now owns these pixels.
   useEffect(() => {
     if (!authed) return;
     const id = requestAnimationFrame(() => setPhase("app"));
     return () => cancelAnimationFrame(id);
   }, [authed]);
 
-  // The cross-fade can only start once the chrome is actually mounted, which is
-  // when `authed` flips — the navigation that gets us there takes as long as it
-  // takes. Until then the attribute just has to stay put. The longer wait when
-  // it hasn't arrived is a failsafe: a navigation that never lands would
-  // otherwise leave every child of body stuck at opacity 0.
+  // Hold the fade until the chrome mounts (`authed` flips); the failsafe covers a navigation that never lands.
   useEffect(() => {
     if (!entering) return;
 
@@ -150,9 +130,7 @@ export function Frame() {
     return () => cancelAnimationFrame(id);
   }, [authed, leaving.active]);
 
-  // Measured off the live chrome on the way out; constants on a cold login, or
-  // when the window was resized since — the measurement's `foot` is pinned to
-  // the old viewport height and would draw the seam off-screen.
+  // A resize since the measurement pins `foot` to the old viewport height.
   const geometry: Geometry = useMemo(() => {
     const measured =
       leaving.geometry && leaving.viewportHeight === env?.height
@@ -194,11 +172,7 @@ export function Frame() {
 
     const destination = returnTo();
 
-    // Render the vault server-side first, so the frame closes onto a painted
-    // app rather than a blank page. The body has to be read, not just awaited:
-    // dropping the response leaves the server's render stream with no consumer,
-    // which is what piles up "drain listeners added to [Gzip]" warnings and
-    // then throws "The destination stream closed early".
+    // Body must be read, not just awaited: an abandoned response leaves the render stream unconsumed.
     await Promise.all([
       Promise.race([
         fetch(destination, { cache: "no-store" })
@@ -222,13 +196,8 @@ export function Frame() {
     }, FADE_MS + CLOSE_MS);
   }
 
-  // A plain navigation: /login and the destination sit in different layout
-  // groups, so (app)/layout.tsx mounts and paints on its own. No router.refresh()
-  // — that re-rendered the entire tree from the server and read as a page reload.
   function enter(destination: string) {
-    // Set before the navigation so the chrome is already transparent on its
-    // first paint. Clearing it is the arrival effect's job, not a timer started
-    // here — the navigation routinely outlasts ENTER_MS.
+    // Set before navigating so the chrome is transparent on its first paint.
     if (!reduce) {
       document.body.dataset.entering = "true";
       setEntering(true);
@@ -239,14 +208,10 @@ export function Frame() {
 
   const reduce = env?.reduce ?? false;
 
-  // Drawn whenever the chrome is (or is becoming) absent. While signed in it
-  // sits at opacity 0 underneath the real borders.
   const drawn = authed || leaving.active || phase === "framing";
   const shut =
     authed || leaving.active || phase === "unframing" || phase === "closing" || phase === "framing";
 
-  // Signing out fades the chrome away under the seams; signing in does the
-  // reverse. Both sides of the cross-fade have to run for the same length.
   const crossfade = reduce
     ? 0
     : leaving.active
@@ -257,9 +222,6 @@ export function Frame() {
 
   const lines: CSSProperties = {
     opacity: authed && !leaving.active ? 0 : 1,
-    // Cross-fades with the chrome in both directions. Instant only when there
-    // is no chrome to cross-fade with, so the real borders never take over
-    // through a moment of doubled lines.
     transitionProperty: "opacity",
     transitionDuration: crossfade ? `${crossfade}ms` : "0ms",
   };
@@ -276,9 +238,7 @@ export function Frame() {
     />
   );
 
-  // The seams need a measured viewport, which only exists on the client. Ship
-  // the form by itself until then, so /login is never an empty document and
-  // there is no blank flash between first paint and the measuring effect.
+  // Before measurement, ship the form alone so /login is never an empty document.
   if (!env) return authed ? null : <Centered>{form}</Centered>;
 
   const box = Math.min(MAX_BOX, env.width - 40, env.height - 40);
@@ -311,10 +271,7 @@ export function Frame() {
         transition={draw}
       />
 
-      {/* The three seams above cross at two points, and Junctions puts a mark
-          at both. Drawing only the footer one left the header junction with
-          nothing to hand over from, so it appeared out of nothing the moment
-          the chrome took over. */}
+      {/* Both points where the seams cross, matching what Junctions draws. */}
       {[geometry.head, geometry.foot].map((y) => (
         <Mark
           key={y}
@@ -323,8 +280,7 @@ export function Frame() {
             left: geometry.x,
             top: y,
             opacity: (lines.opacity as number) * (drawn ? 1 : 0),
-            // Hands off to the real junction marks, so it has to fade on the
-            // same clock as the seams rather than its usual quicker FADE_MS.
+            // Hands off to the real junction marks, so it fades on the seams' clock.
             transitionDuration: crossfade
               ? `${crossfade}ms`
               : reduce
@@ -375,150 +331,5 @@ export function Frame() {
 
       {!authed && compact && <Centered>{form}</Centered>}
     </div>
-  );
-}
-
-/** The form with no frame around it: too small a viewport, or not measured yet. */
-function Centered({ children }: { children: ReactNode }) {
-  return (
-    <div className="fixed inset-0 flex items-center justify-center px-6">
-      <div className="w-full max-w-[280px]">{children}</div>
-    </div>
-  );
-}
-
-function Mark({ style }: { style: CSSProperties }) {
-  return (
-    <span
-      aria-hidden
-      style={style}
-      className="pointer-events-none fixed z-10 size-1.5 -translate-x-1/2 -translate-y-1/2 rotate-45 border border-foreground/30 bg-background transition-opacity"
-    />
-  );
-}
-
-function Seam({
-  className,
-  style,
-  origin,
-  axis,
-  open,
-  transition,
-}: {
-  className: string;
-  style: CSSProperties;
-  origin: string;
-  axis: "X" | "Y";
-  open: boolean;
-  transition: string;
-}) {
-  return (
-    <div
-      aria-hidden
-      className={`pointer-events-none fixed bg-foreground/15 ${className}`}
-      style={{
-        ...style,
-        transformOrigin: origin,
-        transform: `scale${axis}(${open ? 1 : 0})`,
-        transition: `${transition}, ${style.transitionProperty} ${style.transitionDuration}`,
-      }}
-    />
-  );
-}
-
-function Trace({ side, active }: { side: number; active: boolean }) {
-  const perimeter = 4 * (side - 1);
-
-  return (
-    <svg
-      aria-hidden
-      width={side}
-      height={side}
-      className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rotate-45 transition-opacity duration-300"
-      style={{ opacity: active ? 1 : 0 }}
-    >
-      <rect
-        x={0.5}
-        y={0.5}
-        width={side - 1}
-        height={side - 1}
-        fill="none"
-        stroke="var(--accent)"
-        strokeWidth={1.5}
-        style={{
-          ["--trace" as string]: `${perimeter}px`,
-          strokeDasharray: `${perimeter * 0.16} ${perimeter * 0.84}`,
-          animation: active ? "diamond-trace 1.4s linear infinite" : "none",
-        }}
-      />
-    </svg>
-  );
-}
-
-function LoginForm({
-  busy,
-  error,
-  hidden,
-  delay,
-  duration,
-  onSubmit,
-}: {
-  busy: boolean;
-  error: string | null;
-  hidden: boolean;
-  delay: number;
-  duration: number;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-}) {
-  return (
-    <form
-      onSubmit={onSubmit}
-      inert={hidden}
-      className="flex flex-col items-center gap-3 transition-opacity"
-      style={{
-        opacity: hidden ? 0 : 1,
-        transitionDuration: `${duration}ms`,
-        transitionDelay: `${delay}ms`,
-      }}
-    >
-      <LogoIcon />
-      <h1 className="sr-only">Sign in to Zenote</h1>
-
-      <Field name="email" type="email" label="Email" autoFocus />
-      <Field name="password" type="password" label="Password" />
-
-      <Button variant="solid" type="submit" disabled={busy} className="mt-1 w-full">
-        {busy ? "Opening your vault…" : "Sign in"}
-      </Button>
-
-      <p role="alert" className="min-h-[1.25rem] text-center text-sm text-red-500">
-        {error}
-      </p>
-    </form>
-  );
-}
-
-function Field({
-  name,
-  type,
-  label,
-  autoFocus,
-}: {
-  name: string;
-  type: string;
-  label: string;
-  autoFocus?: boolean;
-}) {
-  return (
-    <input
-      name={name}
-      type={type}
-      required
-      autoFocus={autoFocus}
-      autoComplete={type === "password" ? "current-password" : "email"}
-      placeholder={label}
-      aria-label={label}
-      className="w-full rounded border border-foreground/15 bg-background px-2 py-1.5 placeholder:opacity-50 focus:border-foreground/40 focus:outline-none"
-    />
   );
 }

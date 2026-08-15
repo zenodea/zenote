@@ -1,14 +1,11 @@
 import { GraphView } from "@/components/graph/GraphView";
 import { PageHeader } from "@/components/frame/PageHeader";
-import { buildGraph } from "@/lib/graph/model";
-import { getAllNotes } from "@/lib/notes";
-import { buildResolver } from "@/lib/wikilinks";
+import { getGraph } from "@/lib/server/vault-data";
 
 export const metadata = { title: "Graph" };
 
 export default async function GraphPage() {
-  const notes = await getAllNotes();
-  const graph = buildGraph(notes, buildResolver(notes));
+  const graph = await getGraph();
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -20,7 +17,6 @@ export default async function GraphPage() {
           </span>
         }
       />
-
       <div className="min-h-0 flex-1">
         <GraphView graph={graph} />
       </div>

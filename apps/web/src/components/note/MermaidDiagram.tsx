@@ -4,9 +4,7 @@ import { useEffect, useId, useState } from "react";
 import { useThemeId } from "@/lib/use-theme";
 import { Scroller } from "@/components/ui/Scroller";
 
-
-
-/* Mermaid needs concrete colours, so approximate CSS color-mix in JS. */
+// Mermaid needs concrete colours, so approximate CSS color-mix in JS.
 function mix(top: string, bottom: string, weight: number): string {
   const pair = [top, bottom].map((hex) =>
     /^#[0-9a-f]{6}$/i.test(hex)

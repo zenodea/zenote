@@ -23,15 +23,14 @@ export const THEME_IDS: readonly ThemeId[] = THEME_FAMILIES.flatMap(
 
 export const THEME_STORAGE_KEY = "theme";
 
+export const DEFAULT_THEME: ThemeId = "default-light";
+export const DEFAULT_DARK_THEME: ThemeId = "default-dark";
+
 export function isThemeId(value: string): value is ThemeId {
   return (THEME_IDS as readonly string[]).includes(value);
 }
 
-/**
- * Calls `onChange` whenever the active theme (`<html data-theme>`) changes.
- * Returns an unsubscribe, so it doubles as a useSyncExternalStore subscribe.
- * Client-side only.
- */
+// Doubles as a useSyncExternalStore subscribe. Client-side only.
 export function subscribeToTheme(onChange: () => void): () => void {
   const observer = new MutationObserver(onChange);
   observer.observe(document.documentElement, {
@@ -41,12 +40,9 @@ export function subscribeToTheme(onChange: () => void): () => void {
   return () => observer.disconnect();
 }
 
-/** Applies and persists a theme. Client-side only. */
 export function applyTheme(next: ThemeId) {
   document.documentElement.dataset.theme = next;
   try {
     localStorage.setItem(THEME_STORAGE_KEY, next);
-  } catch {
-    // Private browsing: the choice just won't persist.
-  }
+  } catch {}
 }

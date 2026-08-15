@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Frame } from "@/components/frame/Frame";
 import { ThemeFavicon } from "@/components/frame/ThemeFavicon";
-import { THEME_IDS, THEME_STORAGE_KEY } from "@/lib/theme";
+import {
+  DEFAULT_DARK_THEME,
+  DEFAULT_THEME,
+  THEME_IDS,
+  THEME_STORAGE_KEY,
+} from "@/lib/theme";
 import "./globals.css";
 
 // Runs before paint so the stored theme applies without a flash.
@@ -13,8 +18,8 @@ const themeInit = `(function () {
     var theme = themes.indexOf(stored) >= 0
       ? stored
       : matchMedia("(prefers-color-scheme: dark)").matches
-        ? "default-dark"
-        : "default-light";
+        ? ${JSON.stringify(DEFAULT_DARK_THEME)}
+        : ${JSON.stringify(DEFAULT_THEME)};
     document.documentElement.dataset.theme = theme;
   } catch (error) {}
 })()`;
@@ -34,9 +39,7 @@ export const metadata: Metadata = {
   description: "Read your notes online",
 };
 
-// Deliberately thin: this layout is shared with /login, so anything rendered
-// here survives the sign-in navigation untouched. The signed-in chrome lives in
-// (app)/layout.tsx, which mounts fresh on the way in.
+// Shared with /login, so anything here survives the sign-in navigation untouched.
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
@@ -49,7 +52,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="relative flex h-full overflow-hidden">
         {children}
-        {/* Permanent: owns the seams and junction marks across both auth states. */}
         <Frame />
         <ThemeFavicon />
       </body>

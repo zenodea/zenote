@@ -1,8 +1,13 @@
-import type { Note } from "./notes";
+import { stripCode } from "./markdown";
+import { filename } from "./slug";
+import type { Note } from "./server/notes";
 
 export type WikilinkResolver = Map<string, string>;
 
-const WIKILINK_SOURCE = String.raw`\[\[([^\[\]|#]+)(?:#([^\[\]|]+))?(?:\|([^\[\]]+))?\]\]`;
+// `#` ends the target and starts a heading; the editor's completion source shares this class.
+export const WIKILINK_TARGET = String.raw`[^\[\]|#]`;
+
+const WIKILINK_SOURCE = String.raw`\[\[(${WIKILINK_TARGET}+)(?:#([^\[\]|]+))?(?:\|([^\[\]]+))?\]\]`;
 
 // Fresh instance per call: a shared /g regex carries lastIndex between uses.
 export function wikilinkRegex(): RegExp {
@@ -21,10 +26,6 @@ export type WikilinkOccurrence = {
 };
 
 const CONTEXT_WINDOW = 80;
-
-function stripCode(body: string): string {
-  return body.replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
-}
 
 function renderInline(markdown: string): string {
   return markdown.replace(wikilinkRegex(), (_, target, _heading, alias) =>
@@ -69,8 +70,7 @@ export function buildResolver(notes: Note[]): WikilinkResolver {
   const resolver: WikilinkResolver = new Map();
 
   for (const note of notes) {
-    const filename = note.slug.split("/").pop()!;
-    resolver.set(normalise(filename), note.slug);
+    resolver.set(normalise(filename(note.slug)), note.slug);
   }
 
   for (const note of notes) {

@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useHotkey } from "@/hooks/use-hotkey";
+import { scrollBehavior } from "@/lib/motion";
 import { Button } from "@/components/ui/Button";
 import { ChevronIcon, CloseIcon } from "@/components/ui/Icons";
-
+import { INPUT_CLASS } from "@/components/ui/Input";
 
 const MATCH_HIGHLIGHT = "find-match";
 const CURRENT_HIGHLIGHT = "find-current";
@@ -41,8 +43,7 @@ function collectRanges(root: Node, needle: string, skip: Node | null): Range[] {
 }
 
 export function FindBar() {
-  // Remounting per route closes the bar and drops highlights on navigation,
-  // like a browser's find dialog.
+  // Remounting per route closes the bar and drops highlights, like a browser's.
   return <FindBarInner key={usePathname()} />;
 }
 
@@ -81,19 +82,13 @@ function FindBarInner() {
   }
 
   // Take over Cmd/Ctrl+F from the browser's own find dialog.
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if ((event.metaKey || event.ctrlKey) && event.key === "f") {
-        event.preventDefault();
-        if (!open) {
-          setOpen(true);
-          runSearch(query);
-        }
-        inputRef.current?.select();
-      }
+  useHotkey("mod+f", (event) => {
+    event.preventDefault();
+    if (!open) {
+      setOpen(true);
+      runSearch(query);
     }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    inputRef.current?.select();
   });
 
   useEffect(() => {
@@ -115,9 +110,7 @@ function FindBarInner() {
     }
     current.startContainer.parentElement?.scrollIntoView({
       block: "center",
-      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? "auto"
-        : "smooth",
+      behavior: scrollBehavior(),
     });
   }, [ranges, index]);
 
@@ -150,7 +143,7 @@ function FindBarInner() {
             }}
             placeholder="Find in page…"
             aria-label="Find in page"
-            className="h-7 min-w-0 flex-1 rounded border border-foreground/15 bg-background px-2 placeholder:opacity-50 focus:border-foreground/40 focus:outline-none"
+            className={`${INPUT_CLASS} h-7 min-w-0 flex-1`}
           />
           {query.trim() && (
             <span className="shrink-0 text-xs tabular-nums opacity-60">
@@ -187,4 +180,3 @@ function FindBarInner() {
     </div>
   );
 }
-

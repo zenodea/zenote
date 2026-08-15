@@ -17,6 +17,10 @@ const VARIANTS = {
 
 const ACTIVE = "bg-foreground/10 text-accent";
 
+export function iconClass(active = false): string {
+  return `${VARIANTS.icon.base} ${active ? ACTIVE : VARIANTS.icon.idle}`;
+}
+
 export function Button({
   variant = "icon",
   active = false,
