@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { buildBacklinks } from "../backlinks";
 import { buildGraph } from "../graph/model";
-import type { SearchDoc } from "../search";
+import type { NoteRef, SearchDoc } from "../search";
 import { noteTags } from "../tags";
 import { buildResolver } from "../wikilinks";
 import { getAllNotes } from "./notes";
@@ -16,6 +16,10 @@ export const getSearchDocs = cache(async (): Promise<SearchDoc[]> =>
     tags: noteTags(note),
     body: note.body,
   })),
+);
+
+export const getNoteRefs = cache(async (): Promise<NoteRef[]> =>
+  (await getAllNotes()).map(({ slug, title }) => ({ slug, title })),
 );
 
 export const getNoteTitles = cache(async () =>
