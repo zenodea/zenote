@@ -22,6 +22,8 @@
     "@codemirror/view": "^6.43.8",
     "@lezer/highlight": "^1.2.3",
     "@replit/codemirror-vim": "^6.4.0",
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.112.3",
     "gray-matter": "^4.0.3",
     "katex": "^0.18.4",
     "mdast-util-find-and-replace": "^3.0.2",

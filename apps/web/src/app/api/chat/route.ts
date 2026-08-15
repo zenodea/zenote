@@ -1,5 +1,6 @@
 import { getNote } from "@/lib/notes";
 import type { Note } from "@/lib/notes";
+import { getUser } from "@/lib/supabase/server";
 
 const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.5-flash";
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:streamGenerateContent?alt=sse`;
@@ -64,6 +65,12 @@ function extractText(
 }
 
 export async function POST(request: Request) {
+  // Middleware already 401s this route; repeated here so the note contents
+  // never depend on the matcher being right.
+  if (!(await getUser())) {
+    return Response.json({ error: "Not authenticated." }, { status: 401 });
+  }
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return new Response("GEMINI_API_KEY is not configured on the server.", {

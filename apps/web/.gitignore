@@ -32,6 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...opting in: the template carries no secrets and is how a fresh clone learns
+# which variables the app requires.
+!.env.example
 
 # vercel
 .vercel

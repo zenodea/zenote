@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { getUser } from "@/lib/supabase/server";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 import { ChevronIcon } from "@/components/ui/Icons";
 import { Scroller } from "@/components/ui/Scroller";
 import { PageHeader } from "@/components/frame/PageHeader";
@@ -7,7 +9,9 @@ import { ThemeSettings } from "@/components/settings/ThemeSettings";
 
 export const metadata: Metadata = { title: "Settings" };
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const user = await getUser();
+
   return (
     <>
       <PageHeader title="Settings" />
@@ -30,6 +34,21 @@ export default function SettingsPage() {
               <ThemeSettings />
             </div>
           </details>
+
+          <section className="mt-10">
+            <h2 className="text-sm font-semibold uppercase tracking-wide opacity-60">
+              Account
+            </h2>
+            <div className="flex items-center justify-between gap-6 py-4">
+              <div>
+                <p className="font-medium">{user?.email}</p>
+                <p className="mt-1 text-sm opacity-60">
+                  Signed in on this device.
+                </p>
+              </div>
+              <SignOutButton />
+            </div>
+          </section>
         </div>
       </Scroller>
     </>

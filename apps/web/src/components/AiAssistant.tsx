@@ -138,8 +138,17 @@ export function AiPanel({ titles }: { titles: Record<string, string> }) {
         signal: controller.signal,
       });
 
+      if (response.status === 401) {
+        throw new Error("Your session has expired. Reload and sign in again.");
+      }
       if (!response.ok || !response.body) {
         throw new Error(await response.text());
+      }
+      // The reply is always text/plain; anything else means we followed a
+      // redirect into a page, and streaming HTML into the transcript is worse
+      // than saying nothing useful.
+      if (!response.headers.get("content-type")?.startsWith("text/plain")) {
+        throw new Error("Unexpected reply from the server.");
       }
 
       const reader = response.body.getReader();
