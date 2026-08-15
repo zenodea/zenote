@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { fuzzyMatch, type SearchDoc } from "@/lib/search";
+import { fuzzyMatch, type NoteRef } from "@/lib/search";
 import { folder as folderOf } from "@/lib/slug";
-import { useVaultDocs } from "@/lib/stores/vault";
 import { useHotkey } from "@/hooks/use-hotkey";
 import { useListNavigation } from "@/hooks/use-list-navigation";
 import { Input } from "@/components/ui/Input";
@@ -15,10 +14,11 @@ import {
   resultRowClass,
 } from "@/components/ui/ResultRow";
 import { Scroller } from "@/components/ui/Scroller";
+import { beginPageFade } from "@/lib/page-fade";
 
 const MAX_RESULTS = 8;
 
-export function QuickSwitcher({ docs }: { docs: SearchDoc[] }) {
+export function QuickSwitcher({ docs }: { docs: NoteRef[] }) {
   const [open, setOpen] = useState(false);
 
   useHotkey("mod+k", (event) => {
@@ -34,16 +34,15 @@ function SwitcherPanel({
   docs,
   onClose,
 }: {
-  docs: SearchDoc[];
+  docs: NoteRef[];
   onClose: () => void;
 }) {
   const [query, setQuery] = useState("");
   const router = useRouter();
-  const vault = useVaultDocs(docs);
 
   const needle = query.trim().toLowerCase().replace(/\s+/g, "");
   const matches = needle
-    ? vault.docs
+    ? docs
         .flatMap((doc) => {
           const match = fuzzyMatch(needle, doc.title.toLowerCase());
           return match ? [{ doc, ...match }] : [];
@@ -52,13 +51,14 @@ function SwitcherPanel({
           (a, b) => b.score - a.score || a.doc.title.localeCompare(b.doc.title),
         )
         .slice(0, MAX_RESULTS)
-    : [...vault.docs]
+    : [...docs]
         .sort((a, b) => a.title.localeCompare(b.title))
         .slice(0, MAX_RESULTS)
         .map((doc) => ({ doc, score: 0, indices: null as number[] | null }));
 
   function select(slug: string) {
     onClose();
+    beginPageFade();
     router.push(`/notes/${slug}`);
   }
 
