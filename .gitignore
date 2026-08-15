@@ -26,3 +26,6 @@ out/
 dist/
 coverage/
 *.tsbuildinfo
+
+# Local planning notes; never committed.
+docs/

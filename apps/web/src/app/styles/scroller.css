@@ -1,0 +1,51 @@
+/*
+ * Overlay scrollbars (src/components/ui/Scroller.tsx). The native bar is
+ * hidden and a tapered mark floats over the content, so a container never
+ * gains a gutter when its content starts to overflow. Its length, position and
+ * end fades are written frame by frame from there; everything below is the
+ * colour and the fade in and out.
+ */
+.scroller-area {
+  scrollbar-width: none;
+}
+.scroller-area::-webkit-scrollbar {
+  display: none;
+}
+
+.scroller-thumb {
+  opacity: 0;
+  transition: opacity 200ms ease;
+  /* Length is a scale from the leading edge, so the mark grows away from
+     wherever it has been positioned. */
+  transform-origin: top;
+  will-change: transform;
+}
+.scroller[data-axis="x"] > .scroller-thumb {
+  transform-origin: left;
+}
+/* Visible while scrolling (data-active) and while the pointer is in the box. */
+.scroller:hover > .scroller-thumb,
+.scroller[data-active] > .scroller-thumb {
+  opacity: 1;
+}
+/* Nothing to scroll: no mark, and no strip in the way of the content either. */
+.scroller:not([data-scrollable]) > .scroller-thumb {
+  visibility: hidden;
+}
+
+/* The gradient is set in JS and reads --ink, so the states are pure CSS. */
+.scroller-mark {
+  --ink: color-mix(in srgb, var(--foreground) 48%, transparent);
+}
+.scroller-thumb:hover > .scroller-mark {
+  --ink: color-mix(in srgb, var(--foreground) 70%, transparent);
+}
+.scroller[data-dragging] .scroller-mark {
+  --ink: color-mix(in srgb, var(--foreground) 85%, transparent);
+}
+
+.tag {
+  color: var(--accent);
+  font-size: 0.9em;
+  text-decoration: none;
+}

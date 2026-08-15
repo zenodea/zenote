@@ -3,9 +3,7 @@
 import type { GraphNode } from "@/lib/graph/model";
 import { GraphSearch } from "@/components/graph/GraphSearch";
 import { TagFilter } from "@/components/graph/TagFilter";
-
-const buttonClass =
-  "h-7 rounded border border-foreground/15 bg-background/70 px-2 backdrop-blur hover:bg-foreground/10";
+import { TOOLBAR_CONTROL } from "@/components/graph/toolbar-chrome";
 
 // The graph's top-right control row: search, tag filter, zoom and reset.
 export function GraphToolbar({
@@ -33,23 +31,19 @@ export function GraphToolbar({
 }) {
   return (
     <div className="absolute right-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap justify-end gap-1 text-sm">
-      <GraphSearch
-        nodes={nodes}
-        onSelect={onSelectNode}
-        inputClass={buttonClass}
-      />
+      <GraphSearch nodes={nodes} onSelect={onSelectNode} />
       <TagFilter
         tagCounts={tagCounts}
         activeTags={activeTags}
         onChange={onTagsChange}
         visibleCount={visibleCount}
         total={total}
-        buttonClass={buttonClass}
+        buttonClass={TOOLBAR_CONTROL}
       />
       <button
         type="button"
         onClick={onZoomIn}
-        className={buttonClass}
+        className={TOOLBAR_CONTROL}
         aria-label="Zoom in"
       >
         +
@@ -57,12 +51,12 @@ export function GraphToolbar({
       <button
         type="button"
         onClick={onZoomOut}
-        className={buttonClass}
+        className={TOOLBAR_CONTROL}
         aria-label="Zoom out"
       >
         −
       </button>
-      <button type="button" onClick={onReset} className={buttonClass}>
+      <button type="button" onClick={onReset} className={TOOLBAR_CONTROL}>
         Reset
       </button>
     </div>

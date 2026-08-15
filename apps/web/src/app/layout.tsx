@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { AiAssistantProvider, AiPanel } from "@/components/AiAssistant";
-import { FindBar } from "@/components/navigation/FindBar";
-import { Junctions } from "@/components/frame/Junctions";
-import { QuickSwitcher } from "@/components/navigation/QuickSwitcher";
-import { Sidebar } from "@/components/navigation/Sidebar";
+import { Frame } from "@/components/frame/Frame";
 import { ThemeFavicon } from "@/components/frame/ThemeFavicon";
-import { getAllNotes } from "@/lib/notes";
-import type { SearchDoc } from "@/lib/search";
-import { noteTags } from "@/lib/tags";
-import { THEME_IDS, THEME_STORAGE_KEY } from "@/lib/theme";
+import {
+  DEFAULT_DARK_THEME,
+  DEFAULT_THEME,
+  THEME_IDS,
+  THEME_STORAGE_KEY,
+} from "@/lib/theme";
 import "./globals.css";
 
 // Runs before paint so the stored theme applies without a flash.
@@ -20,8 +18,8 @@ const themeInit = `(function () {
     var theme = themes.indexOf(stored) >= 0
       ? stored
       : matchMedia("(prefers-color-scheme: dark)").matches
-        ? "default-dark"
-        : "default-light";
+        ? ${JSON.stringify(DEFAULT_DARK_THEME)}
+        : ${JSON.stringify(DEFAULT_THEME)};
     document.documentElement.dataset.theme = theme;
   } catch (error) {}
 })()`;
@@ -41,18 +39,8 @@ export const metadata: Metadata = {
   description: "Read your notes online",
 };
 
-export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const notes = await getAllNotes();
-  const titles = Object.fromEntries(
-    notes.map((note) => [note.slug, note.title]),
-  );
-  const docs: SearchDoc[] = notes.map((note) => ({
-    slug: note.slug,
-    title: note.title,
-    tags: noteTags(note),
-    body: note.body,
-  }));
-
+// Shared with /login, so anything here survives the sign-in navigation untouched.
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
@@ -63,18 +51,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
       </head>
       <body className="relative flex h-full overflow-hidden">
-        <AiAssistantProvider>
-          <Sidebar docs={docs} />
-          <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
-            {children}
-            <FindBar />
-          </main>
-          <AiPanel titles={titles} />
-        </AiAssistantProvider>
-        {/* Zed-style markers wherever data-seam separators intersect. */}
-        <Junctions />
+        {children}
+        <Frame />
         <ThemeFavicon />
-        <QuickSwitcher docs={docs} />
       </body>
     </html>
   );

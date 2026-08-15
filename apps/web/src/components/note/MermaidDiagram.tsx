@@ -2,10 +2,9 @@
 
 import { useEffect, useId, useState } from "react";
 import { useThemeId } from "@/lib/use-theme";
+import { Scroller } from "@/components/ui/Scroller";
 
-
-
-/* Mermaid needs concrete colours, so approximate CSS color-mix in JS. */
+// Mermaid needs concrete colours, so approximate CSS color-mix in JS.
 function mix(top: string, bottom: string, weight: number): string {
   const pair = [top, bottom].map((hex) =>
     /^#[0-9a-f]{6}$/i.test(hex)
@@ -86,9 +85,11 @@ export function MermaidDiagram({ chart }: { chart: string }) {
   }
 
   return (
-    <div
-      className="not-prose my-6 flex justify-center overflow-x-auto"
-      dangerouslySetInnerHTML={{ __html: svg }}
-    />
+    <Scroller axis="x" className="not-prose my-6">
+      <div
+        className="flex w-max min-w-full justify-center"
+        dangerouslySetInnerHTML={{ __html: svg }}
+      />
+    </Scroller>
   );
 }

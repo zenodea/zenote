@@ -1,19 +1,10 @@
-import { getNote } from "@/lib/notes";
-import type { Note } from "@/lib/notes";
+import { isChatMessage } from "@/lib/chat";
+import { getNote } from "@/lib/server/notes";
+import type { Note } from "@/lib/server/notes";
+import { getUser } from "@/lib/server/supabase";
 
 const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.5-flash";
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:streamGenerateContent?alt=sse`;
-
-type ChatMessage = { role: "user" | "assistant"; content: string };
-
-function isChatMessage(value: unknown): value is ChatMessage {
-  if (typeof value !== "object" || value === null) return false;
-  const message = value as Record<string, unknown>;
-  return (
-    (message.role === "user" || message.role === "assistant") &&
-    typeof message.content === "string"
-  );
-}
 
 function systemPrompt(note: Note): string {
   return [
@@ -64,6 +55,11 @@ function extractText(
 }
 
 export async function POST(request: Request) {
+  // Repeated after the middleware so note contents never depend on the matcher.
+  if (!(await getUser())) {
+    return Response.json({ error: "Not authenticated." }, { status: 401 });
+  }
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return new Response("GEMINI_API_KEY is not configured on the server.", {

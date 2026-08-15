@@ -1,4 +1,4 @@
-import type { Note } from "../notes";
+import type { Note } from "../server/notes";
 import { noteTags } from "../tags";
 import { resolvedTargets, type WikilinkResolver } from "../wikilinks";
 
