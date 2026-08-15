@@ -16,6 +16,12 @@ jobs:
   build:
     name: Production build
     runs-on: ubuntu-latest
+    # Every route is dynamic today, so nothing calls getUser() at build time.
+    # These are here so that stops being load-bearing: the moment a page is
+    # statically prerendered the build would evaluate the layout and throw.
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

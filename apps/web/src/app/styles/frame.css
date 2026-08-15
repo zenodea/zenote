@@ -1,0 +1,31 @@
+/* Sign out: chrome fades out while Frame cross-fades its seams in. */
+body[data-leaving] > *:not([data-frame]) {
+  opacity: 0;
+  transition: opacity 260ms ease;
+}
+
+/* Sign in: the reverse cross-fade. Durations mirror LEAVE_MS / ENTER_MS in lib/frame.ts. */
+body[data-entering] > *:not([data-frame]) {
+  animation: chrome-in 260ms ease both;
+}
+
+@keyframes chrome-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-leaving] > *:not([data-frame]),
+  body[data-entering] > *:not([data-frame]) {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* Login: arc travelling the diamond's perimeter while the vault loads. */
+@keyframes diamond-trace {
+  to {
+    stroke-dashoffset: calc(var(--trace) * -1);
+  }
+}

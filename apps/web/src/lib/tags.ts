@@ -1,4 +1,5 @@
-import type { Note } from "./notes";
+import { stripCode } from "./markdown";
+import type { Note } from "./server/notes";
 
 const TAG_SOURCE = String.raw`(?<=^|[\s([{])#([A-Za-z0-9_-]*[A-Za-z][A-Za-z0-9_-]*)`;
 
@@ -11,7 +12,7 @@ export function normaliseTag(tag: string): string {
 }
 
 function extractInlineTags(body: string): string[] {
-  const prose = body.replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
+  const prose = stripCode(body);
   return [...prose.matchAll(tagRegex())].map((match) => match[1]);
 }
 

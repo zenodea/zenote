@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Diamond } from "@/components/frame/Diamond";
+import { useEscape } from "@/hooks/use-hotkey";
 
-// A plain rectangular dialog with junction diamonds on all four corners.
 export function Modal({
   title,
   onClose,
@@ -15,13 +15,7 @@ export function Modal({
   children: ReactNode;
   className?: string;
 }) {
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+  useEscape(onClose);
 
   return (
     <div

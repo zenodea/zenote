@@ -1,36 +1,32 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { useHotkey } from "@/hooks/use-hotkey";
+import { useListNavigation } from "@/hooks/use-list-navigation";
 import type { GraphNode } from "@/lib/graph/model";
+import { resultRowClass } from "@/components/ui/ResultRow";
+import { TOOLBAR_CONTROL } from "@/components/graph/toolbar-chrome";
 import { Text } from "@/components/ui/Text";
 
 const MAX_RESULTS = 8;
 
-type GraphSearchProps = {
+// Title search over the graph's nodes; the result list anchors below the input.
+export function GraphSearch({
+  nodes,
+  onSelect,
+}: {
   nodes: GraphNode[];
   /** Called with the node's index in `nodes`. */
   onSelect: (index: number) => void;
-  inputClass: string;
-};
-
-// Title search over the graph's nodes; the result list anchors below the input.
-export function GraphSearch({ nodes, onSelect, inputClass }: GraphSearchProps) {
+}) {
   const [query, setQuery] = useState("");
-  const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // "/" jumps to the search box from anywhere on the page.
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      const typing = document.activeElement instanceof HTMLInputElement;
-      if (event.key === "/" && !typing) {
-        event.preventDefault();
-        inputRef.current?.focus();
-      }
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  useHotkey("/", (event) => {
+    if (document.activeElement instanceof HTMLInputElement) return;
+    event.preventDefault();
+    inputRef.current?.focus();
+  });
 
   const needle = query.trim().toLowerCase();
   const matches = needle
@@ -45,36 +41,32 @@ export function GraphSearch({ nodes, onSelect, inputClass }: GraphSearchProps) {
         })
         .slice(0, MAX_RESULTS)
     : [];
-  const highlighted = Math.min(active, Math.max(matches.length - 1, 0));
+
+  const { highlighted, setActive, onKeyDown } = useListNavigation(
+    matches.length,
+    (position) => select(matches[position].index),
+  );
+
+  function reset() {
+    setQuery("");
+    setActive(0);
+  }
 
   function select(index: number) {
     onSelect(index);
-    setQuery("");
-    setActive(0);
+    reset();
     inputRef.current?.blur();
   }
 
-  function onKeyDown(event: React.KeyboardEvent) {
-    if (event.key === "Escape") {
-      // Bubble when empty so the graph's own Escape (clear focus) still works.
-      if (query === "") return;
-      event.stopPropagation();
-      setQuery("");
-      setActive(0);
+  function onInputKeyDown(event: React.KeyboardEvent) {
+    if (event.key !== "Escape") {
+      onKeyDown(event);
       return;
     }
-    if (matches.length === 0) return;
-
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      setActive((highlighted + 1) % matches.length);
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      setActive((highlighted - 1 + matches.length) % matches.length);
-    } else if (event.key === "Enter") {
-      event.preventDefault();
-      select(matches[highlighted].index);
-    }
+    // Bubble when empty so the graph's Escape (clear focus) still works.
+    if (query === "") return;
+    event.stopPropagation();
+    reset();
   }
 
   return (
@@ -87,14 +79,11 @@ export function GraphSearch({ nodes, onSelect, inputClass }: GraphSearchProps) {
           setQuery(event.target.value);
           setActive(0);
         }}
-        onKeyDown={onKeyDown}
-        onBlur={() => {
-          setQuery("");
-          setActive(0);
-        }}
+        onKeyDown={onInputKeyDown}
+        onBlur={reset}
         placeholder="Search notes  /"
         aria-label="Search notes"
-        className={`${inputClass} w-40 placeholder:opacity-50 focus:outline-none focus:border-foreground/40`}
+        className={`${TOOLBAR_CONTROL} w-40 placeholder:opacity-50 focus:border-foreground/40 focus:outline-none`}
       />
 
       {matches.length > 0 && (
@@ -103,7 +92,11 @@ export function GraphSearch({ nodes, onSelect, inputClass }: GraphSearchProps) {
           className="absolute left-0 top-full z-10 mt-2 w-64 rounded border border-foreground/15 bg-background/90 p-1 text-sm backdrop-blur"
         >
           {matches.map(({ title, index }, position) => (
-            <li key={index} role="option" aria-selected={position === highlighted}>
+            <li
+              key={index}
+              role="option"
+              aria-selected={position === highlighted}
+            >
               <button
                 type="button"
                 // Mousedown, not click: click fires after blur unmounts this list.
@@ -112,9 +105,7 @@ export function GraphSearch({ nodes, onSelect, inputClass }: GraphSearchProps) {
                   select(index);
                 }}
                 onMouseEnter={() => setActive(position)}
-                className={`block w-full truncate rounded px-2 py-1 text-left ${
-                  position === highlighted ? "bg-foreground/10" : ""
-                }`}
+                className={`${resultRowClass(position === highlighted)} truncate`}
               >
                 <Text>{title}</Text>
               </button>
