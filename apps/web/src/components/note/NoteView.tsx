@@ -33,6 +33,7 @@ import { Backlinks } from "@/components/note/Backlinks";
 import { Button } from "@/components/ui/Button";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { Modal } from "@/components/ui/Modal";
+import { Scroller } from "@/components/ui/Scroller";
 import { EllipsisIcon, PencilIcon } from "@/components/ui/Icons";
 import { CodeBlock } from "@/components/note/CodeBlock";
 import { MarkdownEditor } from "@/components/note/MarkdownEditor";
@@ -117,7 +118,7 @@ export function NoteView({
     return (
       <>
         <PageHeader title="Not found" />
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <Scroller className="min-h-0 flex-1">
           <div className="mx-auto w-full max-w-3xl px-6 py-12">
             <p className="opacity-60">
               {deletedLocally
@@ -134,7 +135,7 @@ export function NoteView({
               </button>
             )}
           </div>
-        </div>
+        </Scroller>
       </>
     );
   }
@@ -252,7 +253,7 @@ export function NoteView({
         }
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <Scroller className="min-h-0 flex-1">
         <article className="mx-auto w-full max-w-3xl px-6 py-12">
           {reading ? (
             <div className="prose max-w-none">
@@ -274,7 +275,7 @@ export function NoteView({
 
           {reading && <Backlinks backlinks={backlinks} />}
         </article>
-      </div>
+      </Scroller>
 
       {renaming !== null && (
         <Modal title="Rename note" onClose={() => setRenaming(null)}>

@@ -6,6 +6,7 @@ import { SEARCH_MODES, type SearchMode, type SearchResult } from "@/lib/search";
 import { Button } from "@/components/ui/Button";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { ChevronIcon } from "@/components/ui/Icons";
+import { Scroller } from "@/components/ui/Scroller";
 import { Segmented } from "@/components/ui/Segmented";
 
 const TAG_LIST_LIMIT = 100;
@@ -109,23 +110,25 @@ function TagPicker({
           className="mb-1 w-full rounded border border-foreground/15 bg-background px-2 py-1 text-xs placeholder:opacity-50 focus:border-foreground/40 focus:outline-none"
         />
       )}
-      <ul className="max-h-60 overflow-y-auto overscroll-contain">
-        {shown.map((tag) => (
-          <li key={tag}>
-            <Button
-              variant="row"
-              active={activeTags.includes(tag)}
-              onClick={() => onToggle(tag)}
-              className="pl-2"
-            >
-              #{tag}
-            </Button>
-          </li>
-        ))}
-        {shown.length === 0 && (
-          <li className="px-2 py-1.5 opacity-50">No tags found</li>
-        )}
-      </ul>
+      <Scroller className="max-h-60">
+        <ul>
+          {shown.map((tag) => (
+            <li key={tag}>
+              <Button
+                variant="row"
+                active={activeTags.includes(tag)}
+                onClick={() => onToggle(tag)}
+                className="pl-2"
+              >
+                #{tag}
+              </Button>
+            </li>
+          ))}
+          {shown.length === 0 && (
+            <li className="px-2 py-1.5 opacity-50">No tags found</li>
+          )}
+        </ul>
+      </Scroller>
       {matching.length > shown.length && (
         <p className="px-2 py-1 text-xs opacity-50">
           {matching.length - shown.length} more — type to narrow

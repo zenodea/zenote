@@ -13,6 +13,7 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/Button";
 import { CloseIcon, SendIcon, SparkleIcon } from "@/components/ui/Icons";
+import { Scroller } from "@/components/ui/Scroller";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -33,7 +34,6 @@ function useAiAssistant(): AiAssistantState {
   return state;
 }
 
-// Slug of the note being read, or null outside note pages.
 function useNoteSlug(): string | null {
   const pathname = usePathname();
   if (!pathname.startsWith("/notes/")) return null;
@@ -45,8 +45,6 @@ export function AiAssistantProvider({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState(false);
   const pathname = usePathname();
 
-  // Navigating to another note switches the assistant off. State is adjusted
-  // during render (the documented alternative to a setState-in-effect).
   const [lastPathname, setLastPathname] = useState(pathname);
   if (pathname !== lastPathname) {
     setLastPathname(pathname);
@@ -194,9 +192,10 @@ export function AiPanel({ titles }: { titles: Record<string, string> }) {
           </Button>
         </div>
 
-        <div
-          ref={scrollRef}
-          className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4"
+        <Scroller
+          scrollRef={scrollRef}
+          className="min-h-0 flex-1"
+          contentClassName="space-y-4 p-4"
         >
           {messages.length === 0 && (
             <p className="opacity-50">Ask anything about this note</p>
@@ -221,7 +220,7 @@ export function AiPanel({ titles }: { titles: Record<string, string> }) {
               </div>
             ),
           )}
-        </div>
+        </Scroller>
 
         <form
           onSubmit={(event) => {
@@ -229,7 +228,6 @@ export function AiPanel({ titles }: { titles: Record<string, string> }) {
             send();
           }}
           data-seam={show ? "top" : undefined}
-          // h-[45px]: 44px row + 1px border, level with the other footers.
           className="flex h-[45px] shrink-0 items-center gap-2 border-t border-foreground/15 px-3"
         >
           <input
@@ -253,6 +251,3 @@ export function AiPanel({ titles }: { titles: Record<string, string> }) {
     </aside>
   );
 }
-
-
-

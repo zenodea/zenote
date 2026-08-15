@@ -10,7 +10,7 @@ import {
   type SearchDoc,
   type SearchMode,
 } from "@/lib/search";
-import { useSettings } from "@/lib/settings";
+import { updateSettings, useSettings } from "@/lib/settings";
 import { buildTree } from "@/lib/tree";
 import {
   createFolder,
@@ -24,6 +24,7 @@ import { AiButton } from "@/components/AiAssistant";
 import { NoteTree } from "@/components/navigation/NoteTree";
 import { SidebarSearch } from "@/components/navigation/SidebarSearch";
 import { Button } from "@/components/ui/Button";
+import { Scroller } from "@/components/ui/Scroller";
 import {
   FilePlusIcon,
   FolderPlusIcon,
@@ -111,10 +112,25 @@ export function Sidebar({ docs }: { docs: SearchDoc[] }) {
     setQuery(next.join(" "));
   }
 
+  const minimised = settings.sidebarCollapsed;
+
+  function toggleSidebar() {
+    const next = !minimised;
+
+    if (next) closeSearch();
+    updateSettings({ sidebarCollapsed: next });
+  }
+
+  const reveal = minimised
+    ? "pointer-events-none opacity-0 duration-150"
+    : "opacity-100 delay-200 duration-200";
+
   return (
     <nav
       data-seam="right"
-      className="flex w-64 shrink-0 flex-col border-r border-foreground/15 text-sm"
+      className={`flex shrink-0 flex-col overflow-hidden border-r border-foreground/15 text-sm transition-[width] duration-300 ease-in-out ${
+        minimised ? "w-[60px]" : "w-64"
+      }`}
     >
       <div
         data-seam="bottom"
@@ -134,51 +150,61 @@ export function Sidebar({ docs }: { docs: SearchDoc[] }) {
             className="min-w-0 flex-1 rounded border border-foreground/15 bg-background px-2 py-1 placeholder:opacity-50 focus:border-foreground/40 focus:outline-none"
           />
         ) : (
-          <>
-            <Link
-              href="/"
-              aria-label="Zenote home"
-              title="Zenote"
-              className="flex min-w-0 flex-1 items-center hover:opacity-70"
-            >
-              <LogoIcon />
-            </Link>
-            <Button
-              onClick={() => setNaming(naming === "note" ? null : "note")}
-              // mousedown-preventDefault: else the input's blur-cancel makes this click reopen.
-              onMouseDown={(event) => event.preventDefault()}
-              active={naming === "note"}
-              aria-pressed={naming === "note"}
-              aria-label="New note"
-              title="New note"
-              className="shrink-0"
-            >
-              <FilePlusIcon />
-            </Button>
-            <Button
-              onClick={() => setNaming(naming === "folder" ? null : "folder")}
-              onMouseDown={(event) => event.preventDefault()}
-              active={naming === "folder"}
-              aria-pressed={naming === "folder"}
-              aria-label="New folder"
-              title="New folder"
-              className="shrink-0"
-            >
-              <FolderPlusIcon />
-            </Button>
-          </>
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            aria-label={minimised ? "Expand sidebar" : "Minimise sidebar"}
+            aria-pressed={minimised}
+            title={minimised ? "Expand sidebar" : "Minimise sidebar"}
+            className="flex min-w-0 flex-1 items-center hover:opacity-70"
+          >
+            <LogoIcon />
+          </button>
         )}
-        <Button
-          onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
-          active={searchOpen}
-          aria-pressed={searchOpen}
-          aria-label="Search notes"
-          className="shrink-0"
+        <div
+          inert={minimised}
+          className={`flex shrink-0 items-center gap-2 transition-opacity ${reveal}`}
         >
-          <SearchIcon />
-        </Button>
+          {!searchOpen && (
+            <>
+              <Button
+                onClick={() => setNaming(naming === "note" ? null : "note")}
+                onMouseDown={(event) => event.preventDefault()}
+                active={naming === "note"}
+                aria-pressed={naming === "note"}
+                aria-label="New note"
+                title="New note"
+              >
+                <FilePlusIcon />
+              </Button>
+              <Button
+                onClick={() => setNaming(naming === "folder" ? null : "folder")}
+                onMouseDown={(event) => event.preventDefault()}
+                active={naming === "folder"}
+                aria-pressed={naming === "folder"}
+                aria-label="New folder"
+                title="New folder"
+              >
+                <FolderPlusIcon />
+              </Button>
+            </>
+          )}
+          <Button
+            onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
+            active={searchOpen}
+            aria-pressed={searchOpen}
+            aria-label="Search notes"
+            title="Search notes"
+          >
+            <SearchIcon />
+          </Button>
+        </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
+      <Scroller
+        inert={minimised}
+        className={`min-h-0 w-64 flex-1 transition-opacity ${reveal}`}
+        contentClassName="p-4"
+      >
         {searchOpen ? (
           <SidebarSearch
             mode={mode}
@@ -203,8 +229,8 @@ export function Sidebar({ docs }: { docs: SearchDoc[] }) {
             onMove={handleMove}
           />
         )}
-      </div>
-      {vault.changeCount > 0 && (
+      </Scroller>
+      {!minimised && vault.changeCount > 0 && (
         <div className="flex shrink-0 items-center justify-between gap-2 border-t border-foreground/15 px-4 py-1.5 text-xs">
           <span className="min-w-0 truncate opacity-60">
             {vault.changeCount} local{" "}
@@ -223,11 +249,16 @@ export function Sidebar({ docs }: { docs: SearchDoc[] }) {
       )}
       <div
         data-seam="top"
-        className="flex shrink-0 items-center justify-between border-t border-foreground/15 p-2"
+        className={`flex shrink-0 border-t border-foreground/15 p-2 ${
+          minimised
+            ? "flex-col items-center gap-1"
+            : "items-center justify-between"
+        }`}
       >
         <Link
           href="/settings"
           aria-label="Settings"
+          title="Settings"
           aria-current={pathname === "/settings" ? "page" : undefined}
           // Mirrors the Button icon variant, active state included.
           className={`block rounded p-1.5 ${
@@ -238,7 +269,9 @@ export function Sidebar({ docs }: { docs: SearchDoc[] }) {
         >
           <SlidersIcon />
         </Link>
-        <div className="flex items-center gap-1">
+        <div
+          className={`flex items-center gap-1 ${minimised ? "flex-col" : ""}`}
+        >
           <Link
             href="/graph"
             aria-label="Graph"

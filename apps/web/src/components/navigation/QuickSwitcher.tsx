@@ -6,6 +6,7 @@ import { fuzzyMatch, type SearchDoc } from "@/lib/search";
 import { useVaultDocs } from "@/lib/vault";
 import { TitleHighlight } from "@/components/navigation/SidebarSearch";
 import { Modal } from "@/components/ui/Modal";
+import { Scroller } from "@/components/ui/Scroller";
 
 const MAX_RESULTS = 8;
 
@@ -87,42 +88,41 @@ export function QuickSwitcher({ docs }: { docs: SearchDoc[] }) {
         aria-label="Jump to note"
         className="mt-3 w-full rounded border border-foreground/15 bg-background px-2 py-1 placeholder:opacity-50 focus:border-foreground/40 focus:outline-none"
       />
-      <ul
-        role="listbox"
-        className="mt-2 h-72 overflow-y-auto overscroll-contain"
-      >
-        {matches.map(({ doc, indices }, position) => {
-          const folder = doc.slug.split("/").slice(0, -1).join("/");
-          return (
-            <li
-              key={doc.slug}
-              role="option"
-              aria-selected={position === highlighted}
-            >
-              <button
-                type="button"
-                // Mousedown, not click: click fires after blur re-renders.
-                onMouseDown={(event) => {
-                  event.preventDefault();
-                  select(doc.slug);
-                }}
-                onMouseEnter={() => setActive(position)}
-                className={`block w-full truncate rounded px-2 py-1.5 text-left ${
-                  position === highlighted ? "bg-foreground/10" : ""
-                }`}
+      <Scroller className="mt-2 h-72">
+        <ul role="listbox">
+          {matches.map(({ doc, indices }, position) => {
+            const folder = doc.slug.split("/").slice(0, -1).join("/");
+            return (
+              <li
+                key={doc.slug}
+                role="option"
+                aria-selected={position === highlighted}
               >
-                <TitleHighlight title={doc.title} indices={indices} />
-                {folder && (
-                  <span className="ml-2 text-xs opacity-50">{folder}</span>
-                )}
-              </button>
-            </li>
-          );
-        })}
-        {matches.length === 0 && (
-          <li className="px-2 py-1.5 opacity-50">No matches</li>
-        )}
-      </ul>
+                <button
+                  type="button"
+                  // Mousedown, not click: click fires after blur re-renders.
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    select(doc.slug);
+                  }}
+                  onMouseEnter={() => setActive(position)}
+                  className={`block w-full truncate rounded px-2 py-1.5 text-left ${
+                    position === highlighted ? "bg-foreground/10" : ""
+                  }`}
+                >
+                  <TitleHighlight title={doc.title} indices={indices} />
+                  {folder && (
+                    <span className="ml-2 text-xs opacity-50">{folder}</span>
+                  )}
+                </button>
+              </li>
+            );
+          })}
+          {matches.length === 0 && (
+            <li className="px-2 py-1.5 opacity-50">No matches</li>
+          )}
+        </ul>
+      </Scroller>
     </Modal>
   );
 }

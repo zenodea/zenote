@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ChevronIcon } from "@/components/ui/Icons";
+import { Scroller } from "@/components/ui/Scroller";
 import { PageHeader } from "@/components/frame/PageHeader";
 import { SettingsForm } from "@/components/settings/SettingsForm";
 import { ThemeSettings } from "@/components/settings/ThemeSettings";
@@ -11,7 +12,7 @@ export default function SettingsPage() {
     <>
       <PageHeader title="Settings" />
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <Scroller className="min-h-0 flex-1">
         <div className="mx-auto w-full max-w-3xl px-6 py-6">
           <section>
             <h2 className="text-sm font-semibold uppercase tracking-wide opacity-60">
@@ -30,7 +31,7 @@ export default function SettingsPage() {
             </div>
           </details>
         </div>
-      </div>
+      </Scroller>
     </>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Scroller } from "@/components/ui/Scroller";
 import { Text } from "@/components/ui/Text";
 
 type TagFilterProps = {
@@ -54,7 +55,7 @@ export function TagFilter({
             </button>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto p-1">
+          <Scroller className="min-h-0 flex-1" contentClassName="p-1">
             {tagCounts.map(([tag, count]) => {
               const checked = activeTags.includes(tag);
               return (
@@ -78,7 +79,7 @@ export function TagFilter({
                 </label>
               );
             })}
-          </div>
+          </Scroller>
         </div>
       )}
     </>

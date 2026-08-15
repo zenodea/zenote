@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getAllNotes } from "@/lib/notes";
 import { buildTagIndex, noteTags } from "@/lib/tags";
 import { PageHeader } from "@/components/frame/PageHeader";
+import { Scroller } from "@/components/ui/Scroller";
 import { Text } from "@/components/ui/Text";
 
 export async function generateStaticParams() {
@@ -31,7 +32,7 @@ export default async function TagPage({ params }: PageProps<"/tags/[tag]">) {
         }
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <Scroller className="min-h-0 flex-1">
         <div className="mx-auto w-full max-w-3xl px-6 py-6">
           <ul className="divide-y divide-foreground/15">
             {notes.map((note) => (
@@ -52,7 +53,7 @@ export default async function TagPage({ params }: PageProps<"/tags/[tag]">) {
             ))}
           </ul>
         </div>
-      </div>
+      </Scroller>
     </>
   );
 }

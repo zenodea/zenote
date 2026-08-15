@@ -52,7 +52,10 @@ export function Junctions() {
 
   useEffect(() => {
     let frame = 0;
-    let activeTransitions = 0;
+    // Elements, not a counter: an element removed mid-transition never
+    // delivers transitionend/cancel to document, so a counter sticks > 0
+    // and the tick loop runs forever. Pruning on isConnected self-heals.
+    const transitioning = new Set<Element>();
 
     function measure() {
       setPoints((previous) => {
@@ -70,15 +73,20 @@ export function Junctions() {
     }
 
     function tick() {
+      for (const element of transitioning) {
+        if (!element.isConnected) transitioning.delete(element);
+      }
       measure();
-      if (activeTransitions > 0) frame = requestAnimationFrame(tick);
+      if (transitioning.size > 0) frame = requestAnimationFrame(tick);
     }
-    function onTransitionStart() {
-      activeTransitions += 1;
-      if (activeTransitions === 1) frame = requestAnimationFrame(tick);
+    function onTransitionStart(event: TransitionEvent) {
+      if (!(event.target instanceof Element)) return;
+      const started = transitioning.size === 0;
+      transitioning.add(event.target);
+      if (started) frame = requestAnimationFrame(tick);
     }
-    function onTransitionEnd() {
-      activeTransitions = Math.max(0, activeTransitions - 1);
+    function onTransitionEnd(event: TransitionEvent) {
+      if (event.target instanceof Element) transitioning.delete(event.target);
       schedule();
     }
 

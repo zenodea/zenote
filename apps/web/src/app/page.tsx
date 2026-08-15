@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getAllNotes } from "@/lib/notes";
 import { PageHeader } from "@/components/frame/PageHeader";
+import { Scroller } from "@/components/ui/Scroller";
 import { Text } from "@/components/ui/Text";
 
 export default async function Home() {
@@ -13,7 +14,7 @@ export default async function Home() {
         meta={<span>{notes.length === 1 ? "1 note" : `${notes.length} notes`}</span>}
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <Scroller className="min-h-0 flex-1">
         <div className="mx-auto w-full max-w-3xl px-6 py-6">
           <ul className="divide-y divide-foreground/15">
             {notes.map((note) => (
@@ -33,7 +34,7 @@ export default async function Home() {
             ))}
           </ul>
         </div>
-      </div>
+      </Scroller>
     </>
   );
 }

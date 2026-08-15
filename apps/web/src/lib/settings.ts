@@ -3,17 +3,13 @@
 import { useSyncExternalStore } from "react";
 import type { SearchMode } from "./search";
 
-/**
- * User settings, stored as a single JSON blob so the shape can later move to a
- * per-user column in the database unchanged. localStorage is the only backend
- * for now; reads merge over defaults so new fields are backwards-compatible.
- */
 export type Settings = {
   showBacklinks: boolean;
   showGraph: boolean;
   searchMode: SearchMode;
   openInEditMode: boolean;
   vimMode: boolean;
+  sidebarCollapsed: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -22,13 +18,13 @@ export const DEFAULT_SETTINGS: Settings = {
   searchMode: "titles",
   openInEditMode: false,
   vimMode: false,
+  sidebarCollapsed: false,
 };
 
 export const SETTINGS_STORAGE_KEY = "settings";
 
 const listeners = new Set<() => void>();
 
-// Cached so getSnapshot returns a stable reference between changes.
 let cached: Settings | null = null;
 
 function readSettings(): Settings {
