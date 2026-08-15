@@ -5,11 +5,6 @@ import { PageBody, noteCount } from "@/components/ui/PageBody";
 import { getAllNotes } from "@/lib/server/notes";
 import { buildTagIndex, noteTags } from "@/lib/tags";
 
-export async function generateStaticParams() {
-  const index = buildTagIndex(await getAllNotes());
-  return [...index.keys()].map((tag) => ({ tag }));
-}
-
 export async function generateMetadata({ params }: PageProps<"/tags/[tag]">) {
   const { tag } = await params;
   return { title: `#${decodeURIComponent(tag)}` };

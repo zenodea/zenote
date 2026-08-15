@@ -3,11 +3,6 @@ import { localGraph } from "@/lib/graph/model";
 import { getAllNotes, getNote } from "@/lib/server/notes";
 import { getBacklinks, getGraph, getResolver } from "@/lib/server/vault-data";
 
-export async function generateStaticParams() {
-  const notes = await getAllNotes();
-  return notes.map((note) => ({ slug: note.slug.split("/") }));
-}
-
 export async function generateMetadata({
   params,
 }: PageProps<"/notes/[...slug]">) {

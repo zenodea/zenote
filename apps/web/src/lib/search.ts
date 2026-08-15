@@ -1,9 +1,10 @@
 export const SEARCH_MODES = ["titles", "content"] as const;
 export type SearchMode = (typeof SEARCH_MODES)[number];
 
-export type SearchDoc = {
-  slug: string;
-  title: string;
+/** Enough to link to a note and show its name — no body. */
+export type NoteRef = { slug: string; title: string };
+
+export type SearchDoc = NoteRef & {
   tags: string[];
   body: string;
 };
