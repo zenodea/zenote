@@ -11,15 +11,32 @@ const MAX_SQUASH = 0.45;
 const FADE = 38;
 const RELEASE = 0.12;
 
+type Axis = "x" | "y";
+
+const LAYOUT = {
+  y: {
+    area: "min-h-0 overflow-y-auto overscroll-contain",
+    strip: "right-0 top-0 w-3.5",
+    mark: "inset-y-0 right-[5px] w-[2px]",
+  },
+  x: {
+    area: "min-w-0 overflow-x-auto overscroll-x-none overscroll-y-auto",
+    strip: "bottom-0 left-0 h-3.5",
+    mark: "inset-x-0 bottom-[5px] h-[2px]",
+  },
+} as const;
+
 type ScrollerProps = Omit<ComponentProps<"div">, "ref"> & {
   contentClassName?: string;
   scrollRef?: { current: HTMLDivElement | null };
+  axis?: Axis;
 };
 
 export function Scroller({
   className = "",
   contentClassName = "",
   scrollRef,
+  axis = "y",
   children,
   onScroll,
   ...rest
@@ -31,6 +48,7 @@ export function Scroller({
   const dragging = useRef(false);
   const wake = useRef(() => {});
   const idle = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const across = axis === "x";
 
   const attach = useCallback(
     (node: HTMLDivElement | null) => {
@@ -58,14 +76,17 @@ export function Scroller({
     if (!element || !bar || !line || !frame) return;
 
     const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const at = () => (across ? element.scrollLeft : element.scrollTop);
+    const view = () => (across ? element.clientWidth : element.clientHeight);
+    const span = () => (across ? element.scrollWidth : element.scrollHeight);
 
     let request = 0;
     let velocity = 0;
     let peak = 0;
     let stretch = 0;
     let squash = 0;
-    let shown = element.scrollTop;
-    let previousTop = element.scrollTop;
+    let shown = at();
+    let previousAt = at();
     let previousSpeed = 0;
     let wasPinned = true;
     let quiet = 0;
@@ -74,7 +95,7 @@ export function Scroller({
 
     function paint() {
       if (!element || !bar || !line || !frame) return;
-      const range = element.scrollHeight - element.clientHeight;
+      const range = span() - view();
       if (range < 1) {
         delete frame.dataset.scrollable;
         request = 0;
@@ -82,15 +103,14 @@ export function Scroller({
       }
       frame.dataset.scrollable = "";
 
-      const delta = element.scrollTop - previousTop;
-      previousTop = element.scrollTop;
+      const delta = at() - previousAt;
+      previousAt = at();
 
       velocity = velocity * 0.7 + delta * 0.3;
       const speed = Math.abs(velocity);
       peak = Math.max(speed, peak * 0.92);
 
-      const pinned =
-        element.scrollTop <= 0.5 || element.scrollTop >= range - 0.5;
+      const pinned = at() <= 0.5 || at() >= range - 0.5;
       if (!still && pinned && !wasPinned && previousSpeed > 2) {
         squash = Math.min(
           MAX_SQUASH,
@@ -106,10 +126,7 @@ export function Scroller({
       squash *= 0.86;
       if (squash < 0.002) squash = 0;
 
-      const base = Math.max(
-        (element.clientHeight / element.scrollHeight) * element.clientHeight,
-        MIN_THUMB,
-      );
+      const base = Math.max((view() / span()) * view(), MIN_THUMB);
 
       const ceiling = Math.min(base * STRETCH_RATIO, MAX_STRETCH);
       const target =
@@ -118,31 +135,34 @@ export function Scroller({
           : ceiling * Math.min(peak / SPEED_FULL, 1);
       stretch += (target - stretch) * 0.2;
       if (still || dragging.current) {
-        shown = element.scrollTop;
+        shown = at();
       } else {
-        shown += (element.scrollTop - shown) * 0.45;
-        if (Math.abs(element.scrollTop - shown) < 0.2)
-          shown = element.scrollTop;
+        shown += (at() - shown) * 0.45;
+        if (Math.abs(at() - shown) < 0.2) shown = at();
       }
 
-      const height = Math.max(base * (1 - squash) + stretch, 10);
+      const length = Math.max(base * (1 - squash) + stretch, 10);
       const progress = shown / range;
-      const top = FADE * Math.min(1, progress / RELEASE);
-      const bottom = FADE * Math.min(1, (1 - progress) / RELEASE);
+      const head = FADE * Math.min(1, progress / RELEASE);
+      const tail = FADE * Math.min(1, (1 - progress) / RELEASE);
 
       if (base !== lastBase) {
-        bar.style.height = `${base}px`;
+        bar.style[across ? "width" : "height"] = `${base}px`;
         lastBase = base;
       }
-      bar.style.transform = `translateY(${
-        progress * (element.clientHeight - height)
-      }px) scaleY(${height / base})`;
+      const slide = progress * (view() - length);
+      const scale = length / base;
+      bar.style.transform = across
+        ? `translateX(${slide}px) scaleX(${scale})`
+        : `translateY(${slide}px) scaleY(${scale})`;
 
-      const paintKey = `${top.toFixed(1)}:${bottom.toFixed(1)}`;
+      const paintKey = `${head.toFixed(1)}:${tail.toFixed(1)}`;
       if (paintKey !== lastPaint) {
-        line.style.background = `linear-gradient(to bottom, transparent 0%, var(--ink) ${top.toFixed(
+        line.style.background = `linear-gradient(${
+          across ? "to right" : "to bottom"
+        }, transparent 0%, var(--ink) ${head.toFixed(
           1,
-        )}%, var(--ink) ${(100 - bottom).toFixed(1)}%, transparent 100%)`;
+        )}%, var(--ink) ${(100 - tail).toFixed(1)}%, transparent 100%)`;
         lastPaint = paintKey;
       }
 
@@ -150,7 +170,7 @@ export function Scroller({
         speed < 0.05 &&
         stretch < 0.4 &&
         squash === 0 &&
-        Math.abs(element.scrollTop - shown) < 0.2;
+        Math.abs(at() - shown) < 0.2;
       quiet = settled ? quiet + 1 : 0;
       if (quiet > 20) {
         request = 0;
@@ -183,7 +203,7 @@ export function Scroller({
       mutation.disconnect();
       element.removeEventListener("scroll", start);
     };
-  }, []);
+  }, [across]);
 
   function startDrag(event: React.PointerEvent<HTMLDivElement>) {
     const element = area.current;
@@ -192,10 +212,11 @@ export function Scroller({
     if (!element || !bar || !frame) return;
 
     event.preventDefault();
-    const startY = event.clientY;
-    const startTop = element.scrollTop;
-    const travel = element.clientHeight - bar.offsetHeight;
-    const range = element.scrollHeight - element.clientHeight;
+    const start = across ? event.clientX : event.clientY;
+    const from = across ? element.scrollLeft : element.scrollTop;
+    const view = across ? element.clientWidth : element.clientHeight;
+    const travel = view - (across ? bar.offsetWidth : bar.offsetHeight);
+    const range = (across ? element.scrollWidth : element.scrollHeight) - view;
     if (travel <= 0) return;
 
     dragging.current = true;
@@ -204,8 +225,12 @@ export function Scroller({
     wake.current();
 
     const move = (moveEvent: PointerEvent) => {
-      element.scrollTop =
-        startTop + ((moveEvent.clientY - startY) / travel) * range;
+      const to =
+        from +
+        (((across ? moveEvent.clientX : moveEvent.clientY) - start) / travel) *
+          range;
+      if (across) element.scrollLeft = to;
+      else element.scrollTop = to;
     };
     const stop = () => {
       dragging.current = false;
@@ -221,10 +246,13 @@ export function Scroller({
     bar.addEventListener("pointercancel", stop);
   }
 
+  const layout = LAYOUT[axis];
+
   return (
     <div
       {...rest}
       ref={box}
+      data-axis={axis}
       className={`scroller relative flex flex-col ${className}`}
     >
       <div
@@ -233,7 +261,7 @@ export function Scroller({
           flash();
           onScroll?.(event);
         }}
-        className={`scroller-area min-h-0 overflow-y-auto overscroll-contain ${contentClassName}`}
+        className={`scroller-area ${layout.area} ${contentClassName}`}
       >
         {children}
       </div>
@@ -243,14 +271,15 @@ export function Scroller({
         onPointerDown={startDrag}
         onWheel={(event) => {
           event.stopPropagation();
-          area.current?.scrollBy({ top: event.deltaY });
+          if (across) {
+            area.current?.scrollBy({ left: event.deltaX || event.deltaY });
+          } else {
+            area.current?.scrollBy({ top: event.deltaY });
+          }
         }}
-        className="scroller-thumb absolute right-0 top-0 w-3.5"
+        className={`scroller-thumb absolute ${layout.strip}`}
       >
-        <span
-          ref={mark}
-          className="scroller-mark absolute inset-y-0 right-[5px] w-[2px]"
-        />
+        <span ref={mark} className={`scroller-mark absolute ${layout.mark}`} />
       </div>
     </div>
   );

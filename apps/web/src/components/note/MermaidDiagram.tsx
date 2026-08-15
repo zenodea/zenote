@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 import { useThemeId } from "@/lib/use-theme";
+import { Scroller } from "@/components/ui/Scroller";
 
 
 
@@ -86,9 +87,11 @@ export function MermaidDiagram({ chart }: { chart: string }) {
   }
 
   return (
-    <div
-      className="not-prose my-6 flex justify-center overflow-x-auto"
-      dangerouslySetInnerHTML={{ __html: svg }}
-    />
+    <Scroller axis="x" className="not-prose my-6">
+      <div
+        className="flex w-max min-w-full justify-center"
+        dangerouslySetInnerHTML={{ __html: svg }}
+      />
+    </Scroller>
   );
 }

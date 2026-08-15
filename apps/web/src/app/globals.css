@@ -171,10 +171,13 @@ body {
 .scroller-thumb {
   opacity: 0;
   transition: opacity 200ms ease;
-  /* Length is applied as scaleY from the top edge, so the mark grows downward
-     from wherever it has been positioned. */
+  /* Length is a scale from the leading edge, so the mark grows away from
+     wherever it has been positioned. */
   transform-origin: top;
   will-change: transform;
+}
+.scroller[data-axis="x"] > .scroller-thumb {
+  transform-origin: left;
 }
 /* Visible while scrolling (data-active) and while the pointer is in the box. */
 .scroller:hover > .scroller-thumb,

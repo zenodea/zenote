@@ -2,6 +2,7 @@
 
 import { useRef, useState, type ReactNode } from "react";
 import { HighlightedCode } from "@/components/note/HighlightedCode";
+import { Scroller } from "@/components/ui/Scroller";
 
 export function CodeBlock({
   text,
@@ -27,16 +28,21 @@ export function CodeBlock({
   }
 
   return (
-    <div className="group relative">
-      <pre>
-        {language ? (
-          <code>
-            <HighlightedCode code={text} language={language} />
-          </code>
-        ) : (
-          children
-        )}
-      </pre>
+    <div className="group relative my-6">
+      <Scroller
+        axis="x"
+        contentClassName="[&>pre]:my-0 [&>pre]:w-max [&>pre]:min-w-full"
+      >
+        <pre>
+          {language ? (
+            <code>
+              <HighlightedCode code={text} language={language} />
+            </code>
+          ) : (
+            children
+          )}
+        </pre>
+      </Scroller>
       <button
         type="button"
         onClick={copy}
