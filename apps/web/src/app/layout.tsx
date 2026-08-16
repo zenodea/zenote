@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Frame } from "@/components/frame/Frame";
 import { ThemeFavicon } from "@/components/frame/ThemeFavicon";
+import { SETTINGS_STORAGE_KEY } from "@/lib/stores/settings";
 import {
   DEFAULT_DARK_THEME,
   DEFAULT_THEME,
@@ -10,8 +11,8 @@ import {
 } from "@/lib/theme";
 import "./globals.css";
 
-// Runs before paint so the stored theme applies without a flash.
-const themeInit = `(function () {
+// Before paint: localStorage is unreadable on the server, so without this the first paint is the default.
+const boot = `(function () {
   try {
     var themes = ${JSON.stringify(THEME_IDS)};
     var stored = localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});
@@ -21,6 +22,15 @@ const themeInit = `(function () {
         ? ${JSON.stringify(DEFAULT_DARK_THEME)}
         : ${JSON.stringify(DEFAULT_THEME)};
     document.documentElement.dataset.theme = theme;
+  } catch (error) {}
+
+  try {
+    var settings = JSON.parse(
+      localStorage.getItem(${JSON.stringify(SETTINGS_STORAGE_KEY)}) || "{}",
+    );
+    if (settings.sidebarCollapsed) {
+      document.documentElement.dataset.sidebar = "collapsed";
+    }
   } catch (error) {}
 })()`;
 
@@ -48,7 +58,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInit }} />
+        <script dangerouslySetInnerHTML={{ __html: boot }} />
       </head>
       <body className="relative flex h-full overflow-hidden">
         {children}

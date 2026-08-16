@@ -40,6 +40,9 @@ export function createPersistentStore<T extends object>(
   const base = createStore(defaults);
   let loaded = false;
 
+  // Node ships an experimental localStorage, so touching it on the server warns rather than throwing.
+  const stored = typeof window !== "undefined";
+
   function readStored(): T {
     try {
       const raw = localStorage.getItem(key);
@@ -50,7 +53,7 @@ export function createPersistentStore<T extends object>(
 
   const store: Store<T> = {
     get: () => {
-      if (!loaded) {
+      if (!loaded && stored) {
         loaded = true;
         base.set(readStored());
       }
@@ -58,9 +61,11 @@ export function createPersistentStore<T extends object>(
     },
     set: (next) => {
       loaded = true;
-      try {
-        localStorage.setItem(key, JSON.stringify(next));
-      } catch {}
+      if (stored) {
+        try {
+          localStorage.setItem(key, JSON.stringify(next));
+        } catch {}
+      }
       base.set(next);
     },
     patch: (part) => store.set({ ...store.get(), ...part }),

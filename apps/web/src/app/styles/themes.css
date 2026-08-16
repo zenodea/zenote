@@ -1,13 +1,18 @@
-/*
- * Each theme is one block of tokens; every colour in the app derives from
- * these three variables (plus foreground/background alpha mixes), so a new
- * theme is a new block here and an entry in src/lib/theme.ts.
- */
+/* A theme is one block of tokens plus an entry in src/lib/theme.ts; everything else derives from these. */
 :root {
   --background: #ffffff;
   --foreground: #171717;
   --accent: #7c3aed;
   color-scheme: light;
+}
+
+/* Failure must read as failure even where the accent is green; split on `-dark` so new themes inherit a pair. */
+:root {
+  --danger: #b3261e;
+}
+
+[data-theme$="-dark"] {
+  --danger: #ff8a80;
 }
 
 /* System fallback until the init script sets data-theme (and without JS). */
@@ -16,6 +21,7 @@
     --background: #0a0a0a;
     --foreground: #ededed;
     --accent: #a78bfa;
+    --danger: #ff8a80;
     color-scheme: dark;
   }
 }

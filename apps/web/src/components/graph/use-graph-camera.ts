@@ -3,7 +3,7 @@
 import { useCallback, useRef } from "react";
 import { useLatestRef } from "@/hooks/use-latest-ref";
 import type { Size } from "@/hooks/use-canvas-size";
-import type { View } from "@/lib/graph/geometry";
+import type { Positions, View } from "@/lib/graph/geometry";
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 8;
@@ -15,7 +15,6 @@ const MIN_VELOCITY = 0.08;
 export const FIT_OVERSCAN = 2.2;
 
 type Point = { x: number; y: number };
-type Positions = { x: Float64Array; y: Float64Array };
 
 export function useGraphCamera({
   layout,
@@ -177,6 +176,14 @@ export function useGraphCamera({
     pan.current = null;
   }, []);
 
+  /** The canvas moved under the view: hold the picture still on screen. */
+  const holdStill = useCallback((byX: number, byY: number) => {
+    view.current.x += byX;
+    view.current.y += byY;
+    viewTarget.current.x += byX;
+    viewTarget.current.y += byY;
+  }, []);
+
   // The camera stops auto-fitting for good once the user has moved it.
   const fitIfUntouched = useCallback(() => {
     if (!adjusted.current) fit(true);
@@ -234,6 +241,7 @@ export function useGraphCamera({
     fitScaleRef: fitScale,
     panningRef: pan,
     fitIfUntouched,
+    holdStill,
     resetView,
     frameNodes,
     zoomAt,

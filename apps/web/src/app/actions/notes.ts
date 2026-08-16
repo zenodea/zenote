@@ -7,8 +7,7 @@ import { filename, joinSlug } from "@/lib/slug";
 export type ActionResult = { error?: string };
 
 export type SaveResult =
-  | { status: "saved"; updated: string }
-  | { status: "conflict" };
+  { status: "saved"; updated: string } | { status: "conflict" };
 
 const DUPLICATE = "23505";
 
@@ -20,12 +19,7 @@ function refresh() {
   revalidatePath("/", "layout");
 }
 
-/**
- * A body carries wikilinks and tags, so editing one reshapes the graph, the
- * backlinks and the tag pages — none of which the note's own route would
- * refresh. Called once the note is left rather than on every save, which is
- * why saveNote itself stays quiet.
- */
+/** A body's wikilinks and tags reshape the graph and tag pages; called on leaving, not on every save. */
 export async function revalidateVault() {
   refresh();
 }
@@ -95,8 +89,7 @@ export async function createFolder(path: string): Promise<ActionResult> {
   return {};
 }
 
-// Compare-and-set on updated_at: a second tab that saved first wins, and this
-// one is told rather than silently overwriting it.
+// Compare-and-set on updated_at: a second tab that saved first wins, and this one is told.
 export async function saveNote(
   slug: string,
   body: string,

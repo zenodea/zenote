@@ -1,23 +1,24 @@
-import { isChatMessage } from "@/lib/chat";
-import { getNote } from "@/lib/server/notes";
-import type { Note } from "@/lib/server/notes";
+import { isChatMessage, isChatSubject } from "@/lib/chat";
+import { gatherContext, type ContextNote } from "@/lib/server/chat-context";
 import { getUser } from "@/lib/server/supabase";
 
-const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.5-flash";
+const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.7-flash";
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:streamGenerateContent?alt=sse`;
 
-function systemPrompt(note: Note): string {
+function systemPrompt(title: string, notes: ContextNote[]): string {
   return [
-    "You are an assistant embedded in Z-Notes, a personal notes app.",
-    "The user is currently reading the note below and wants to discuss it.",
-    "Ground your answers in the note's content; if something is not covered by the note, say so before answering from general knowledge.",
+    "You are the assistant inside Zenote, a personal notes app.",
+    "Everything below is the user's own writing. Answer from it.",
+    "Name every note you draw on as a [[Wikilink]] with its exact title — the app turns those into links and points the graph at them, so a claim the user cannot follow back to a note is worth less than one they can.",
+    "If the notes do not cover something, say so plainly before answering from general knowledge.",
     "Keep answers concise.",
     "",
-    `Note title: ${note.title}`,
-    "Note content:",
-    "---",
-    note.body,
-    "---",
+    `# What the user is looking at: ${title}`,
+    ...notes.flatMap((note) => [
+      "",
+      `## ${note.title} (${note.relation})`,
+      note.body,
+    ]),
   ].join("\n");
 }
 
@@ -68,19 +69,27 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => null);
-  const slug = body?.slug;
+  const subject = body?.subject;
   const messages = body?.messages;
 
   if (
-    typeof slug !== "string" ||
+    !isChatSubject(subject) ||
     !Array.isArray(messages) ||
     !messages.every(isChatMessage)
   ) {
-    return new Response("Expected { slug, messages }.", { status: 400 });
+    return new Response("Expected { subject, messages }.", { status: 400 });
   }
 
-  const note = await getNote(slug);
-  if (!note) return new Response("Note not found.", { status: 404 });
+  const question = messages.findLast(
+    (message: { role: string }) => message.role === "user",
+  );
+  const { title, notes } = await gatherContext(
+    subject,
+    question?.content ?? "",
+  );
+  if (notes.length === 0) {
+    return new Response("Nothing to talk about.", { status: 404 });
+  }
 
   const upstream = await fetch(API_URL, {
     method: "POST",
@@ -89,7 +98,9 @@ export async function POST(request: Request) {
       "x-goog-api-key": apiKey,
     },
     body: JSON.stringify({
-      systemInstruction: { parts: [{ text: systemPrompt(note) }] },
+      systemInstruction: {
+        parts: [{ text: systemPrompt(title, notes) }],
+      },
       contents: messages.map((message) => ({
         role: message.role === "assistant" ? "model" : "user",
         parts: [{ text: message.content }],

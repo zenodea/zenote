@@ -1,6 +1,7 @@
 import type { GraphNode } from "@/lib/graph/model";
 
 export type View = { x: number; y: number; scale: number };
+export type Positions = { x: Float64Array; y: Float64Array };
 
 export function baseRadiusFor(nodeCount: number) {
   return Math.max(1.8, Math.min(6, 9 / Math.pow(Math.max(nodeCount, 1), 0.2)));

@@ -33,9 +33,7 @@ export function createLayout(
     linkDistance = 100,
     charge = -500,
     velocityDecay = 0.5,
-    // Repulsion falls off as 1/d, so this spring settles the cloud at
-    // sqrt(-charge / centering) * sqrt(count). At 4*-charge/linkDistance^2 that
-    // is one link length of spacing per node, independent of count.
+    // Settles at one link length of spacing per node, independent of count.
     centering = (4 * -charge) / (linkDistance * linkDistance),
     distanceMax = Infinity,
   }: LayoutOptions = {},
@@ -58,8 +56,7 @@ export function createLayout(
   const vy = new Float64Array(count);
   const fixed = new Uint8Array(count);
 
-  // Seeded at the density the forces settle at, so the first frames relax
-  // instead of blasting outward against the speed clamp.
+  // Seeded at the density the forces settle at, so the first frames relax rather than blast outward.
   const goldenAngle = Math.PI * (3 - Math.sqrt(5));
   for (let i = 0; i < count; i++) {
     const radius = spacing * Math.sqrt(0.5 + i);
@@ -86,10 +83,7 @@ export function createLayout(
     return ((i % 11) - 5) * 1e-6 || 1e-6;
   }
 
-  // Repulsion divides by the squared separation, so a near-coincident pair
-  // would produce an unbounded kick. Rescale the offset to MIN_DISTANCE
-  // instead: same direction, force capped at what one pixel of separation
-  // gives. Writes through `scratch` to stay allocation-free.
+  // Rescaled to MIN_DISTANCE: same direction, but a coincident pair cannot kick unboundedly.
   const scratch = new Float64Array(3);
   function softenOffset(i: number, dx: number, dy: number, squared: number) {
     if (squared > 0) {
@@ -104,9 +98,7 @@ export function createLayout(
     scratch[2] = MIN_DISTANCE_SQUARED;
   }
 
-  // Barnes-Hut quadtree in flat arrays, rebuilt per step. A child slot holds
-  // -1 (empty), -(point + 2), or a cell index; coincident points chain
-  // through nextPoint.
+  // Flat-array quadtree: a child slot is -1 (empty), -(point + 2), or a cell; coincident points chain.
   let cellCapacity = 512;
   let child = new Int32Array(cellCapacity * 4);
   let cellX = new Float64Array(cellCapacity);
@@ -185,8 +177,7 @@ export function createLayout(
     }
   }
 
-  // Children always index after their parent, so a reverse sweep aggregates
-  // bottom-up.
+  // Children always index after their parent, so a reverse sweep aggregates bottom-up.
   function accumulate() {
     for (let c = cellCount - 1; c >= 0; c--) {
       let m = 0;
@@ -274,8 +265,7 @@ export function createLayout(
               let d2 = pdx * pdx + pdy * pdy;
               if (d2 > distanceMaxSquared) continue;
               if (d2 < MIN_DISTANCE_SQUARED) {
-                // Seeded on i, not the pair: coincident nodes must scatter in
-                // different directions to separate at all.
+                // Seeded on i, not the pair: coincident nodes must scatter in different directions.
                 softenOffset(i, pdx, pdy, d2);
                 pdx = scratch[0];
                 pdy = scratch[1];
@@ -307,8 +297,7 @@ export function createLayout(
         distance = Math.sqrt(dx * dx + dy * dy);
       }
 
-      // Rest length: pushes apart below linkDistance, pulls above it. Without
-      // it a connected graph collapses into a knot.
+      // Rest length: without it a connected graph collapses into a knot.
       const push =
         ((distance - linkDistance) / distance) * alpha * strengths[e];
       dx *= push;
@@ -321,9 +310,7 @@ export function createLayout(
     }
   }
 
-  // Anchored to a fixed origin, not the running centroid: a centroid that
-  // includes the node under the cursor drags the whole cloud along with it,
-  // and lets Barnes-Hut's asymmetry walk the layout off the solved framing.
+  // A fixed origin, not the running centroid: a centroid drags the cloud along with the dragged node.
   function centre() {
     for (let i = 0; i < count; i++) {
       vx[i] += (originX - x[i]) * centering * alpha;
@@ -332,9 +319,7 @@ export function createLayout(
   }
 
   function step(): boolean {
-    // Settled and nothing keeping it warm: skip the pass entirely. pin,
-    // unpin, reheat and setAlphaTarget all raise alpha (or the target), so
-    // any of them un-settles the simulation without callers tracking it.
+    // pin, unpin, reheat and setAlphaTarget all raise alpha, so nothing has to track un-settling.
     if (alpha <= ALPHA_MIN && alphaTarget <= 0) return false;
 
     alpha += (alphaTarget - alpha) * ALPHA_DECAY;

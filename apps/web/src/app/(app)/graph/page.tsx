@@ -8,8 +8,7 @@ export const metadata = { title: "Graph" };
 export default async function GraphPage() {
   const graph = await getGraph();
 
-  // A fragment, not a wrapper: the header has to stay a direct child of
-  // PageFade for its seam to sit out the transition.
+  // A fragment, not a wrapper: the header must stay a direct child of PageFade for its seam.
   return (
     <>
       <PageHeader

@@ -12,7 +12,10 @@ export function tagCounts(graph: Graph): [string, number][] {
 }
 
 /** Node indices carrying any of `tags`; null when nothing is filtered. */
-export function nodesWithTags(graph: Graph, tags: string[]): Set<number> | null {
+export function nodesWithTags(
+  graph: Graph,
+  tags: string[],
+): Set<number> | null {
   if (tags.length === 0) return null;
 
   const wanted = new Set(tags);

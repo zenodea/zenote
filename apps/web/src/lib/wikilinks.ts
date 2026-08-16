@@ -51,7 +51,12 @@ export function extractOccurrences(body: string): WikilinkOccurrence[] {
         after = `${after.slice(0, CONTEXT_WINDOW)}…`;
       }
 
-      occurrences.push({ target, text: (alias ?? target).trim(), before, after });
+      occurrences.push({
+        target,
+        text: (alias ?? target).trim(),
+        before,
+        after,
+      });
     }
   }
   return occurrences;

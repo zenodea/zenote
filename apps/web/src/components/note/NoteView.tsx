@@ -18,6 +18,7 @@ import { NoteMissing } from "@/components/note/NoteMissing";
 import { NoteToolbar } from "@/components/note/NoteToolbar";
 import { RenameNoteModal } from "@/components/note/RenameNoteModal";
 import { useAutosave } from "@/components/note/use-autosave";
+import { VimPrompt } from "@/components/note/VimPrompt";
 import { beginPageFade } from "@/lib/page-fade";
 
 export function NoteView({
@@ -49,10 +50,7 @@ export function NoteView({
   const reading =
     readingOverride ?? (startedEmpty ? false : !settings.openInEditMode);
 
-  // What the note actually says right now. The prop is only as fresh as the
-  // last server render and the editor is never remounted between modes, so
-  // reading straight from it shows the note as it was before this sitting.
-  // A new revision from the server supersedes what we are holding.
+  // The prop is only as fresh as the last server render, and the editor never remounts between modes.
   const typed = useRef<{ revision: string; body: string } | null>(null);
   const revision = `${slug}\u0000${note?.updated ?? ""}`;
   const [held, setHeld] = useState({ revision, body: note?.body ?? "" });
@@ -77,8 +75,7 @@ export function NoteView({
     const draft = typed.current;
     if (draft?.revision === revision) setHeld({ revision, body: draft.body });
 
-    // Leaving the editor: land the save, then pick the note back up from the
-    // server so its tags, backlinks and neighbourhood match the new body.
+    // Land the save, then pick the note up again so its tags and backlinks match the new body.
     void autosave.publish();
   }
 
@@ -164,18 +161,7 @@ export function NoteView({
         />
       )}
 
-      {/* Vim's : and / prompts, in the same footer plane the find bar uses. */}
-      {!reading && settings.vimMode && (
-        <div
-          data-seam="top"
-          className="vim-bar absolute inset-x-0 bottom-0 border-t border-foreground/15 bg-background"
-        >
-          <div
-            ref={vimBarRef}
-            className="vim-statusbar flex h-11 items-center gap-2 px-4 font-mono text-xs"
-          />
-        </div>
-      )}
+      {!reading && settings.vimMode && <VimPrompt hostRef={vimBarRef} />}
     </>
   );
 }

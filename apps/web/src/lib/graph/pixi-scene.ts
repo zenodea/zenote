@@ -9,7 +9,11 @@ import {
 import type { GraphNode } from "@/lib/graph/model";
 import { nodeRadius, type View } from "@/lib/graph/geometry";
 
-export type Palette = { foreground: string; background: string; accent: string };
+export type Palette = {
+  foreground: string;
+  background: string;
+  accent: string;
+};
 
 const EDGE_ALPHA = 0.28;
 const EDGE_FOCUS_DROP = 0.22;
@@ -17,6 +21,8 @@ const LABEL_SCALE = 2.0;
 const LABEL_HUB_SCALE = 0.8;
 const LABEL_FADE = 0.2;
 const NODE_TEXTURE_RADIUS = 32;
+// Region names are for the wide view: they give way as node labels come in.
+const REGION_FADE_OUT = 1.4;
 
 export type SceneFrame = {
   x: Float64Array;
@@ -39,6 +45,7 @@ export class PixiScene {
   private focusEdges = new Graphics();
   private nodeLayer = new Container();
   private labelLayer = new Container();
+  private regionLayer = new Container();
   private rings = new Graphics();
 
   private nodes: GraphNode[] = [];
@@ -46,6 +53,7 @@ export class PixiScene {
   private radii: number[] = [];
   private sprites: Sprite[] = [];
   private labels: BitmapText[] = [];
+  private regions: { label: BitmapText; nodes: number[] }[] = [];
   private circle: Texture | null = null;
   private palette: Palette;
   private lastVisible: Set<number> | null | undefined = undefined;
@@ -54,7 +62,12 @@ export class PixiScene {
   private constructor(app: Application, palette: Palette) {
     this.app = app;
     this.palette = palette;
-    this.world.addChild(this.edges, this.focusEdges, this.nodeLayer, this.labelLayer);
+    this.world.addChild(
+      this.edges,
+      this.focusEdges,
+      this.nodeLayer,
+      this.labelLayer,
+    );
     this.app.stage.addChild(this.world, this.rings);
   }
 
@@ -79,8 +92,7 @@ export class PixiScene {
     return new PixiScene(app, palette);
   }
 
-  // A canvas can only ever hold one WebGL context, so graph swaps rebuild the
-  // scene's content instead of re-initialising the Application.
+  // A canvas holds one WebGL context, so swaps rebuild content rather than re-initialising the Application.
   setGraph(
     nodes: GraphNode[],
     edgePairs: ReadonlyArray<readonly [number, number]>,
@@ -116,7 +128,8 @@ export class PixiScene {
     for (const node of nodes) {
       const sprite = new Sprite(circle);
       sprite.anchor.set(0.5);
-      sprite.tint = node.degree === 0 ? this.palette.foreground : this.palette.accent;
+      sprite.tint =
+        node.degree === 0 ? this.palette.foreground : this.palette.accent;
       this.nodeLayer.addChild(sprite);
       this.sprites.push(sprite);
 
@@ -132,11 +145,28 @@ export class PixiScene {
     }
   }
 
+  /** Named clusters, drawn at the centre of wherever the layout has put their members. */
+  setRegions(regions: { name: string; nodes: number[] }[]) {
+    for (const region of this.regions) region.label.destroy();
+    this.regions = regions.map(({ name, nodes }) => {
+      const label = new BitmapText({
+        text: name.toUpperCase(),
+        style: { fontFamily: "system-ui", fontSize: 13, fill: 0xffffff },
+      });
+      label.anchor.set(0.5);
+      label.tint = this.palette.foreground;
+      label.visible = false;
+      this.regionLayer.addChild(label);
+      return { label, nodes };
+    });
+  }
+
   setPalette(palette: Palette) {
     this.palette = palette;
     this.app.renderer.background.color = palette.background;
     this.edges.tint = palette.foreground;
     this.focusEdges.tint = palette.foreground;
+    for (const region of this.regions) region.label.tint = palette.foreground;
     for (let i = 0; i < this.sprites.length; i++) {
       this.sprites[i].tint =
         this.nodes[i].degree === 0 ? palette.foreground : palette.accent;
@@ -183,8 +213,7 @@ export class PixiScene {
     }
     this.edges.alpha = EDGE_ALPHA - EDGE_FOCUS_DROP * focusAmount;
 
-    // Only edges touching the focused neighbourhood highlight; everything
-    // else is carried by the base layer's uniform dim.
+    // Only edges touching the focus highlight; the rest is carried by the base layer's uniform dim.
     this.focusEdges.clear();
     if (focusAmount > 0.01 && near !== null) {
       for (const [a, b] of this.edgePairs) {
@@ -243,6 +272,35 @@ export class PixiScene {
       }
     }
 
+    // Fades as the view closes in, and out of the way entirely under a focus.
+    const regionAlpha =
+      Math.max(0, 1 - relativeScale / REGION_FADE_OUT) * (1 - focusAmount);
+    for (const { label, nodes: members } of this.regions) {
+      if (regionAlpha < 0.02) {
+        label.visible = false;
+        continue;
+      }
+
+      let sumX = 0;
+      let sumY = 0;
+      let seen = 0;
+      for (const i of members) {
+        if (!shown(i)) continue;
+        sumX += x[i];
+        sumY += y[i];
+        seen++;
+      }
+      if (seen === 0) {
+        label.visible = false;
+        continue;
+      }
+
+      label.visible = true;
+      label.alpha = regionAlpha * 0.55;
+      label.position.set(sumX / seen, sumY / seen);
+      label.scale.set(1 / scale);
+    }
+
     this.rings.clear();
     if (seeds.length > 0 && focusAmount > 0.01) {
       for (const seed of seeds) {
@@ -265,10 +323,7 @@ export class PixiScene {
   }
 
   destroy() {
-    this.app.destroy(
-      { removeView: false },
-      { children: true, texture: true },
-    );
+    this.app.destroy({ removeView: false }, { children: true, texture: true });
     this.circle?.destroy(true);
   }
 }

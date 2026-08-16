@@ -13,7 +13,9 @@ export function DeleteNoteModal({
 }) {
   return (
     <Modal title="Delete note" onClose={onClose}>
-      <p className="mt-3 opacity-70">Delete “{title}”? This cannot be undone.</p>
+      <p className="mt-3 opacity-70">
+        Delete “{title}”? This cannot be undone.
+      </p>
       <div className="mt-4 flex justify-end gap-2">
         <button
           type="button"

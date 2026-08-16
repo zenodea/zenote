@@ -2,8 +2,7 @@
 
 import { createStore } from "../store";
 
-// False on the server too, so chrome that waits on the graph is absent from the
-// first paint rather than rendered and then taken away.
+// False on the server too, so chrome that waits on the graph is absent rather than taken away.
 const store = createStore(false);
 
 export const useGraphReady = store.use;

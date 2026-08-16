@@ -3,8 +3,6 @@
 import { THEME_FAMILIES, applyTheme } from "@/lib/theme";
 import { useThemeId } from "@/lib/use-theme";
 
-
-
 export function ThemeSettings() {
   const theme = useThemeId();
 
