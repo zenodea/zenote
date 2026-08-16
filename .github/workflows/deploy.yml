@@ -32,9 +32,16 @@ jobs:
       - run: npm ci
       - run: npm run build
 
+  # Between the two: a branch that cannot compile never moves production's schema.
+  migrate:
+    name: Database
+    needs: build
+    uses: ./.github/workflows/migrate.yml
+    secrets: inherit
+
   deploy:
     name: Deploy to Vercel
-    needs: build
+    needs: migrate
     runs-on: ubuntu-latest
     env:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}

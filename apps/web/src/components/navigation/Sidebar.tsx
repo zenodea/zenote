@@ -79,7 +79,7 @@ export function Sidebar({
       <Scroller
         inert={minimised}
         className={`min-h-0 w-64 flex-1 transition-opacity ${reveal}`}
-        contentClassName="p-4"
+        contentClassName="flex-1 p-4"
       >
         {search.open ? (
           <SidebarSearch

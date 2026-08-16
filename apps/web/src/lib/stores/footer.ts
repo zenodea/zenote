@@ -11,10 +11,16 @@ const claims = createStore<FooterClaim[]>([]);
 export const useFooterHost = host.use;
 export const setFooterHost = host.set;
 
+// One occupant at a time: vim's prompts are modal, so they outrank the find bar.
+function topOf(held: FooterClaim[]): FooterClaim | null {
+  if (held.includes("vim")) return "vim";
+  return held[held.length - 1] ?? null;
+}
+
 /** Open while anything is in it; the bar itself has no opinion about what. */
 export const useFooterOpen = () => claims.use().length > 0;
 
-/** One occupant at a time: vim's prompts are modal, so they outrank the find bar. */
+/** Holds the footer up, and reports whether this claim is the one on top. */
 export function useFooterClaim(claim: FooterClaim, active: boolean): boolean {
   useEffect(() => {
     if (!active) return;
@@ -27,6 +33,5 @@ export function useFooterClaim(claim: FooterClaim, active: boolean): boolean {
     };
   }, [claim, active]);
 
-  const held = claims.use();
-  return held.includes("vim") ? claim === "vim" : held.includes(claim);
+  return topOf(claims.use()) === claim;
 }
