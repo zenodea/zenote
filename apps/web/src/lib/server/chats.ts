@@ -50,6 +50,19 @@ export async function latestChatId(noteId: string): Promise<string | null> {
   return data?.id ?? null;
 }
 
+export async function latestFreeChatId(): Promise<string | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("chats")
+    .select("id")
+    .is("note_id", null)
+    .is("note_ids", null)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ id: string }>();
+  return data?.id ?? null;
+}
+
 export async function insertChat(fields: {
   note_id?: string;
   note_ids?: string[];

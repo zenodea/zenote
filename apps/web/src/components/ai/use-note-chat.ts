@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import {
   DefaultChatTransport,
@@ -22,6 +23,12 @@ export type OpenThread = {
   messages: VaultUIMessage[];
 };
 
+const WRITE_TOOLS = new Set([
+  "tool-create_note",
+  "tool-append_to_note",
+  "tool-move_note",
+]);
+
 function resolveAll(targets: string[], resolver: WikilinkResolver): string[] {
   return [
     ...new Set(
@@ -35,6 +42,7 @@ function resolveAll(targets: string[], resolver: WikilinkResolver): string[] {
 /** One conversation; the caller remounts it when the thread changes. */
 export function useNoteChat(thread: OpenThread, resolver: WikilinkResolver) {
   const { setBusy } = useAiAssistant();
+  const router = useRouter();
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -85,6 +93,15 @@ export function useNoteChat(thread: OpenThread, resolver: WikilinkResolver) {
         });
       },
       onFinish: ({ message }) => {
+        // An approved write changed the vault; the chrome re-reads it so new
+        // notes appear and their wikilinks resolve without a manual reload.
+        const wrote = message.parts.some(
+          (part) =>
+            WRITE_TOOLS.has(part.type) &&
+            (part as { state?: string }).state === "output-available",
+        );
+        if (wrote) router.refresh();
+
         // When the model didn't aim the graph itself, its citations do.
         const aimed = message.parts.some(
           (part) => part.type === "tool-focus_graph",

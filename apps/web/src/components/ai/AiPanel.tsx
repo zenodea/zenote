@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { openChat, openNoteChat } from "@/app/actions/chats";
+import { openChat, openFreeChat, openNoteChat } from "@/app/actions/chats";
 import { useAiAssistant } from "@/components/ai/AiAssistantContext";
 import { AiDiamond } from "@/components/ai/AiDiamond";
 import { ChatHistory } from "@/components/ai/ChatHistory";
@@ -69,7 +69,8 @@ export function AiPanel({
   }
 
   // Resolve the pending subject into its most recent stored thread. Without a
-  // subject the conversation is about the vault at large, fresh each time.
+  // subject the vault-at-large conversation picks up where it left off; only a
+  // graph selection starts fresh, since its identity changes with every pick.
   useEffect(() => {
     if (thread !== null) return;
     let alive = true;
@@ -77,7 +78,9 @@ export function AiPanel({
       const opened =
         pending?.kind === "note"
           ? await openNoteChat(pending.slug).catch(() => null)
-          : null;
+          : pending === null
+            ? await openFreeChat().catch(() => null)
+            : null;
       if (!alive) return;
       setThread({
         chatId: opened?.chatId ?? null,

@@ -6,6 +6,7 @@ import {
   getNoteId,
   insertChat,
   latestChatId,
+  latestFreeChatId,
   loadMessages,
 } from "@/lib/server/chats";
 import { createClient, getUser } from "@/lib/server/supabase";
@@ -68,6 +69,16 @@ export async function openNoteChat(slug: string): Promise<OpenedChat | null> {
     subject: { kind: "note", slug },
     messages: await loadMessages(chatId),
   };
+}
+
+/** The most recent conversation about the vault at large; null when none. */
+export async function openFreeChat(): Promise<OpenedChat | null> {
+  if (!(await getUser())) return null;
+
+  const chatId = await latestFreeChatId();
+  if (!chatId) return null;
+
+  return { chatId, subject: null, messages: await loadMessages(chatId) };
 }
 
 export async function openChat(chatId: string): Promise<OpenedChat | null> {
