@@ -1,19 +1,13 @@
+import type { UIMessage } from "ai";
+
 /** What the assistant is looking at: the note being read, or a selection made on the graph. */
 export type ChatSubject =
   { kind: "note"; slug: string } | { kind: "selection"; slugs: string[] };
 
-export type ChatMessage = { role: "user" | "assistant"; content: string };
+/** Carried on replayed messages; a turn that never finished is shown but not resent. */
+export type ChatMessageMeta = { status?: "complete" | "aborted" | "failed" };
 
-export type ChatRequest = { subject: ChatSubject; messages: ChatMessage[] };
-
-export function isChatMessage(value: unknown): value is ChatMessage {
-  if (typeof value !== "object" || value === null) return false;
-  const message = value as Record<string, unknown>;
-  return (
-    (message.role === "user" || message.role === "assistant") &&
-    typeof message.content === "string"
-  );
-}
+export type VaultUIMessage = UIMessage<ChatMessageMeta>;
 
 export function isChatSubject(value: unknown): value is ChatSubject {
   if (typeof value !== "object" || value === null) return false;
@@ -34,16 +28,8 @@ export function subjectKey(subject: ChatSubject | null): string {
     : `selection:${[...subject.slugs].sort().join(",")}`;
 }
 
-export async function streamPlainText(
-  body: ReadableStream<Uint8Array>,
-  onChunk: (text: string) => void,
-): Promise<void> {
-  const reader = body.getReader();
-  const decoder = new TextDecoder();
-
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    onChunk(decoder.decode(value, { stream: true }));
-  }
+export function messageText(message: VaultUIMessage): string {
+  return message.parts
+    .map((part) => (part.type === "text" ? part.text : ""))
+    .join("");
 }

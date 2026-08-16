@@ -1,9 +1,10 @@
-import { isChatMessage, isChatSubject } from "@/lib/chat";
+import { createGoogle } from "@ai-sdk/google";
+import { convertToModelMessages, streamText, validateUIMessages } from "ai";
+import { isChatSubject, messageText, type VaultUIMessage } from "@/lib/chat";
 import { gatherContext, type ContextNote } from "@/lib/server/chat-context";
 import { getUser } from "@/lib/server/supabase";
 
 const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.5-flash-lite";
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:streamGenerateContent?alt=sse`;
 
 function systemPrompt(title: string, notes: ContextNote[]): string {
   return [
@@ -22,39 +23,6 @@ function systemPrompt(title: string, notes: ContextNote[]): string {
   ].join("\n");
 }
 
-// Re-emit only the text chunks from Gemini's SSE stream as plain text.
-function extractText(
-  upstream: ReadableStream<Uint8Array>,
-): ReadableStream<Uint8Array> {
-  const decoder = new TextDecoder();
-  const encoder = new TextEncoder();
-  let buffered = "";
-
-  return upstream.pipeThrough(
-    new TransformStream<Uint8Array, Uint8Array>({
-      transform(chunk, controller) {
-        buffered += decoder.decode(chunk, { stream: true });
-
-        const lines = buffered.split("\n");
-        buffered = lines.pop() ?? "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          try {
-            const event = JSON.parse(line.slice(6));
-            const parts: { text?: string }[] =
-              event.candidates?.[0]?.content?.parts ?? [];
-            const text = parts.map((part) => part.text ?? "").join("");
-            if (text) controller.enqueue(encoder.encode(text));
-          } catch {
-            // Ignore non-JSON keep-alive lines.
-          }
-        }
-      },
-    }),
-  );
-}
-
 export async function POST(request: Request) {
   // Repeated after the middleware so note contents never depend on the matcher.
   if (!(await getUser())) {
@@ -70,51 +38,38 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => null);
   const subject = body?.subject;
-  const messages = body?.messages;
 
-  if (
-    !isChatSubject(subject) ||
-    !Array.isArray(messages) ||
-    !messages.every(isChatMessage)
-  ) {
+  let messages: VaultUIMessage[];
+  try {
+    messages = await validateUIMessages({ messages: body?.messages });
+  } catch {
+    return new Response("Expected { subject, messages }.", { status: 400 });
+  }
+  if (!isChatSubject(subject)) {
     return new Response("Expected { subject, messages }.", { status: 400 });
   }
 
-  const question = messages.findLast(
-    (message: { role: string }) => message.role === "user",
-  );
+  const question = messages.findLast((message) => message.role === "user");
   const { title, notes } = await gatherContext(
     subject,
-    question?.content ?? "",
+    question ? messageText(question) : "",
   );
   if (notes.length === 0) {
     return new Response("Nothing to talk about.", { status: 404 });
   }
 
-  const upstream = await fetch(API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": apiKey,
-    },
-    body: JSON.stringify({
-      systemInstruction: {
-        parts: [{ text: systemPrompt(title, notes) }],
-      },
-      contents: messages.map((message) => ({
-        role: message.role === "assistant" ? "model" : "user",
-        parts: [{ text: message.content }],
-      })),
-    }),
+  const google = createGoogle({ apiKey });
+  const result = streamText({
+    model: google(MODEL),
+    system: systemPrompt(title, notes),
+    messages: await convertToModelMessages(messages),
   });
 
-  if (!upstream.ok || !upstream.body) {
-    const detail = await upstream.text().catch(() => "");
-    console.error("Gemini request failed:", upstream.status, detail);
-    return new Response("The AI provider returned an error.", { status: 502 });
-  }
-
-  return new Response(extractText(upstream.body), {
-    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  return result.toUIMessageStreamResponse({
+    originalMessages: messages,
+    onError: (error) => {
+      console.error("Chat stream failed:", error);
+      return "The AI provider returned an error.";
+    },
   });
 }

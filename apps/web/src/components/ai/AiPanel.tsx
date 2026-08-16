@@ -8,7 +8,12 @@ import { Button } from "@/components/ui/Button";
 import { CloseIcon, SendIcon } from "@/components/ui/Icons";
 import { Scroller } from "@/components/ui/Scroller";
 import { useNoteSlug } from "@/hooks/use-note-slug";
-import { subjectKey, type ChatMessage, type ChatSubject } from "@/lib/chat";
+import {
+  messageText,
+  subjectKey,
+  type ChatSubject,
+  type VaultUIMessage,
+} from "@/lib/chat";
 import { useGraphFocusState } from "@/lib/stores/graph-focus";
 import type { WikilinkResolver } from "@/lib/wikilinks";
 
@@ -45,11 +50,6 @@ export function AiPanel({
   ) {
     setSubject(live);
   }
-
-  const { messages, input, setInput, busy, send, scrollRef } = useNoteChat(
-    subject,
-    resolverMap,
-  );
 
   const show = open && subject !== null;
 
@@ -88,54 +88,81 @@ export function AiPanel({
           </Button>
         </div>
 
-        <Scroller
-          scrollRef={scrollRef}
-          className="min-h-0 flex-1"
-          contentClassName="space-y-4 p-4"
-        >
-          {messages.length === 0 && (
-            <p className="opacity-50">
-              {subject?.kind === "note"
-                ? "Ask anything about this note"
-                : "Ask anything about what you have picked out"}
-            </p>
-          )}
-          {messages.map((message, index) => (
-            <Turn key={index} message={message} resolver={resolverMap} />
-          ))}
-        </Scroller>
-
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            send();
-          }}
-          data-seam={show ? "top" : undefined}
-          className="flex h-[45px] shrink-0 items-center gap-2 border-t border-foreground/15 px-3"
-        >
-          <input
-            type="text"
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            placeholder={
-              subject?.kind === "note"
-                ? "Ask about this note…"
-                : "Ask about these notes…"
-            }
-            aria-label="Message the assistant"
-            className="min-w-0 flex-1 bg-transparent placeholder:opacity-50 focus:outline-none"
+        {subject && (
+          <ChatArea
+            key={subjectKey(subject)}
+            subject={subject}
+            resolver={resolverMap}
+            show={show}
           />
-          <Button
-            type="submit"
-            disabled={busy || input.trim().length === 0}
-            aria-label="Send"
-            className="shrink-0"
-          >
-            <SendIcon />
-          </Button>
-        </form>
+        )}
       </div>
     </aside>
+  );
+}
+
+function ChatArea({
+  subject,
+  resolver,
+  show,
+}: {
+  subject: ChatSubject;
+  resolver: WikilinkResolver;
+  show: boolean;
+}) {
+  const { messages, input, setInput, busy, send, error, scrollRef } =
+    useNoteChat(subject, resolver);
+
+  return (
+    <>
+      <Scroller
+        scrollRef={scrollRef}
+        className="min-h-0 flex-1"
+        contentClassName="space-y-4 p-4"
+      >
+        {messages.length === 0 && (
+          <p className="opacity-50">
+            {subject.kind === "note"
+              ? "Ask anything about this note"
+              : "Ask anything about what you have picked out"}
+          </p>
+        )}
+        {messages.map((message) => (
+          <Turn key={message.id} message={message} resolver={resolver} />
+        ))}
+        {error && <p className="opacity-70">⚠️ {error.message}</p>}
+      </Scroller>
+
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          send();
+        }}
+        data-seam={show ? "top" : undefined}
+        className="flex h-[45px] shrink-0 items-center gap-2 border-t border-foreground/15 px-3"
+      >
+        <input
+          type="text"
+          value={input}
+          onChange={(event) => setInput(event.target.value)}
+          placeholder={
+            subject.kind === "note"
+              ? "Ask about this note…"
+              : "Ask about these notes…"
+          }
+          aria-label="Message the assistant"
+          className="min-w-0 flex-1 bg-transparent placeholder:opacity-50 focus:outline-none"
+        />
+        <Button
+          type="submit"
+          disabled={busy || input.trim().length === 0}
+          aria-label="Send"
+          className="shrink-0"
+        >
+          <SendIcon />
+        </Button>
+      </form>
+    </>
   );
 }
 
@@ -143,21 +170,22 @@ function Turn({
   message,
   resolver,
 }: {
-  message: ChatMessage;
+  message: VaultUIMessage;
   resolver: WikilinkResolver;
 }) {
   if (message.role === "user") {
     return (
       <p className="ml-8 whitespace-pre-wrap rounded-lg bg-foreground/10 px-3 py-2">
-        {message.content}
+        {messageText(message)}
       </p>
     );
   }
 
+  const text = messageText(message);
   return (
     <div className="prose prose-sm max-w-none">
-      {message.content ? (
-        <NoteMarkdown source={message.content} resolver={resolver} />
+      {text ? (
+        <NoteMarkdown source={text} resolver={resolver} />
       ) : (
         <p className="animate-pulse opacity-50">Thinking…</p>
       )}
