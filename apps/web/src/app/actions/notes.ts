@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/server/supabase";
-import { filename, joinSlug } from "@/lib/slug";
+import { filename, folder as parentOf, joinSlug } from "@/lib/slug";
 
 export type ActionResult = { error?: string };
 
@@ -85,6 +85,104 @@ export async function createFolder(path: string): Promise<ActionResult> {
   const { error } = await supabase.from("folders").insert({ path });
 
   if (error) return failed(error, `“${path}” already exists.`);
+  refresh();
+  return {};
+}
+
+/**
+ * A folder is two things: a row here and a prefix on every slug beneath it. Any
+ * structural move has to carry both, so they all go through this.
+ */
+async function reprefix(
+  from: string,
+  to: string | null,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const { data: notes, error: read } = await supabase
+    .from("notes")
+    .select("id,slug")
+    .like("slug", `${from}/%`)
+    .returns<{ id: string; slug: string }[]>();
+
+  if (read) return { error: read.message };
+
+  for (const note of notes ?? []) {
+    const rest = note.slug.slice(from.length + 1);
+    const { error } = await supabase
+      .from("notes")
+      .update({ slug: to === null ? rest : joinSlug(to, rest) })
+      .eq("id", note.id);
+    if (error) return failed(error, `“${rest}” already exists.`);
+  }
+
+  const { data: nested, error: listed } = await supabase
+    .from("folders")
+    .select("id,path")
+    .like("path", `${from}/%`)
+    .returns<{ id: string; path: string }[]>();
+
+  if (listed) return { error: listed.message };
+
+  for (const row of nested ?? []) {
+    const rest = row.path.slice(from.length + 1);
+    const { error } = await supabase
+      .from("folders")
+      .update({ path: to === null ? rest : joinSlug(to, rest) })
+      .eq("id", row.id);
+    if (error) return failed(error, `“${rest}” already exists.`);
+  }
+
+  return {};
+}
+
+async function relocate(path: string, next: string): Promise<ActionResult> {
+  if (next === path) return {};
+  // Into itself or its own descendant would orphan everything below it.
+  if (next.startsWith(`${path}/`)) {
+    return { error: "A folder cannot be moved inside itself." };
+  }
+
+  const moved = await reprefix(path, next);
+  if (moved.error) return moved;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("folders")
+    .update({ path: next })
+    .eq("path", path);
+
+  // No row is fine: a folder holding notes is implied by their slugs.
+  if (error) return failed(error, `“${next}” already exists.`);
+  refresh();
+  return {};
+}
+
+export async function moveFolder(
+  path: string,
+  into: string,
+): Promise<ActionResult> {
+  return relocate(path, joinSlug(into, filename(path)));
+}
+
+export async function renameFolder(
+  path: string,
+  name: string,
+): Promise<ActionResult> {
+  return relocate(path, joinSlug(parentOf(path), name));
+}
+
+/** The folder goes; everything it held moves up into its parent. */
+export async function deleteFolder(path: string): Promise<ActionResult> {
+  const parent = parentOf(path);
+
+  const lifted = await reprefix(path, parent || null);
+  if (lifted.error) return lifted;
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("folders").delete().eq("path", path);
+  if (error) return { error: error.message };
+
   refresh();
   return {};
 }

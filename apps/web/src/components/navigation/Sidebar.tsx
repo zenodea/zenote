@@ -27,7 +27,14 @@ export function Sidebar({
 
   const tree = useMemo(() => buildTree(docs, folders), [docs, folders]);
   const search = useSidebarSearch(docs);
-  const { naming, setNaming, submitName, handleMove } = useVaultActions(docs);
+  const {
+    naming,
+    setNaming,
+    submitName,
+    handleMove,
+    handleMoveFolder,
+    handleDeleteFolder,
+  } = useVaultActions(docs);
 
   function toggleFolder(path: string) {
     setCollapsed((previous) => {
@@ -90,9 +97,12 @@ export function Sidebar({
             onToggleFolder={toggleFolder}
             pathname={pathname}
             naming={naming}
+            onNamingChange={setNaming}
             onSubmitName={submitName}
             onCancelName={() => setNaming(null)}
             onMove={handleMove}
+            onMoveFolder={handleMoveFolder}
+            onDeleteFolder={handleDeleteFolder}
           />
         )}
       </Scroller>
