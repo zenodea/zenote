@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useThemeId } from "@/lib/use-theme";
 import { Scroller } from "@/components/ui/Scroller";
 
@@ -26,6 +26,11 @@ export function MermaidDiagram({ chart }: { chart: string }) {
   // Diagrams re-render when the active theme changes.
   const theme = useThemeId();
   const [svg, setSvg] = useState<string | null>(null);
+  // Mermaid puts a diagram in the document to measure it before handing back
+  // the SVG, and with nowhere given it uses <body> — the flex row the sidebar
+  // and the page sit in. The measurement takes a column of its own there and
+  // squeezes the page sideways until it is removed.
+  const measure = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,6 +69,7 @@ export function MermaidDiagram({ chart }: { chart: string }) {
         const rendered = await mermaid.render(
           `mermaid-${id.replace(/[^a-zA-Z0-9]/g, "")}`,
           chart,
+          measure.current ?? undefined,
         );
         if (!cancelled) setSvg(rendered.svg);
       } catch {
@@ -76,20 +82,36 @@ export function MermaidDiagram({ chart }: { chart: string }) {
     };
   }, [chart, id, theme]);
 
+  // Fixed and off-screen: mermaid needs it in the document to measure against,
+  // and out of flow it can take space from nothing.
+  const bench = (
+    <div
+      ref={measure}
+      aria-hidden
+      className="pointer-events-none fixed left-[-10000px] top-0"
+    />
+  );
+
   if (svg === null) {
     return (
-      <pre>
-        <code>{chart}</code>
-      </pre>
+      <>
+        {bench}
+        <pre>
+          <code>{chart}</code>
+        </pre>
+      </>
     );
   }
 
   return (
-    <Scroller axis="x" className="not-prose my-6">
-      <div
-        className="flex w-max min-w-full justify-center"
-        dangerouslySetInnerHTML={{ __html: svg }}
-      />
-    </Scroller>
+    <>
+      {bench}
+      <Scroller axis="x" className="not-prose my-6">
+        <div
+          className="flex w-max min-w-full justify-center"
+          dangerouslySetInnerHTML={{ __html: svg }}
+        />
+      </Scroller>
+    </>
   );
 }
