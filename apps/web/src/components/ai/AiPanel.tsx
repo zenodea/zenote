@@ -1,12 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { openChat, openNoteChat } from "@/app/actions/chats";
 import { useAiAssistant } from "@/components/ai/AiAssistantContext";
 import { AiDiamond } from "@/components/ai/AiDiamond";
-import { useNoteChat } from "@/components/ai/use-note-chat";
+import { ChatHistory } from "@/components/ai/ChatHistory";
+import { useNoteChat, type OpenThread } from "@/components/ai/use-note-chat";
 import { NoteMarkdown } from "@/components/note/NoteMarkdown";
 import { Button } from "@/components/ui/Button";
-import { CloseIcon, SendIcon } from "@/components/ui/Icons";
+import {
+  CloseIcon,
+  HistoryIcon,
+  PlusIcon,
+  SendIcon,
+} from "@/components/ui/Icons";
 import { Scroller } from "@/components/ui/Scroller";
 import { useNoteSlug } from "@/hooks/use-note-slug";
 import {
@@ -41,18 +48,65 @@ export function AiPanel({
       ? { kind: "selection", slugs: focus.slugs }
       : null;
 
-  // Re-aimed only by the reader. The assistant points the graph at the notes it
-  // just cited, and taking that as a new subject would reset the conversation
-  // that produced it.
-  const [subject, setSubject] = useState(live);
-  if (
-    (slug !== null || focus.from === "reader") &&
-    subjectKey(live) !== subjectKey(subject)
-  ) {
-    setSubject(live);
+  // What is on screen: null while a thread is being fetched. A thread opened
+  // from history holds until the reader moves; only the reader re-aims it —
+  // the assistant pointing the graph at its citations must not reset the
+  // conversation that produced them.
+  const [thread, setThread] = useState<OpenThread | null>(null);
+  const [pending, setPending] = useState(live);
+  const [view, setView] = useState<"chat" | "history">("chat");
+  const [fresh, setFresh] = useState(0);
+
+  const liveKey = subjectKey(live);
+  const [lastLiveKey, setLastLiveKey] = useState(liveKey);
+  if ((slug !== null || focus.from === "reader") && liveKey !== lastLiveKey) {
+    setLastLiveKey(liveKey);
+    setPending(live);
+    setThread(null);
+    setView("chat");
   }
 
+  // Resolve the pending subject into its most recent stored thread.
+  useEffect(() => {
+    if (thread !== null || pending === null) return;
+    let alive = true;
+    (async () => {
+      const opened =
+        pending.kind === "note"
+          ? await openNoteChat(pending.slug).catch(() => null)
+          : null;
+      if (!alive) return;
+      setThread({
+        chatId: opened?.chatId ?? null,
+        subject: pending,
+        messages: opened?.messages ?? [],
+      });
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [thread, pending]);
+
+  const subject = thread?.subject ?? pending;
   const show = open && subject !== null;
+
+  function startNewChat() {
+    if (!subject) return;
+    setThread({ chatId: null, subject, messages: [] });
+    setFresh((count) => count + 1);
+    setView("chat");
+  }
+
+  async function openFromHistory(id: string) {
+    const opened = await openChat(id).catch(() => null);
+    if (!opened || !opened.noteSlug) return;
+    setThread({
+      chatId: opened.chatId,
+      subject: { kind: "note", slug: opened.noteSlug },
+      messages: opened.messages,
+    });
+    setView("chat");
+  }
 
   return (
     <aside
@@ -81,6 +135,24 @@ export function AiPanel({
             </p>
           </div>
           <Button
+            onClick={() => setView(view === "history" ? "chat" : "history")}
+            active={view === "history"}
+            aria-pressed={view === "history"}
+            aria-label="Conversation history"
+            title="Previous conversations"
+            className="shrink-0"
+          >
+            <HistoryIcon />
+          </Button>
+          <Button
+            onClick={startNewChat}
+            aria-label="New conversation"
+            title="Start a new conversation"
+            className="shrink-0"
+          >
+            <PlusIcon />
+          </Button>
+          <Button
             onClick={() => setOpen(false)}
             aria-label="Close assistant"
             className="shrink-0"
@@ -89,28 +161,59 @@ export function AiPanel({
           </Button>
         </div>
 
-        {subject && (
-          <ChatArea
-            key={subjectKey(subject)}
-            subject={subject}
-            resolver={resolverMap}
-            show={show}
-          />
-        )}
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          {/* The footer's slide, turned upside down: history descends from the
+              header on a transform, so the conversation never reflows. */}
+          <div
+            className={`absolute inset-x-0 top-0 z-20 border-b border-foreground/15 bg-background transition-transform duration-300 ease-in-out ${
+              view === "history" ? "translate-y-0" : "-translate-y-full"
+            }`}
+          >
+            <Scroller
+              className={`max-h-64 transition-opacity duration-200 ${
+                view === "history" ? "opacity-100" : "opacity-0"
+              }`}
+              contentClassName="p-2"
+            >
+              <ChatHistory
+                open={view === "history"}
+                activeChatId={thread?.chatId ?? null}
+                onOpen={openFromHistory}
+                onDeleted={(id) => {
+                  if (thread?.chatId === id) startNewChat();
+                }}
+              />
+            </Scroller>
+          </div>
+
+          {thread ? (
+            <ChatArea
+              key={`${thread.chatId ?? subjectKey(thread.subject)}:${fresh}`}
+              thread={thread}
+              resolver={resolverMap}
+              show={show}
+            />
+          ) : (
+            <div className="flex min-h-0 flex-1 items-center justify-center">
+              <AiDiamond size={20} busy />
+            </div>
+          )}
+        </div>
       </div>
     </aside>
   );
 }
 
 function ChatArea({
-  subject,
+  thread,
   resolver,
   show,
 }: {
-  subject: ChatSubject;
+  thread: OpenThread;
   resolver: WikilinkResolver;
   show: boolean;
 }) {
+  const subject = thread.subject;
   const {
     messages,
     input,
@@ -121,7 +224,7 @@ function ChatArea({
     error,
     scrollRef,
     respondToApproval,
-  } = useNoteChat(subject, resolver);
+  } = useNoteChat(thread, resolver);
 
   return (
     <>

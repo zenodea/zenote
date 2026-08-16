@@ -10,6 +10,12 @@ type MessageRow = {
 /** Turns kept when replaying a thread to the model — a cost ceiling, not a UI limit. */
 const REPLAY_LIMIT = 30;
 
+export type ChatRow = {
+  id: string;
+  title: string;
+  note_id: string | null;
+};
+
 export async function getNoteId(slug: string): Promise<string | null> {
   const supabase = await createClient();
   const { data } = await supabase
@@ -20,33 +26,48 @@ export async function getNoteId(slug: string): Promise<string | null> {
   return data?.id ?? null;
 }
 
-export async function findChat(noteId: string): Promise<string | null> {
+export async function getChat(chatId: string): Promise<ChatRow | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("chats")
+    .select("id,title,note_id")
+    .eq("id", chatId)
+    .maybeSingle<ChatRow>();
+  return data;
+}
+
+/** The newest thread wins: it is the one the panel resumes for a note. */
+export async function latestChatId(noteId: string): Promise<string | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("chats")
     .select("id")
     .eq("note_id", noteId)
+    .order("updated_at", { ascending: false })
+    .limit(1)
     .maybeSingle<{ id: string }>();
   return data?.id ?? null;
 }
 
-export async function getOrCreateChat(noteId: string): Promise<string | null> {
-  const found = await findChat(noteId);
-  if (found) return found;
-
+export async function insertChat(noteId: string): Promise<string | null> {
   const supabase = await createClient();
-  const { data: created, error } = await supabase
+  const { data, error } = await supabase
     .from("chats")
     .insert({ note_id: noteId })
     .select("id")
     .maybeSingle<{ id: string }>();
+  if (error) console.error("Could not open chat:", error.message);
+  return data?.id ?? null;
+}
 
-  if (created) return created.id;
-
-  // A racing tab created it first; take theirs.
-  const raced = await findChat(noteId);
-  if (!raced && error) console.error("Could not open chat:", error.message);
-  return raced;
+/** Stamps recency; with a title, names the thread too. */
+export async function touchChat(chatId: string, title?: string): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("chats")
+    .update(title === undefined ? { updated_at: new Date().toISOString() } : { title })
+    .eq("id", chatId);
+  if (error) console.error("Could not update chat:", error.message);
 }
 
 export async function loadMessages(chatId: string): Promise<VaultUIMessage[]> {

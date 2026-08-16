@@ -1,11 +1,12 @@
-import { createGoogle } from "@ai-sdk/google";
+import { createGoogle, type GoogleProvider } from "@ai-sdk/google";
 import {
   convertToModelMessages,
+  generateText,
   stepCountIs,
   streamText,
   validateUIMessages,
 } from "ai";
-import { isChatSubject, type VaultUIMessage } from "@/lib/chat";
+import { isChatSubject, messageText, type VaultUIMessage } from "@/lib/chat";
 import {
   gatherContext,
   type ContextNote,
@@ -13,10 +14,10 @@ import {
 } from "@/lib/server/chat-context";
 import { vaultTools } from "@/lib/server/chat-tools";
 import {
-  getNoteId,
-  getOrCreateChat,
+  getChat,
   replayable,
   saveMessage,
+  touchChat,
 } from "@/lib/server/chats";
 import { rateLimited } from "@/lib/server/rate-limit";
 import { getUser } from "@/lib/server/supabase";
@@ -57,6 +58,32 @@ function systemPrompt(
   ].join("\n");
 }
 
+/** A fresh thread earns its name from its first exchange. */
+async function nameThread(
+  google: GoogleProvider,
+  chatId: string,
+  question: string,
+  answer: string,
+) {
+  const fallback = question.slice(0, 60);
+  try {
+    const { text } = await generateText({
+      model: google(MODEL),
+      prompt: [
+        "Name this conversation the way a book names a chapter: at most five words, no punctuation, no quotes.",
+        `Q: ${question.slice(0, 500)}`,
+        `A: ${answer.slice(0, 500)}`,
+        "Reply with the name only.",
+      ].join("\n"),
+      abortSignal: AbortSignal.timeout(10_000),
+    });
+    const title = text.trim().split("\n")[0].slice(0, 60);
+    await touchChat(chatId, title || fallback);
+  } catch {
+    await touchChat(chatId, fallback);
+  }
+}
+
 export async function POST(request: Request) {
   // Repeated after the middleware so note contents never depend on the matcher.
   const user = await getUser();
@@ -94,12 +121,10 @@ export async function POST(request: Request) {
     return new Response("Nothing to talk about.", { status: 404 });
   }
 
-  // Note threads persist; a graph selection is an ephemeral conversation.
-  let chatId: string | null = null;
-  if (subject.kind === "note") {
-    const noteId = await getNoteId(subject.slug);
-    chatId = noteId ? await getOrCreateChat(noteId) : null;
-  }
+  // Persistence follows the thread the client opened; selections stay ephemeral.
+  const chat =
+    typeof body?.chatId === "string" ? await getChat(body.chatId) : null;
+  const chatId = chat?.id ?? null;
 
   const history = replayable(messages);
   const last = history[history.length - 1];
@@ -130,6 +155,17 @@ export async function POST(request: Request) {
     onEnd: async ({ responseMessage, isAborted }) => {
       if (!chatId) return;
       await saveMessage(chatId, responseMessage, isAborted ? "aborted" : "complete");
+      const question = history.findLast((message) => message.role === "user");
+      if (chat?.title === "" && question) {
+        await nameThread(
+          google,
+          chatId,
+          messageText(question),
+          messageText(responseMessage),
+        );
+      } else {
+        await touchChat(chatId);
+      }
     },
     onError: (error) => {
       console.error("Chat stream failed:", error);

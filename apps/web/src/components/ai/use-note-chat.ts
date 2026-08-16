@@ -7,12 +7,19 @@ import {
   lastAssistantMessageIsCompleteWithApprovalResponses,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
-import { loadChat } from "@/app/actions/chats";
+import { createChat } from "@/app/actions/chats";
 import { useAiAssistant } from "@/components/ai/AiAssistantContext";
 import { messageText, type ChatSubject, type VaultUIMessage } from "@/lib/chat";
 import { setGraphFocus } from "@/lib/stores/graph-focus";
 import { extractTargets, resolveWikilink } from "@/lib/wikilinks";
 import type { WikilinkResolver } from "@/lib/wikilinks";
+
+/** A conversation on screen: its stored thread, its subject, and what was said. */
+export type OpenThread = {
+  chatId: string | null;
+  subject: ChatSubject;
+  messages: VaultUIMessage[];
+};
 
 function resolveAll(targets: string[], resolver: WikilinkResolver): string[] {
   return [
@@ -24,19 +31,22 @@ function resolveAll(targets: string[], resolver: WikilinkResolver): string[] {
   ];
 }
 
-/** One conversation about one subject; the caller remounts it when the subject changes. */
-export function useNoteChat(subject: ChatSubject, resolver: WikilinkResolver) {
+/** One conversation; the caller remounts it when the thread changes. */
+export function useNoteChat(thread: OpenThread, resolver: WikilinkResolver) {
   const { setBusy } = useAiAssistant();
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Minted on the first send; every request reads it at call time.
+  const chatIdRef = useRef(thread.chatId);
 
   const transport = useMemo(
     () =>
       new DefaultChatTransport<VaultUIMessage>({
         api: "/api/chat",
-        body: { subject },
+        body: { subject: thread.subject, chatId: thread.chatId },
       }),
-    [subject],
+    [thread],
   );
 
   type AddToolOutput = ReturnType<
@@ -47,13 +57,13 @@ export function useNoteChat(subject: ChatSubject, resolver: WikilinkResolver) {
   const {
     messages,
     sendMessage,
-    setMessages,
     addToolOutput,
     addToolApprovalResponse,
     status,
     stop,
     error,
   } = useChat<VaultUIMessage>({
+      messages: thread.messages,
       transport,
       sendAutomaticallyWhen: (options) =>
         lastAssistantMessageIsCompleteWithToolCalls(options) ||
@@ -68,6 +78,9 @@ export function useNoteChat(subject: ChatSubject, resolver: WikilinkResolver) {
           tool: "focus_graph",
           toolCallId: toolCall.toolCallId,
           output: { focused: slugs },
+          options: {
+            body: { subject: thread.subject, chatId: chatIdRef.current },
+          },
         });
       },
       onFinish: ({ message }) => {
@@ -87,23 +100,6 @@ export function useNoteChat(subject: ChatSubject, resolver: WikilinkResolver) {
 
   const busy = status === "submitted" || status === "streaming";
 
-  // A note's thread is stored; pick it up where it was left.
-  const fetchedRef = useRef(false);
-  useEffect(() => {
-    if (fetchedRef.current || subject.kind !== "note") return;
-    fetchedRef.current = true;
-    let alive = true;
-    loadChat(subject.slug)
-      .then((history) => {
-        if (!alive || history.length === 0) return;
-        setMessages((current) => (current.length === 0 ? history : current));
-      })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, [subject, setMessages]);
-
   useEffect(() => {
     setBusy(busy);
     return () => setBusy(false);
@@ -113,11 +109,27 @@ export function useNoteChat(subject: ChatSubject, resolver: WikilinkResolver) {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages]);
 
-  function send() {
+  async function send() {
     const text = input.trim();
     if (!text || busy) return;
     setInput("");
-    void sendMessage({ text });
+    // A fresh thread gets its row on first send, so empty chats never exist.
+    if (!chatIdRef.current && thread.subject.kind === "note") {
+      chatIdRef.current = await createChat(thread.subject.slug).catch(() => null);
+    }
+    void sendMessage(
+      { text },
+      { body: { subject: thread.subject, chatId: chatIdRef.current } },
+    );
+  }
+
+  function respondToApproval(response: { id: string; approved: boolean }) {
+    return addToolApprovalResponse({
+      ...response,
+      options: {
+        body: { subject: thread.subject, chatId: chatIdRef.current },
+      },
+    });
   }
 
   return {
@@ -129,6 +141,6 @@ export function useNoteChat(subject: ChatSubject, resolver: WikilinkResolver) {
     stop,
     error,
     scrollRef,
-    respondToApproval: addToolApprovalResponse,
+    respondToApproval,
   };
 }
