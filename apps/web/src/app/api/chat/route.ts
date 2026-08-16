@@ -28,7 +28,7 @@ const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.5-flash-lite";
 const STEP_LIMIT = 6;
 
 function systemPrompt(
-  title: string,
+  title: string | null,
   notes: ContextNote[],
   neighbours: NeighbourNote[],
 ): string {
@@ -39,13 +39,20 @@ function systemPrompt(
     "Name every note you draw on as a [[Wikilink]] with its exact title — the app turns those into links, so a claim the user cannot follow back to a note is worth less than one they can. After an answer drawn from the notes, call focus_graph with the titles you cited.",
     "If the notes do not cover something, say so plainly before answering from general knowledge.",
     "Keep answers concise.",
-    "",
-    `# What the user is looking at: ${title}`,
-    ...notes.flatMap((note) => [
-      "",
-      `## ${note.title} (${note.relation})`,
-      note.body,
-    ]),
+    ...(title === null
+      ? [
+          "",
+          "The user is not looking at any note in particular; reach for the tools.",
+        ]
+      : [
+          "",
+          `# What the user is looking at: ${title}`,
+          ...notes.flatMap((note) => [
+            "",
+            `## ${note.title} (${note.relation})`,
+            note.body,
+          ]),
+        ]),
     ...(neighbours.length > 0
       ? [
           "",
@@ -104,7 +111,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => null);
-  const subject = body?.subject;
+  const subject = body?.subject ?? null;
 
   let messages: VaultUIMessage[];
   try {
@@ -112,12 +119,15 @@ export async function POST(request: Request) {
   } catch {
     return new Response("Expected { subject, messages }.", { status: 400 });
   }
-  if (!isChatSubject(subject)) {
+  if (subject !== null && !isChatSubject(subject)) {
     return new Response("Expected { subject, messages }.", { status: 400 });
   }
 
-  const { title, notes, neighbours } = await gatherContext(subject);
-  if (notes.length === 0) {
+  // No subject is a conversation about the vault at large, all through tools.
+  const { title, notes, neighbours } = subject
+    ? await gatherContext(subject)
+    : { title: null, notes: [], neighbours: [] };
+  if (subject && notes.length === 0) {
     return new Response("Nothing to talk about.", { status: 404 });
   }
 

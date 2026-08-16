@@ -14,10 +14,11 @@ import { setGraphFocus } from "@/lib/stores/graph-focus";
 import { extractTargets, resolveWikilink } from "@/lib/wikilinks";
 import type { WikilinkResolver } from "@/lib/wikilinks";
 
-/** A conversation on screen: its stored thread, its subject, and what was said. */
+/** A conversation on screen: its stored thread, its subject, and what was said.
+ * A null subject is the vault at large. */
 export type OpenThread = {
   chatId: string | null;
-  subject: ChatSubject;
+  subject: ChatSubject | null;
   messages: VaultUIMessage[];
 };
 
@@ -114,8 +115,8 @@ export function useNoteChat(thread: OpenThread, resolver: WikilinkResolver) {
     if (!text || busy) return;
     setInput("");
     // A fresh thread gets its row on first send, so empty chats never exist.
-    if (!chatIdRef.current && thread.subject.kind === "note") {
-      chatIdRef.current = await createChat(thread.subject.slug).catch(() => null);
+    if (!chatIdRef.current) {
+      chatIdRef.current = await createChat(thread.subject).catch(() => null);
     }
     void sendMessage(
       { text },

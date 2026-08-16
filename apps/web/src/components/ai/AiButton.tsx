@@ -15,14 +15,13 @@ export function AiButton() {
   return (
     <Button
       onClick={() => setOpen(!open)}
-      disabled={!subject}
       active={open}
       aria-pressed={open}
       aria-label={open ? "Close AI assistant" : "Ask AI"}
       title={
         subject
           ? "Ask AI about what you are looking at"
-          : "Open a note, or pick nodes out on the graph"
+          : "Ask AI about your vault"
       }
     >
       <AiDiamond busy={open && busy} />

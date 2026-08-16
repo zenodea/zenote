@@ -14,6 +14,7 @@ export type ChatRow = {
   id: string;
   title: string;
   note_id: string | null;
+  note_ids: string[] | null;
 };
 
 export async function getNoteId(slug: string): Promise<string | null> {
@@ -30,7 +31,7 @@ export async function getChat(chatId: string): Promise<ChatRow | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("chats")
-    .select("id,title,note_id")
+    .select("id,title,note_id,note_ids")
     .eq("id", chatId)
     .maybeSingle<ChatRow>();
   return data;
@@ -49,11 +50,14 @@ export async function latestChatId(noteId: string): Promise<string | null> {
   return data?.id ?? null;
 }
 
-export async function insertChat(noteId: string): Promise<string | null> {
+export async function insertChat(fields: {
+  note_id?: string;
+  note_ids?: string[];
+}): Promise<string | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("chats")
-    .insert({ note_id: noteId })
+    .insert(fields)
     .select("id")
     .maybeSingle<{ id: string }>();
   if (error) console.error("Could not open chat:", error.message);

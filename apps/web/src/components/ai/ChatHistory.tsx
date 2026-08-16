@@ -83,7 +83,11 @@ export function ChatHistory({
               {chat.title || chat.noteTitle || "Untitled"}
             </p>
             <p className="truncate text-xs opacity-60">
-              {chat.noteTitle ?? "No note"} · {since(chat.updated)}
+              {chat.noteTitle ??
+                (chat.noteCount
+                  ? `${chat.noteCount} notes on the graph`
+                  : "The whole vault")}{" "}
+              · {since(chat.updated)}
             </p>
           </button>
           <Button

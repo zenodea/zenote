@@ -22,7 +22,7 @@ import {
   type ChatSubject,
   type VaultUIMessage,
 } from "@/lib/chat";
-import { useGraphFocusState } from "@/lib/stores/graph-focus";
+import { setGraphFocus, useGraphFocusState } from "@/lib/stores/graph-focus";
 import type { WikilinkResolver } from "@/lib/wikilinks";
 
 export function AiPanel({
@@ -68,13 +68,14 @@ export function AiPanel({
     setView("chat");
   }
 
-  // Resolve the pending subject into its most recent stored thread.
+  // Resolve the pending subject into its most recent stored thread. Without a
+  // subject the conversation is about the vault at large, fresh each time.
   useEffect(() => {
-    if (thread !== null || pending === null) return;
+    if (thread !== null) return;
     let alive = true;
     (async () => {
       const opened =
-        pending.kind === "note"
+        pending?.kind === "note"
           ? await openNoteChat(pending.slug).catch(() => null)
           : null;
       if (!alive) return;
@@ -89,11 +90,10 @@ export function AiPanel({
     };
   }, [thread, pending]);
 
-  const subject = thread?.subject ?? pending;
-  const show = open && subject !== null;
+  const subject = thread ? thread.subject : pending;
+  const show = open;
 
   function startNewChat() {
-    if (!subject) return;
     setThread({ chatId: null, subject, messages: [] });
     setFresh((count) => count + 1);
     setView("chat");
@@ -101,12 +101,16 @@ export function AiPanel({
 
   async function openFromHistory(id: string) {
     const opened = await openChat(id).catch(() => null);
-    if (!opened || !opened.noteSlug) return;
+    if (!opened) return;
     setThread({
       chatId: opened.chatId,
-      subject: { kind: "note", slug: opened.noteSlug },
+      subject: opened.subject,
       messages: opened.messages,
     });
+    // A reopened selection points the graph back at what it was about.
+    if (opened.subject?.kind === "selection") {
+      setGraphFocus(opened.subject.slugs, "assistant");
+    }
     setView("chat");
   }
 
@@ -133,7 +137,7 @@ export function AiPanel({
                 ? (titles[subject.slug] ?? subject.slug)
                 : subject
                   ? `${subject.slugs.length} notes on the graph`
-                  : ""}
+                  : "The whole vault"}
             </p>
           </div>
           <Button
@@ -219,7 +223,7 @@ function ChatArea({
   resolver: WikilinkResolver;
   show: boolean;
 }) {
-  const subject = thread.subject;
+  const subject = thread.subject ?? null;
   const {
     messages,
     input,
@@ -243,9 +247,11 @@ function ChatArea({
           <div className="flex flex-col items-center gap-3 py-10 opacity-50">
             <AiDiamond size={24} />
             <p>
-              {subject.kind === "note"
+              {subject?.kind === "note"
                 ? "Ask anything about this note"
-                : "Ask anything about what you have picked out"}
+                : subject
+                  ? "Ask anything about what you have picked out"
+                  : "Ask anything about your vault"}
             </p>
           </div>
         )}
@@ -281,9 +287,11 @@ function ChatArea({
           value={input}
           onChange={(event) => setInput(event.target.value)}
           placeholder={
-            subject.kind === "note"
+            subject?.kind === "note"
               ? "Ask about this note…"
-              : "Ask about these notes…"
+              : subject
+                ? "Ask about these notes…"
+                : "Ask about your vault…"
           }
           aria-label="Message the assistant"
           className="min-w-0 flex-1 bg-transparent placeholder:opacity-50 focus:outline-none"
