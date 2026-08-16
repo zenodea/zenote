@@ -1,11 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import type { SearchDoc } from "@/lib/search";
 import { updateSettings, useSettings } from "@/lib/stores/settings";
 import { buildTree } from "@/lib/tree";
-import { useVaultDocs } from "@/lib/stores/vault";
 import { NoteTree } from "@/components/navigation/NoteTree";
 import { SidebarFooter } from "@/components/navigation/SidebarFooter";
 import { SidebarHeader } from "@/components/navigation/SidebarHeader";
@@ -14,22 +13,21 @@ import { useSidebarSearch } from "@/components/navigation/use-sidebar-search";
 import { useVaultActions } from "@/components/navigation/use-vault-actions";
 import { Scroller } from "@/components/ui/Scroller";
 
-export function Sidebar({ docs }: { docs: SearchDoc[] }) {
+export function Sidebar({
+  docs,
+  folders,
+}: {
+  docs: SearchDoc[];
+  folders: string[];
+}) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const pathname = usePathname();
   const settings = useSettings();
   const minimised = settings.sidebarCollapsed;
 
-  const vault = useVaultDocs(docs);
-  const tree = useMemo(
-    () => buildTree(vault.docs, vault.folders),
-    [vault.docs, vault.folders],
-  );
-  const search = useSidebarSearch(vault.docs);
-  const { naming, setNaming, submitName, handleMove } = useVaultActions(
-    docs,
-    vault.docs,
-  );
+  const tree = useMemo(() => buildTree(docs, folders), [docs, folders]);
+  const search = useSidebarSearch(docs);
+  const { naming, setNaming, submitName, handleMove } = useVaultActions(docs);
 
   function toggleFolder(path: string) {
     setCollapsed((previous) => {
@@ -45,14 +43,20 @@ export function Sidebar({ docs }: { docs: SearchDoc[] }) {
     updateSettings({ sidebarCollapsed: next });
   }
 
+  // The boot script sizes the rail before paint; from here the classes below
+  // are the width, and leaving the attribute up would outrank them.
+  useEffect(() => {
+    delete document.documentElement.dataset.sidebar;
+  }, []);
+
   const reveal = minimised
-    ? "pointer-events-none opacity-0 duration-150"
-    : "opacity-100 delay-200 duration-200";
+    ? "sidebar-reveal pointer-events-none opacity-0 duration-150"
+    : "sidebar-reveal opacity-100 delay-200 duration-200";
 
   return (
     <nav
       data-seam="right"
-      className={`flex shrink-0 flex-col overflow-hidden border-r border-foreground/15 text-sm transition-[width] duration-300 ease-in-out ${
+      className={`sidebar flex shrink-0 flex-col overflow-hidden border-r border-foreground/15 text-sm transition-[width] duration-300 ease-in-out ${
         minimised ? "w-[60px]" : "w-64"
       }`}
     >
@@ -86,7 +90,6 @@ export function Sidebar({ docs }: { docs: SearchDoc[] }) {
             collapsed={collapsed}
             onToggleFolder={toggleFolder}
             pathname={pathname}
-            modified={vault.modified}
             naming={naming}
             onSubmitName={submitName}
             onCancelName={() => setNaming(null)}
@@ -94,11 +97,7 @@ export function Sidebar({ docs }: { docs: SearchDoc[] }) {
           />
         )}
       </Scroller>
-      <SidebarFooter
-        minimised={minimised}
-        pathname={pathname}
-        changeCount={vault.changeCount}
-      />
+      <SidebarFooter minimised={minimised} pathname={pathname} />
     </nav>
   );
 }

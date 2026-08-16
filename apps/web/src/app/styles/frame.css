@@ -1,3 +1,17 @@
+/*
+ * The stored sidebar width, for the one paint between the boot script in
+ * layout.tsx and React reading the same value. The attribute is dropped on
+ * mount, from where Sidebar's own classes carry it — so these widths are the
+ * `w-[60px]` and `w-64` there, and have to keep agreeing with them.
+ */
+html[data-sidebar="collapsed"] .sidebar {
+  width: 60px;
+}
+
+html[data-sidebar="collapsed"] .sidebar-reveal {
+  opacity: 0;
+}
+
 /* Sign out: chrome fades out while Frame cross-fades its seams in. */
 body[data-leaving] > *:not([data-frame]) {
   opacity: 0;
@@ -27,5 +41,45 @@ body[data-entering] > *:not([data-frame]) {
 @keyframes diamond-trace {
   to {
     stroke-dashoffset: calc(var(--trace) * -1);
+  }
+}
+
+/* The loader is only mounted once its grace window is spent; this eases it in. */
+@keyframes loader-appear {
+  from {
+    opacity: 0;
+  }
+}
+
+/*
+ * Page navigation: the outgoing page dips out on click, the incoming one rides
+ * back up. Interruptible transitions rather than keyframes, so a prefetched
+ * navigation that lands mid-fade reverses from wherever it got to instead of
+ * snapping to zero and flashing.
+ *
+ * The fade is applied one level in, never to .page-fade itself: seam-bearing
+ * elements keep their rule at full strength and fade only their contents. The
+ * seams are frame, not page — Junctions pins its marks to them from outside
+ * main, so a header line that dipped would part company with its own junction.
+ */
+.page-fade > [data-seam] > *,
+.page-fade > *:not([data-seam]) {
+  opacity: 1;
+  transition: opacity 150ms ease;
+}
+
+.page-fade[data-fading] > [data-seam] > *,
+.page-fade[data-fading] > *:not([data-seam]) {
+  opacity: 0;
+  transition-duration: 110ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-fade > [data-seam] > *,
+  .page-fade > *:not([data-seam]),
+  .page-fade[data-fading] > [data-seam] > *,
+  .page-fade[data-fading] > *:not([data-seam]) {
+    opacity: 1;
+    transition: none;
   }
 }
