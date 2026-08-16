@@ -99,7 +99,7 @@ export function useNoteChat(
       const cited = extractTargets(answer)
         .map((target) => resolveWikilink(resolver, target))
         .filter((slug): slug is string => slug !== null);
-      if (cited.length > 0) setGraphFocus([...new Set(cited)]);
+      if (cited.length > 0) setGraphFocus([...new Set(cited)], "assistant");
     } catch (error) {
       if (!controller.signal.aborted) {
         appendToReply(

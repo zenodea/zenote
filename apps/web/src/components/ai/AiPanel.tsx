@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAiAssistant } from "@/components/ai/AiAssistantContext";
 import { useNoteChat } from "@/components/ai/use-note-chat";
 import { NoteMarkdown } from "@/components/note/NoteMarkdown";
@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { CloseIcon, SendIcon } from "@/components/ui/Icons";
 import { Scroller } from "@/components/ui/Scroller";
 import { useNoteSlug } from "@/hooks/use-note-slug";
-import type { ChatMessage, ChatSubject } from "@/lib/chat";
-import { useGraphFocus } from "@/lib/stores/graph-focus";
+import { subjectKey, type ChatMessage, type ChatSubject } from "@/lib/chat";
+import { useGraphFocusState } from "@/lib/stores/graph-focus";
 import type { WikilinkResolver } from "@/lib/wikilinks";
 
 export function AiPanel({
@@ -26,14 +26,25 @@ export function AiPanel({
     [resolver],
   );
   const slug = useNoteSlug();
-  const selection = useGraphFocus();
+  const focus = useGraphFocusState();
 
   // A note when reading one, otherwise whatever is picked out on the graph.
-  const subject: ChatSubject | null = slug
+  const live: ChatSubject | null = slug
     ? { kind: "note", slug }
-    : selection.length > 0
-      ? { kind: "selection", slugs: selection }
+    : focus.slugs.length > 0
+      ? { kind: "selection", slugs: focus.slugs }
       : null;
+
+  // Re-aimed only by the reader. The assistant points the graph at the notes it
+  // just cited, and taking that as a new subject would reset the conversation
+  // that produced it.
+  const [subject, setSubject] = useState(live);
+  if (
+    (slug !== null || focus.from === "reader") &&
+    subjectKey(live) !== subjectKey(subject)
+  ) {
+    setSubject(live);
+  }
 
   const { messages, input, setInput, busy, send, scrollRef } = useNoteChat(
     subject,

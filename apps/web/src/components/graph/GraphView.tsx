@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAiAssistant } from "@/components/ai/AiAssistant";
 import { useCanvasSize } from "@/hooks/use-canvas-size";
 import { useEscape } from "@/hooks/use-hotkey";
 import { useLatestRef } from "@/hooks/use-latest-ref";
@@ -57,6 +58,7 @@ export function GraphView({
   standalone?: boolean;
 }) {
   const router = useRouter();
+  const { open: assisting } = useAiAssistant();
   const { canvasRef, size } = useCanvasSize();
   const sceneRef = useRef<PixiScene | null>(null);
 
@@ -375,7 +377,9 @@ export function GraphView({
     };
   }, [standalone, booted, graph, start]);
 
-  useEscape(clearFocus, controls);
+  // Not while the assistant is open: the focus is its subject, and clearing it
+  // would take the conversation down with it.
+  useEscape(clearFocus, controls && !assisting);
 
   const focusNode = useCallback(
     (node: number) => {
