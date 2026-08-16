@@ -18,6 +18,7 @@ import {
   replayable,
   saveMessage,
 } from "@/lib/server/chats";
+import { rateLimited } from "@/lib/server/rate-limit";
 import { getUser } from "@/lib/server/supabase";
 
 const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.5-flash-lite";
@@ -58,8 +59,14 @@ function systemPrompt(
 
 export async function POST(request: Request) {
   // Repeated after the middleware so note contents never depend on the matcher.
-  if (!(await getUser())) {
+  const user = await getUser();
+  if (!user) {
     return Response.json({ error: "Not authenticated." }, { status: 401 });
+  }
+  if (rateLimited(user.id)) {
+    return new Response("Too many requests — give it a few minutes.", {
+      status: 429,
+    });
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
@@ -111,6 +118,8 @@ export async function POST(request: Request) {
     }),
     tools,
     stopWhen: stepCountIs(STEP_LIMIT),
+    // A hung upstream should not hold the connection open forever.
+    abortSignal: AbortSignal.any([request.signal, AbortSignal.timeout(90_000)]),
   });
 
   // Finish generating (and saving) even if the reader navigates away mid-answer.
