@@ -95,8 +95,7 @@ function FindBarInner() {
 
   useEffect(() => {
     if (open) {
-      // The bar is still below the fold when this runs, and a plain focus
-      // scrolls main to reveal it — shifting the whole page, graph included.
+      // The bar sits below the fold, so a plain focus would scroll the whole page.
       inputRef.current?.focus({ preventScroll: true });
       inputRef.current?.select();
     }
@@ -126,12 +125,15 @@ function FindBarInner() {
   }
 
   const host = useFooterHost();
-  useFooterClaim(open);
+  const holds = useFooterClaim("find", open);
 
-  if (!open || !host) return null;
+  if (!open || !host || !holds) return null;
 
   return createPortal(
-    <div ref={barRef} className="flex h-11 items-center gap-2 px-4 text-sm">
+    <div
+      ref={barRef}
+      className="absolute inset-0 flex items-center gap-2 px-4 text-sm"
+    >
       <input
         ref={inputRef}
         type="search"

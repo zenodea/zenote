@@ -23,12 +23,7 @@ function clip(label: string): string {
   return label.length <= 22 ? label : `${label.slice(0, 21)}…`;
 }
 
-/**
- * The assistant's concept map, drawn with the graph's own machinery: the same
- * hand-rolled simulation, radii and palette as /graph, in an SVG small enough
- * to live inside a thread. Nodes drag, the camera pans and zooms, notes
- * navigate.
- */
+/** The assistant's concept map, drawn with the same simulation and palette as /graph. */
 export function ConceptGraph({ data }: { data: ConceptGraphData }) {
   const router = useRouter();
   const svgRef = useRef<SVGSVGElement>(null);

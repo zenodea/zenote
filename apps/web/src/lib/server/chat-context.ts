@@ -26,10 +26,7 @@ export function clip(body: string, limit: number): string {
   return body.length <= limit ? body : `${body.slice(0, limit)}\n…[truncated]`;
 }
 
-/**
- * What the user is looking at, plus the names of everything one link away —
- * enough to answer from, and handles for the tools to pull on.
- */
+/** What the reader is looking at, plus the names of everything one link away. */
 export async function gatherContext(subject: ChatSubject): Promise<{
   title: string;
   notes: ContextNote[];

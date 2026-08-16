@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAiAssistant } from "@/components/ai/AiAssistant";
 import { useCanvasSize } from "@/hooks/use-canvas-size";
@@ -75,8 +76,7 @@ export function GraphView({
   const { edges, neighbours } = useMemo(() => indexGraph(graph), [graph]);
   const baseRadius = baseRadiusFor(graph.nodes.length);
 
-  // Held by id: a rebuilt graph renumbers nodes, and a positional focus would move to another note.
-  // Standalone it is shared state, so the assistant can point the graph at what it just cited.
+  // Held by id: a rebuilt graph renumbers nodes, so a positional focus would drift.
   const shared = useGraphFocus();
   const [own, setOwn] = useState<string[]>(focusId ? [focusId] : []);
   const seedIds = standalone ? shared : own;
@@ -314,8 +314,7 @@ export function GraphView({
     if (!ready) return;
     sceneRef.current?.resize(size.width, size.height);
 
-    // Only the first measurement frames the graph. After that a pane sliding
-    // open moves the canvas, and the view goes with it rather than re-framing.
+    // Only the first measurement frames it; later ones are just panes sliding open.
     const previous = placed.current;
     const rect = canvasRef.current?.getBoundingClientRect() ?? null;
     placed.current = rect;
@@ -386,8 +385,7 @@ export function GraphView({
     };
   }, [standalone, booted, graph, start]);
 
-  // Not while the assistant is open: the focus is its subject, and clearing it
-  // would take the conversation down with it.
+  // Not while the assistant is open: the focus is its subject.
   useEscape(clearFocus, controls && !assisting);
 
   const focusNode = useCallback(
@@ -587,7 +585,7 @@ export function GraphView({
       <ul className="sr-only">
         {graph.nodes.map((node) => (
           <li key={node.id}>
-            <a href={`/notes/${node.id}`}>{node.title}</a>
+            <Link href={`/notes/${node.id}`}>{node.title}</Link>
           </li>
         ))}
       </ul>

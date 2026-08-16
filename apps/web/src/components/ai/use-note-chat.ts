@@ -17,8 +17,7 @@ import { setGraphFocus } from "@/lib/stores/graph-focus";
 import { extractTargets, resolveWikilink } from "@/lib/wikilinks";
 import type { WikilinkResolver } from "@/lib/wikilinks";
 
-/** A conversation on screen: its stored thread, its subject, and what was said.
- * A null subject is the vault at large. */
+/** A conversation on screen; a null subject is the vault at large. */
 export type OpenThread = {
   chatId: string | null;
   subject: ChatSubject | null;
@@ -109,8 +108,7 @@ export function useNoteChat(
         });
       },
       onFinish: ({ message }) => {
-        // An approved write changed the vault; the chrome re-reads it so new
-        // notes appear and their wikilinks resolve without a manual reload.
+        // An approved write changed the vault, so the chrome has to re-read it.
         const wrote = message.parts.some(
           (part) =>
             WRITE_TOOLS.has(part.type) &&
@@ -133,6 +131,10 @@ export function useNoteChat(
   }, [addToolOutput]);
 
   const busy = status === "submitted" || status === "streaming";
+
+  // An abandoned thread stops streaming with it; the server still saves the answer.
+  const latestStop = useLatestRef(stop);
+  useEffect(() => () => void latestStop.current(), [latestStop]);
 
   useEffect(() => {
     setBusy(busy);

@@ -11,10 +11,7 @@ import { createClient } from "./supabase";
 
 export type SlugRename = { from: string; to: string };
 
-/**
- * After a rename or move, links that pointed at the old name follow the note.
- * Best-effort: a failure here leaves a broken link, never a broken action.
- */
+/** Best-effort: a failure here leaves a broken link, never a broken action. */
 export async function rewriteWikilinks(renames: SlugRename[]): Promise<void> {
   const moved = renames.filter((rename) => rename.from !== rename.to);
   if (moved.length === 0) return;

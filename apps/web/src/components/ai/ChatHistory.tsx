@@ -19,7 +19,6 @@ function since(iso: string): string {
   return new Date(iso).toLocaleDateString();
 }
 
-/** Every stored conversation, newest first; refetched each time the drawer opens. */
 export function ChatHistory({
   open,
   activeChatId,
@@ -45,8 +44,15 @@ export function ChatHistory({
   }, [open]);
 
   async function remove(id: string) {
+    const before = chats;
     setChats((current) => current?.filter((chat) => chat.id !== id) ?? null);
-    await deleteChat(id).catch(() => {});
+
+    // Only let go of a conversation the server actually deleted.
+    const { error } = await deleteChat(id).catch(() => ({
+      error: "Could not reach the server.",
+    }));
+    if (error) return setChats(before);
+
     onDeleted(id);
   }
 

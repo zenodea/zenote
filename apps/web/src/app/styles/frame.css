@@ -31,19 +31,12 @@ html[data-sidebar="collapsed"] .sidebar-reveal {
   }
 }
 
-/* The page's bottom plane, rising the way the assistant panel comes in. */
+/* Instant, never animated: translated rather than hidden so its input can still take focus. */
 .app-footer {
   transform: translateY(100%);
-  transition: transform 110ms ease-out;
 }
 .app-footer[data-open] {
   transform: translateY(0);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .app-footer {
-    transition: none;
-  }
 }
 
 /* Sign out: chrome fades out while Frame cross-fades its seams in. */

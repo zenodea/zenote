@@ -8,11 +8,7 @@ import {
 } from "@/lib/note-body-cache";
 import type { SearchDoc, SearchDocMeta } from "@/lib/search";
 
-/**
- * Bodies come from an IndexedDB cache keyed by updated_at; only changed notes
- * cross the network. Until they land, title search works and content search
- * sees what the cache had.
- */
+/** Bodies come from an IndexedDB cache keyed by updated_at; only changed notes refetch. */
 export function useSearchDocs(meta: SearchDocMeta[]): SearchDoc[] {
   const [bodies, setBodies] = useState<Map<string, string> | null>(null);
 

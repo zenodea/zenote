@@ -98,8 +98,7 @@ export async function loadMessages(chatId: string): Promise<VaultUIMessage[]> {
 
   if (error) throw new Error(`Could not load chat: ${error.message}`);
 
-  // Threads written before server and client agreed on reply ids can hold the
-  // same turn twice; the later row is the finished one.
+  // Threads predating agreed reply ids hold a turn twice; the later row is finished.
   const rows = data ?? [];
   const last = new Map<string, number>();
   rows.forEach((row, index) => last.set(row.message.id, index));

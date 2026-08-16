@@ -26,7 +26,6 @@ export type OpenedChat = {
   messages: VaultUIMessage[];
 };
 
-/** Every stored conversation, newest first, for the history view. */
 export async function listChats(): Promise<ChatListing[]> {
   if (!(await getUser())) return [];
 
@@ -56,7 +55,6 @@ export async function listChats(): Promise<ChatListing[]> {
   }));
 }
 
-/** A note's most recent thread; null when it has none yet. */
 export async function openNoteChat(slug: string): Promise<OpenedChat | null> {
   if (!(await getUser())) return null;
 
@@ -71,7 +69,6 @@ export async function openNoteChat(slug: string): Promise<OpenedChat | null> {
   };
 }
 
-/** The most recent conversation about the vault at large; null when none. */
 export async function openFreeChat(): Promise<OpenedChat | null> {
   if (!(await getUser())) return null;
 
@@ -135,10 +132,10 @@ export async function createChat(
   return ids.length > 0 ? insertChat({ note_ids: ids }) : null;
 }
 
-export async function deleteChat(chatId: string): Promise<void> {
-  if (!(await getUser())) return;
+export async function deleteChat(chatId: string): Promise<{ error?: string }> {
+  if (!(await getUser())) return { error: "Not signed in." };
 
   const supabase = await createClient();
   const { error } = await supabase.from("chats").delete().eq("id", chatId);
-  if (error) console.error("Could not delete chat:", error.message);
+  return error ? { error: error.message } : {};
 }

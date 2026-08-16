@@ -28,6 +28,11 @@ const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.5-flash-lite";
 /** Model calls per user turn; each tool round trip is one more. */
 const STEP_LIMIT = 6;
 
+// The form the model is asked to copy; a slug that is already the title needs no alias.
+function wikilink(slug: string, title: string): string {
+  return title === slug ? `[[${slug}]]` : `[[${slug}|${title}]]`;
+}
+
 function systemPrompt(
   title: string | null,
   notes: ContextNote[],
@@ -42,7 +47,7 @@ function systemPrompt(
     writes
       ? "You can also change the vault — create_note, append_to_note, replace_in_note, move_note — and each such call is shown to the user to approve or refuse before it runs. Propose them when asked to capture, correct or reorganise something, and never claim one happened until its result confirms it."
       : "You cannot change the vault; the user has switched writing off. If asked to, say so and offer the content in your reply instead.",
-    "Name every note you draw on as a [[Wikilink]] with its exact title — the app turns those into links, so a claim the user cannot follow back to a note is worth less than one they can. After an answer drawn from the notes, call focus_graph with the titles you cited.",
+    "Name every note you draw on as a wikilink in the form [[slug|Title]]: its exact slug, then its title as the display text, as in [[security-concepts|Security Concepts]]. The slug is the half the app resolves and the half that survives a rename; the title is only what the reader sees. A bare [[Security Concepts]] is a link waiting to break, and a slug you invented from a title is one that never worked. Every note in this prompt is given with its slug, and search_notes, read_note, neighbours, list_notes, recent_changes and vault_health all return one — take the slug from there. After an answer drawn from the notes, call focus_graph with the slugs you cited.",
     notesOnly
       ? "Answer only from the notes. If they do not cover something, say so plainly and leave it there — do not answer from general knowledge."
       : "If the notes do not cover something, say so plainly before answering from general knowledge.",
@@ -57,7 +62,7 @@ function systemPrompt(
           `# What the user is looking at: ${title}`,
           ...notes.flatMap((note) => [
             "",
-            `## ${note.title} (${note.relation})`,
+            `## ${note.title} — slug: ${note.slug} (${note.relation})`,
             note.body,
           ]),
         ]),
@@ -66,7 +71,8 @@ function systemPrompt(
           "",
           "# One link away",
           ...neighbours.map(
-            (neighbour) => `- [[${neighbour.title}]] (${neighbour.relation})`,
+            (neighbour) =>
+              `- ${wikilink(neighbour.slug, neighbour.title)} (${neighbour.relation})`,
           ),
         ]
       : []),
@@ -163,8 +169,7 @@ export async function POST(request: Request) {
       ignoreIncompleteToolCalls: true,
     }),
     tools,
-    // The full set stays declared so stored turns still convert; only the
-    // callable set narrows when the user switches writing off.
+    // The full set stays declared so stored turns still convert; only calls narrow.
     activeTools: allowWrites
       ? undefined
       : [
@@ -188,8 +193,7 @@ export async function POST(request: Request) {
 
   return result.toUIMessageStreamResponse({
     originalMessages: history,
-    // Sent to the client, so both sides store the reply under one id — the
-    // upsert on a tool-loop continuation depends on them agreeing.
+    // Both sides must store the reply under one id, or the tool-loop upsert splits it.
     generateMessageId: generateId,
     onEnd: async ({ responseMessage, isAborted }) => {
       if (!chatId) return;

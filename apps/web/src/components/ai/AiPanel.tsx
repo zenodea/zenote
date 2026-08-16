@@ -35,7 +35,6 @@ export function AiPanel({
   resolver,
 }: {
   titles: Record<string, string>;
-  /** Cited notes render as the same wikilinks the notes themselves use. */
   resolver: Record<string, string>;
 }) {
   const { open, setOpen } = useAiAssistant();
@@ -46,18 +45,13 @@ export function AiPanel({
   const slug = useNoteSlug();
   const focus = useGraphFocusState();
 
-  // A note when reading one, otherwise whatever is picked out on the graph.
   const live: ChatSubject | null = slug
     ? { kind: "note", slug }
     : focus.slugs.length > 0
       ? { kind: "selection", slugs: focus.slugs }
       : null;
 
-  // What is on screen: a conversation outlives navigation — new threads come
-  // from the plus button, a fresh session, or the reader picking a selection
-  // out on the graph. An untouched empty thread is not a conversation yet; it
-  // follows the page. `wanted` is the one being fetched, loaded behind the
-  // current view and swapped in whole, so nothing blanks or flickers.
+  // `wanted` loads behind the current view and swaps in whole, so nothing flickers.
   const [thread, setThread] = useState<OpenThread | null>(null);
   const [wanted, setWanted] = useState<{ subject: ChatSubject | null } | null>(
     { subject: live },
@@ -68,12 +62,10 @@ export function AiPanel({
 
   const historyOpen = view === "history";
 
-  // Touched is about this session: a resumed thread's stored history is
-  // display, not engagement. Until the reader talks, the panel follows them.
+  // A resumed thread's stored history is display, not engagement, so it stays untouched.
   const untouched = !touched;
 
-  // Closing the panel puts the conversation down: reopening starts the
-  // follow-the-reader cycle over, aimed at wherever they are now.
+  // Reopening starts the follow-the-reader cycle over, aimed at wherever they are now.
   const [wasOpen, setWasOpen] = useState(open);
   if (open !== wasOpen) {
     setWasOpen(open);
@@ -97,16 +89,13 @@ export function AiPanel({
       setTouched(false);
       setView("chat");
     } else if (untouched && live?.kind === "note") {
-      // Only a note re-aims an untouched thread; passing through the graph or
-      // settings, which have no subject of their own, changes nothing.
+      // Only a note re-aims an untouched thread; subjectless pages change nothing.
       setWanted({ subject: live });
       setView("chat");
     }
   }
 
-  // Resolve the wanted subject into its most recent stored thread. Without a
-  // subject the vault-at-large conversation picks up where it left off; only a
-  // graph selection starts fresh, since its identity changes with every pick.
+  // Only a selection starts fresh: its identity changes with every pick.
   useEffect(() => {
     if (wanted === null) return;
     let alive = true;
@@ -134,7 +123,6 @@ export function AiPanel({
 
   const subject = thread ? thread.subject : (wanted?.subject ?? null);
   const show = open;
-  // A thread that loads quickly never flashes a loader at all.
   const slowLoad = useLoadingIndicator(thread === null);
 
   // About what the reader is looking at now — not the held thread's subject.
@@ -156,7 +144,6 @@ export function AiPanel({
     });
     setWanted(null);
     setTouched(false);
-    // A reopened selection points the graph back at what it was about.
     if (opened.subject?.kind === "selection") {
       setGraphFocus(opened.subject.slugs, "assistant");
     }
@@ -217,11 +204,7 @@ export function AiPanel({
         </div>
 
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-          {/* The footer's slide, turned upside down: history descends from the
-              header on a transform, so the conversation never reflows. */}
-          {/* Seam claimed even mid-slide, unlike the footer: closed, this edge
-              sits exactly on the header's seam, so its junction marks emerge
-              from the header's diamonds and ride the edge down. */}
+          {/* Closed, this edge sits on the header's seam, so it can claim one mid-slide. */}
           <div
             data-seam={show ? "bottom" : undefined}
             className={`absolute inset-x-0 top-0 z-20 border-b border-foreground/15 bg-background transition-transform duration-300 ease-in-out ${
@@ -550,7 +533,6 @@ function ToolLine({
   return <p className="text-xs italic opacity-50">{label}</p>;
 }
 
-/** A proposed change to the vault; nothing runs until the reader says so. */
 function WriteCard({
   part,
   label,

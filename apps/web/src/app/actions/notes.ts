@@ -95,54 +95,103 @@ export async function createFolder(path: string): Promise<ActionResult> {
   return {};
 }
 
-/**
- * A folder is two things: a row here and a prefix on every slug beneath it. Any
- * structural move has to carry both, so they all go through this.
- */
-async function reprefix(
-  from: string,
+type Reprefixed = ActionResult & {
+  renames?: SlugRename[];
+  undo?: () => Promise<void>;
+};
+
+type Move = { id: string; from: string; to: string };
+
+function plan(
+  rows: { id: string; path: string }[],
+  prefix: string,
   to: string | null,
-): Promise<ActionResult & { renames?: SlugRename[] }> {
+): { moves: Move[]; taken: string | null } {
+  const moves: Move[] = [];
+  const staying = new Set<string>();
+
+  for (const row of rows) {
+    if (!row.path.startsWith(prefix)) {
+      staying.add(row.path);
+      continue;
+    }
+    const rest = row.path.slice(prefix.length);
+    moves.push({
+      id: row.id,
+      from: row.path,
+      to: to === null ? rest : joinSlug(to, rest),
+    });
+  }
+
+  const clash = moves.find((move) => staying.has(move.to));
+  return { moves, taken: clash ? clash.to : null };
+}
+
+/** A folder is a row here and a prefix on every slug beneath it; both move together. */
+async function reprefix(from: string, to: string | null): Promise<Reprefixed> {
   const supabase = await createClient();
+  const prefix = `${from}/`;
 
-  const { data: notes, error: read } = await supabase
-    .from("notes")
-    .select("id,slug")
-    .like("slug", `${from}/%`)
-    .returns<{ id: string; slug: string }[]>();
+  const [notes, folders] = await Promise.all([
+    supabase.from("notes").select("id,slug").returns<
+      { id: string; slug: string }[]
+    >(),
+    supabase.from("folders").select("id,path").returns<
+      { id: string; path: string }[]
+    >(),
+  ]);
 
-  if (read) return { error: read.message };
+  if (notes.error) return { error: notes.error.message };
+  if (folders.error) return { error: folders.error.message };
 
-  const renames: SlugRename[] = [];
-  for (const note of notes ?? []) {
-    const rest = note.slug.slice(from.length + 1);
-    const next = to === null ? rest : joinSlug(to, rest);
+  const paths = (notes.data ?? []).map(({ id, slug }) => ({ id, path: slug }));
+  const moved = plan(paths, prefix, to);
+  const nested = plan(folders.data ?? [], prefix, to);
+
+  // Nothing is written until every destination is known to be free.
+  const taken = moved.taken ?? nested.taken;
+  if (taken) return { error: `“${taken}” already exists.` };
+
+  const doneNotes: Move[] = [];
+  const doneFolders: Move[] = [];
+
+  async function undo() {
+    for (const move of doneNotes) {
+      await supabase.from("notes").update({ slug: move.from }).eq("id", move.id);
+    }
+    for (const move of doneFolders) {
+      await supabase
+        .from("folders")
+        .update({ path: move.from })
+        .eq("id", move.id);
+    }
+  }
+
+  for (const move of moved.moves) {
     const { error } = await supabase
       .from("notes")
-      .update({ slug: next })
-      .eq("id", note.id);
-    if (error) return failed(error, `“${rest}” already exists.`);
-    renames.push({ from: note.slug, to: next });
+      .update({ slug: move.to })
+      .eq("id", move.id);
+    if (error) {
+      await undo();
+      return failed(error, `“${move.to}” already exists.`);
+    }
+    doneNotes.push(move);
   }
 
-  const { data: nested, error: listed } = await supabase
-    .from("folders")
-    .select("id,path")
-    .like("path", `${from}/%`)
-    .returns<{ id: string; path: string }[]>();
-
-  if (listed) return { error: listed.message };
-
-  for (const row of nested ?? []) {
-    const rest = row.path.slice(from.length + 1);
+  for (const move of nested.moves) {
     const { error } = await supabase
       .from("folders")
-      .update({ path: to === null ? rest : joinSlug(to, rest) })
-      .eq("id", row.id);
-    if (error) return failed(error, `“${rest}” already exists.`);
+      .update({ path: move.to })
+      .eq("id", move.id);
+    if (error) {
+      await undo();
+      return failed(error, `“${move.to}” already exists.`);
+    }
+    doneFolders.push(move);
   }
 
-  return { renames };
+  return { renames: moved.moves.map(({ from, to }) => ({ from, to })), undo };
 }
 
 async function relocate(path: string, next: string): Promise<ActionResult> {
@@ -162,7 +211,10 @@ async function relocate(path: string, next: string): Promise<ActionResult> {
     .eq("path", path);
 
   // No row is fine: a folder holding notes is implied by their slugs.
-  if (error) return failed(error, `“${next}” already exists.`);
+  if (error) {
+    await moved.undo?.();
+    return failed(error, `“${next}” already exists.`);
+  }
   await rewriteWikilinks(moved.renames ?? []);
   refresh();
   return {};
@@ -191,7 +243,10 @@ export async function deleteFolder(path: string): Promise<ActionResult> {
 
   const supabase = await createClient();
   const { error } = await supabase.from("folders").delete().eq("path", path);
-  if (error) return { error: error.message };
+  if (error) {
+    await lifted.undo?.();
+    return { error: error.message };
+  }
 
   await rewriteWikilinks(lifted.renames ?? []);
   refresh();

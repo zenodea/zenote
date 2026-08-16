@@ -4,11 +4,7 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { useFooterClaim, useFooterHost } from "@/lib/stores/footer";
 
-/**
- * Vim's : and / prompts, in the shared footer. The engine writes into this
- * element whenever a prompt opens, so what is in the DOM — not React — decides
- * whether the footer is up.
- */
+/** Vim's : and / prompts: the engine writes into this element, so the DOM decides. */
 export function VimPrompt({
   hostRef,
 }: {
@@ -22,7 +18,9 @@ export function VimPrompt({
     const element = own.current;
     if (!element) return;
 
-    const check = () => setPrompting(element.childElementCount > 0);
+    // A prompt is a dialog div; the mode indicators the engine also appends are spans.
+    const check = () =>
+      setPrompting(element.querySelector(":scope > div") !== null);
     const observer = new MutationObserver(check);
     observer.observe(element, { childList: true });
     check();
@@ -30,7 +28,7 @@ export function VimPrompt({
     return () => observer.disconnect();
   }, [footer]);
 
-  useFooterClaim(prompting);
+  useFooterClaim("vim", prompting);
   if (!footer) return null;
 
   return createPortal(
@@ -39,7 +37,9 @@ export function VimPrompt({
         own.current = node;
         hostRef.current = node;
       }}
-      className="vim-statusbar flex h-11 items-center gap-2 px-4 font-mono text-xs"
+      className={`vim-statusbar absolute inset-0 flex items-center gap-2 px-4 font-mono text-xs ${
+        prompting ? "" : "pointer-events-none"
+      }`}
     />,
     footer,
   );

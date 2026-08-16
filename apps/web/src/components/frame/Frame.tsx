@@ -222,8 +222,7 @@ export function Frame() {
   };
   const draw = reduce ? "none" : `transform ${LINES_MS}ms ${EASE}`;
 
-  // Only while leaving: the stored measurement outlives the sign-out, and on
-  // the next sign-in it would frame a panel that is no longer open.
+  // The measurement outlives the sign-out and would frame a panel that has closed.
   const panel =
     leaving.active || phase === "unframing" || phase === "opening"
       ? geometry.panel
