@@ -26,7 +26,7 @@ export function AiPanel({
   /** Cited notes render as the same wikilinks the notes themselves use. */
   resolver: Record<string, string>;
 }) {
-  const { open, setOpen, busy } = useAiAssistant();
+  const { open, setOpen } = useAiAssistant();
   const resolverMap = useMemo(
     () => new Map(Object.entries(resolver)),
     [resolver],
@@ -70,7 +70,6 @@ export function AiPanel({
           data-seam={show ? "bottom" : undefined}
           className="flex h-14 shrink-0 items-center gap-2 border-b border-foreground/15 px-4"
         >
-          <AiDiamond size={18} busy={busy} className="shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="font-semibold">AI Assistant</p>
             <p className="truncate text-xs opacity-60">
