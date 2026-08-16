@@ -19,6 +19,7 @@ import {
   SendIcon,
 } from "@/components/ui/Icons";
 import { Scroller } from "@/components/ui/Scroller";
+import { useLoadingIndicator } from "@/hooks/use-loading-indicator";
 import { useNoteSlug } from "@/hooks/use-note-slug";
 import {
   messageText,
@@ -77,7 +78,9 @@ export function AiPanel({
       setThread({ chatId: null, subject: live, messages: [] });
       setTouched(false);
       setView("chat");
-    } else if (untouched) {
+    } else if (untouched && live?.kind === "note") {
+      // Only a note re-aims an untouched thread; passing through the graph or
+      // settings, which have no subject of their own, changes nothing.
       setPending(live);
       setThread(null);
       setView("chat");
@@ -111,6 +114,8 @@ export function AiPanel({
 
   const subject = thread ? thread.subject : pending;
   const show = open;
+  // A thread that loads quickly never flashes a loader at all.
+  const slowLoad = useLoadingIndicator(thread === null);
 
   // About what the reader is looking at now — not the held thread's subject.
   function startNewChat() {
@@ -228,7 +233,7 @@ export function AiPanel({
             />
           ) : (
             <div className="flex min-h-0 flex-1 items-center justify-center">
-              <AiDiamond size={20} busy />
+              {slowLoad && <AiDiamond size={20} busy />}
             </div>
           )}
         </div>
