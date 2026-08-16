@@ -173,7 +173,9 @@ export function AiPanel({
           <div
             data-seam={settled ? "bottom" : undefined}
             onTransitionEnd={(event) => {
-              if (historyOpen && event.propertyName === "transform") {
+              // Target check, not property name: the slide is Tailwind's own
+              // `translate`, and the inner list's opacity fade bubbles up here.
+              if (historyOpen && event.target === event.currentTarget) {
                 setSettled(true);
               }
             }}
