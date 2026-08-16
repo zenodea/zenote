@@ -1,6 +1,7 @@
 import { createGoogle, type GoogleProvider } from "@ai-sdk/google";
 import {
   convertToModelMessages,
+  generateId,
   generateText,
   stepCountIs,
   streamText,
@@ -162,6 +163,9 @@ export async function POST(request: Request) {
 
   return result.toUIMessageStreamResponse({
     originalMessages: history,
+    // Sent to the client, so both sides store the reply under one id — the
+    // upsert on a tool-loop continuation depends on them agreeing.
+    generateMessageId: generateId,
     onEnd: async ({ responseMessage, isAborted }) => {
       if (!chatId) return;
       await saveMessage(chatId, responseMessage, isAborted ? "aborted" : "complete");

@@ -338,7 +338,7 @@ function Turn({
 }) {
   if (message.role === "user") {
     return (
-      <p className="ml-8 whitespace-pre-wrap rounded-lg bg-foreground/10 px-3 py-2">
+      <p className="ml-8 whitespace-pre-wrap bg-foreground/10 px-3 py-2">
         {messageText(message)}
       </p>
     );
@@ -485,10 +485,10 @@ function WriteCard({
     part.state === "output-denied" || part.approval?.approved === false;
 
   return (
-    <div className="not-prose rounded-lg border border-foreground/15 px-3 py-2 text-xs">
+    <div className="not-prose border border-foreground/15 px-3 py-2 text-xs">
       <p className="font-semibold">{label}</p>
       {preview && (
-        <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-foreground/5 p-2 opacity-80">
+        <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap bg-foreground/5 p-2 opacity-80">
           {preview}
         </pre>
       )}

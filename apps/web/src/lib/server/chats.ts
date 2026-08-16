@@ -85,9 +85,17 @@ export async function loadMessages(chatId: string): Promise<VaultUIMessage[]> {
 
   if (error) throw new Error(`Could not load chat: ${error.message}`);
 
-  return (data ?? []).map(({ status, message }) =>
-    status === "complete" ? message : { ...message, metadata: { status } },
-  );
+  // Threads written before server and client agreed on reply ids can hold the
+  // same turn twice; the later row is the finished one.
+  const rows = data ?? [];
+  const last = new Map<string, number>();
+  rows.forEach((row, index) => last.set(row.message.id, index));
+
+  return rows
+    .filter((row, index) => last.get(row.message.id) === index)
+    .map(({ status, message }) =>
+      status === "complete" ? message : { ...message, metadata: { status } },
+    );
 }
 
 /** Update-by-id first so a continued turn overwrites its earlier half. */
