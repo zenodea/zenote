@@ -266,13 +266,51 @@ export function Frame() {
         transition={draw}
       />
 
-      {/* Both points where the seams cross, matching what Junctions draws. */}
-      {[geometry.head, geometry.foot].map((y) => (
-        <Mark
-          key={y}
+      {/* The assistant panel, when it was open, leaves with the same grace. */}
+      {geometry.panel && (
+        <Seam
+          className="top-0 h-screen w-px"
+          style={{ ...lines, left: geometry.panel.x - 0.5 }}
+          origin={`center ${geometry.head}px`}
+          axis="Y"
+          open={drawn}
+          transition={draw}
+        />
+      )}
+      {geometry.panel && geometry.panel.foot !== null && (
+        <Seam
+          className="h-px"
           style={{
             ...lines,
-            left: geometry.x,
+            top: geometry.panel.foot - 0.5,
+            left: geometry.panel.x,
+            width: env.width - geometry.panel.x,
+          }}
+          origin="0px center"
+          axis="X"
+          open={drawn}
+          transition={draw}
+        />
+      )}
+
+      {/* Every point where the seams cross, matching what Junctions draws. */}
+      {[
+        { x: geometry.x, y: geometry.head },
+        { x: geometry.x, y: geometry.foot },
+        ...(geometry.panel
+          ? [
+              { x: geometry.panel.x, y: geometry.head },
+              ...(geometry.panel.foot !== null
+                ? [{ x: geometry.panel.x, y: geometry.panel.foot }]
+                : []),
+            ]
+          : []),
+      ].map(({ x, y }) => (
+        <Mark
+          key={`${x}:${y}`}
+          style={{
+            ...lines,
+            left: x,
             top: y,
             opacity: (lines.opacity as number) * (drawn ? 1 : 0),
             // Hands off to the real junction marks, so it fades on the seams' clock.

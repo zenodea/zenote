@@ -10,6 +10,13 @@ export const SIDEBAR_COLLAPSED_WIDTH = 60;
 export const FOOTER_HEIGHT = 45;
 export const FOOTER_COLLAPSED_HEIGHT = 105;
 
+export type PanelGeometry = {
+  /** The assistant panel's left border. */
+  x: number;
+  /** Its input bar's top border; null while the panel has no input row. */
+  foot: number | null;
+};
+
 export type Geometry = {
   /** Sidebar's right border. */
   x: number;
@@ -18,6 +25,8 @@ export type Geometry = {
   /** Sidebar footer's top border. */
   foot: number;
   sidebar: number;
+  /** The assistant panel's edges, when it was open. */
+  panel: PanelGeometry | null;
 };
 
 export function sidebarWidth(collapsed: boolean) {
@@ -36,6 +45,7 @@ export function fallbackGeometry(
     head: HEADER_HEIGHT - 0.5,
     foot: viewportHeight - footer + 0.5,
     sidebar: width,
+    panel: null,
   };
 }
 
@@ -48,10 +58,23 @@ export function measureGeometry(): Geometry | null {
 
   const bar = nav.getBoundingClientRect();
 
+  const panelEdge = document.querySelector<HTMLElement>(
+    'aside[aria-label="AI assistant"] [data-seam="left"]',
+  );
+  const panelFoot = panelEdge?.querySelector<HTMLElement>('[data-seam="top"]');
+
   return {
     x: bar.right - 0.5,
     head: head.getBoundingClientRect().bottom - 0.5,
     foot: foot.getBoundingClientRect().top + 0.5,
     sidebar: bar.width,
+    panel: panelEdge
+      ? {
+          x: panelEdge.getBoundingClientRect().left + 0.5,
+          foot: panelFoot
+            ? panelFoot.getBoundingClientRect().top + 0.5
+            : null,
+        }
+      : null,
   };
 }
