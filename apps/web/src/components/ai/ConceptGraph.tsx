@@ -104,8 +104,8 @@ export function ConceptGraph({ data }: { data: ConceptGraphData }) {
 
     // Text holds its size when the fit squeezes a wide map, so spread survives.
     const counter = 1 / Math.min(1, scale);
-    const labelFont = 10 * counter;
-    const edgeFont = 8 * counter;
+    const labelFont = 6 * counter;
+    const edgeFont = 5 * counter;
 
     return { links, graph, height, layout, fit, radii, labelFont, edgeFont };
   }, [data]);

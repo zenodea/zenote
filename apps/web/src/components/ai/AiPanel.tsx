@@ -433,6 +433,7 @@ const WRITE_LABELS: Record<string, (input: Record<string, unknown>) => string> =
   {
     "tool-create_note": (input) => `Create “${input.slug ?? "a note"}”`,
     "tool-append_to_note": (input) => `Add to “${input.note ?? "a note"}”`,
+    "tool-replace_in_note": (input) => `Change “${input.note ?? "a note"}”`,
     "tool-move_note": (input) =>
       `Move “${input.note ?? "a note"}” into “${input.folder || "the vault root"}”`,
   };
@@ -451,15 +452,20 @@ function ToolLine({
 
   const write = WRITE_LABELS[part.type];
   if (write) {
+    const diff =
+      part.type === "tool-replace_in_note" && typeof input.find === "string"
+        ? { from: String(input.find), to: String(input.replace ?? "") }
+        : null;
     return (
       <WriteCard
         part={part}
         label={write(input)}
         preview={
-          typeof (input.body ?? input.text) === "string"
+          !diff && typeof (input.body ?? input.text) === "string"
             ? String(input.body ?? input.text)
             : null
         }
+        diff={diff}
         failed={failed}
         error={typeof output.error === "string" ? output.error : part.errorText}
         onApproval={onApproval}
@@ -469,6 +475,24 @@ function ToolLine({
 
   let label: string;
   switch (part.type) {
+    case "tool-recent_changes":
+      label = "Checked what changed lately";
+      if (Array.isArray(output.notes)) label += ` — ${output.notes.length} notes`;
+      break;
+    case "tool-list_notes":
+      label = input.folder ? `Listed “${input.folder}”` : "Listed the vault";
+      if (typeof output.total === "number") label += ` — ${output.total} notes`;
+      break;
+    case "tool-list_tags":
+      label = "Listed the tags";
+      if (Array.isArray(output.tags)) label += ` — ${output.tags.length}`;
+      break;
+    case "tool-vault_health":
+      label = "Checked the vault's health";
+      if (Array.isArray(output.broken) && Array.isArray(output.orphans)) {
+        label += ` — ${output.broken.length} broken links, ${output.orphans.length} orphans`;
+      }
+      break;
     case "tool-search_notes":
       label = input.query
         ? `Searched the vault for “${input.query}”`
@@ -504,6 +528,7 @@ function WriteCard({
   part,
   label,
   preview,
+  diff,
   failed,
   error,
   onApproval,
@@ -511,6 +536,7 @@ function WriteCard({
   part: VaultToolPart;
   label: string;
   preview: string | null;
+  diff: { from: string; to: string } | null;
   failed: boolean;
   error: string | undefined;
   onApproval: ApprovalResponder;
@@ -526,6 +552,16 @@ function WriteCard({
         <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap bg-foreground/5 p-2 opacity-80">
           {preview}
         </pre>
+      )}
+      {diff && (
+        <div className="mt-1 max-h-48 space-y-px overflow-auto">
+          <pre className="whitespace-pre-wrap border-l-2 border-red-500/60 bg-red-500/10 p-2 opacity-80">
+            {diff.from}
+          </pre>
+          <pre className="whitespace-pre-wrap border-l-2 border-green-600/60 bg-green-600/10 p-2 opacity-80">
+            {diff.to}
+          </pre>
+        </div>
       )}
       {pending ? (
         <div className="mt-2 flex gap-2">

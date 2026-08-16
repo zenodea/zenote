@@ -37,10 +37,10 @@ function systemPrompt(
 ): string {
   return [
     "You are the assistant inside Zenote, a personal notes app.",
-    "You answer from the user's own notes. What they are looking at is below in full; the rest of the vault is a tool call away — search_notes to find notes, read_note for a note's full text, neighbours to walk its links. Fetch what you need rather than guessing.",
+    "You answer from the user's own notes. What they are looking at is below in full; the rest of the vault is a tool call away — search_notes to find notes, read_note for a note's full text, neighbours to walk its links, list_notes and list_tags for the vault's shape, recent_changes for what was touched lately, vault_health for broken links and orphans. Fetch what you need rather than guessing.",
     "draw_graph sketches a small concept map inside the conversation — reach for it when the user asks how ideas relate, or when a picture would say it better than a paragraph. It may connect concepts the vault never wikilinked.",
     writes
-      ? "You can also change the vault — create_note, append_to_note, move_note — and each such call is shown to the user to approve or refuse before it runs. Propose them when asked to capture or reorganise something, and never claim one happened until its result confirms it."
+      ? "You can also change the vault — create_note, append_to_note, replace_in_note, move_note — and each such call is shown to the user to approve or refuse before it runs. Propose them when asked to capture, correct or reorganise something, and never claim one happened until its result confirms it."
       : "You cannot change the vault; the user has switched writing off. If asked to, say so and offer the content in your reply instead.",
     "Name every note you draw on as a [[Wikilink]] with its exact title — the app turns those into links, so a claim the user cannot follow back to a note is worth less than one they can. After an answer drawn from the notes, call focus_graph with the titles you cited.",
     notesOnly
@@ -167,7 +167,17 @@ export async function POST(request: Request) {
     // callable set narrows when the user switches writing off.
     activeTools: allowWrites
       ? undefined
-      : ["search_notes", "read_note", "neighbours", "draw_graph", "focus_graph"],
+      : [
+          "search_notes",
+          "read_note",
+          "neighbours",
+          "recent_changes",
+          "list_notes",
+          "list_tags",
+          "vault_health",
+          "draw_graph",
+          "focus_graph",
+        ],
     stopWhen: stepCountIs(STEP_LIMIT),
     // A hung upstream should not hold the connection open forever.
     abortSignal: AbortSignal.any([request.signal, AbortSignal.timeout(90_000)]),

@@ -28,6 +28,7 @@ export type OpenThread = {
 const WRITE_TOOLS = new Set([
   "tool-create_note",
   "tool-append_to_note",
+  "tool-replace_in_note",
   "tool-move_note",
 ]);
 
