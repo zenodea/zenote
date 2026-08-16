@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useAiAssistant } from "@/components/ai/AiAssistantContext";
+import { AiDiamond } from "@/components/ai/AiDiamond";
 import { useNoteChat } from "@/components/ai/use-note-chat";
 import { NoteMarkdown } from "@/components/note/NoteMarkdown";
 import { Button } from "@/components/ui/Button";
@@ -25,7 +26,7 @@ export function AiPanel({
   /** Cited notes render as the same wikilinks the notes themselves use. */
   resolver: Record<string, string>;
 }) {
-  const { open, setOpen } = useAiAssistant();
+  const { open, setOpen, busy } = useAiAssistant();
   const resolverMap = useMemo(
     () => new Map(Object.entries(resolver)),
     [resolver],
@@ -69,6 +70,7 @@ export function AiPanel({
           data-seam={show ? "bottom" : undefined}
           className="flex h-14 shrink-0 items-center gap-2 border-b border-foreground/15 px-4"
         >
+          <AiDiamond size={18} busy={busy} className="shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="font-semibold">AI Assistant</p>
             <p className="truncate text-xs opacity-60">
@@ -241,7 +243,10 @@ function Turn({
       {parts.length > 0 ? (
         parts
       ) : (
-        <p className="animate-pulse opacity-50">Thinking…</p>
+        <p className="flex items-center gap-2 opacity-60">
+          <AiDiamond size={14} busy />
+          Thinking…
+        </p>
       )}
       {stopped && <p className="text-xs italic opacity-60">Stopped early.</p>}
     </div>

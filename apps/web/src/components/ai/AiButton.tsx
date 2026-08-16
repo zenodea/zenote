@@ -1,8 +1,8 @@
 "use client";
 
 import { useAiAssistant } from "@/components/ai/AiAssistantContext";
+import { AiDiamond } from "@/components/ai/AiDiamond";
 import { Button } from "@/components/ui/Button";
-import { SparkleIcon } from "@/components/ui/Icons";
 import { useNoteSlug } from "@/hooks/use-note-slug";
 import { useGraphFocus } from "@/lib/stores/graph-focus";
 
@@ -24,9 +24,8 @@ export function AiButton() {
           ? "Ask AI about what you are looking at"
           : "Open a note, or pick nodes out on the graph"
       }
-      className={open && busy ? "animate-pulse" : undefined}
     >
-      <SparkleIcon />
+      <AiDiamond busy={open && busy} />
     </Button>
   );
 }
