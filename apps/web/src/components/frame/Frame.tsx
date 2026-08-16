@@ -222,6 +222,13 @@ export function Frame() {
   };
   const draw = reduce ? "none" : `transform ${LINES_MS}ms ${EASE}`;
 
+  // Only while leaving: the stored measurement outlives the sign-out, and on
+  // the next sign-in it would frame a panel that is no longer open.
+  const panel =
+    leaving.active || phase === "unframing" || phase === "opening"
+      ? geometry.panel
+      : null;
+
   const form = (
     <LoginForm
       busy={phase === "working"}
@@ -267,24 +274,24 @@ export function Frame() {
       />
 
       {/* The assistant panel, when it was open, leaves with the same grace. */}
-      {geometry.panel && (
+      {panel && (
         <Seam
           className="top-0 h-screen w-px"
-          style={{ ...lines, left: geometry.panel.x - 0.5 }}
+          style={{ ...lines, left: panel.x - 0.5 }}
           origin={`center ${geometry.head}px`}
           axis="Y"
           open={drawn}
           transition={draw}
         />
       )}
-      {geometry.panel && geometry.panel.foot !== null && (
+      {panel && panel.foot !== null && (
         <Seam
           className="h-px"
           style={{
             ...lines,
-            top: geometry.panel.foot - 0.5,
-            left: geometry.panel.x,
-            width: env.width - geometry.panel.x,
+            top: panel.foot - 0.5,
+            left: panel.x,
+            width: env.width - panel.x,
           }}
           origin="0px center"
           axis="X"
@@ -293,15 +300,17 @@ export function Frame() {
         />
       )}
 
-      {/* Every point where the seams cross, matching what Junctions draws. */}
+      {/* Every point where the seams cross, matching what Junctions draws.
+          Retracting, they travel with the lines into the main junction — the
+          point the login diamond opens from. */}
       {[
         { x: geometry.x, y: geometry.head },
         { x: geometry.x, y: geometry.foot },
-        ...(geometry.panel
+        ...(panel
           ? [
-              { x: geometry.panel.x, y: geometry.head },
-              ...(geometry.panel.foot !== null
-                ? [{ x: geometry.panel.x, y: geometry.panel.foot }]
+              { x: panel.x, y: geometry.head },
+              ...(panel.foot !== null
+                ? [{ x: panel.x, y: panel.foot }]
                 : []),
             ]
           : []),
@@ -310,15 +319,19 @@ export function Frame() {
           key={`${x}:${y}`}
           style={{
             ...lines,
-            left: x,
-            top: y,
+            left: drawn ? x : geometry.x,
+            top: drawn ? y : geometry.head,
             opacity: (lines.opacity as number) * (drawn ? 1 : 0),
+            transitionProperty: "left, top, opacity",
+            transitionTimingFunction: EASE,
             // Hands off to the real junction marks, so it fades on the seams' clock.
             transitionDuration: crossfade
               ? `${crossfade}ms`
               : reduce
                 ? "0ms"
-                : `${FADE_MS}ms`,
+                : drawn
+                  ? `${FADE_MS}ms`
+                  : `${LINES_MS}ms`,
             transitionDelay: drawn && !reduce ? `${LINES_MS * 0.6}ms` : "0ms",
           }}
         />
