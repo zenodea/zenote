@@ -10,7 +10,9 @@ import {
 } from "ai";
 import { createChat } from "@/app/actions/chats";
 import { useAiAssistant } from "@/components/ai/AiAssistantContext";
+import { useLatestRef } from "@/hooks/use-latest-ref";
 import { messageText, type ChatSubject, type VaultUIMessage } from "@/lib/chat";
+import { useSettings } from "@/lib/stores/settings";
 import { setGraphFocus } from "@/lib/stores/graph-focus";
 import { extractTargets, resolveWikilink } from "@/lib/wikilinks";
 import type { WikilinkResolver } from "@/lib/wikilinks";
@@ -43,11 +45,22 @@ function resolveAll(targets: string[], resolver: WikilinkResolver): string[] {
 export function useNoteChat(thread: OpenThread, resolver: WikilinkResolver) {
   const { setBusy } = useAiAssistant();
   const router = useRouter();
+  const settingsRef = useLatestRef(useSettings());
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Minted on the first send; every request reads it at call time.
   const chatIdRef = useRef(thread.chatId);
+
+  // Assembled at call time so the chat id and preferences are never stale.
+  function requestBody() {
+    return {
+      subject: thread.subject,
+      chatId: chatIdRef.current,
+      allowWrites: settingsRef.current.aiWrites,
+      notesOnly: settingsRef.current.aiVaultOnly,
+    };
+  }
 
   const transport = useMemo(
     () =>
@@ -87,9 +100,7 @@ export function useNoteChat(thread: OpenThread, resolver: WikilinkResolver) {
           tool: "focus_graph",
           toolCallId: toolCall.toolCallId,
           output: { focused: slugs },
-          options: {
-            body: { subject: thread.subject, chatId: chatIdRef.current },
-          },
+          options: { body: requestBody() },
         });
       },
       onFinish: ({ message }) => {
@@ -135,18 +146,13 @@ export function useNoteChat(thread: OpenThread, resolver: WikilinkResolver) {
     if (!chatIdRef.current) {
       chatIdRef.current = await createChat(thread.subject).catch(() => null);
     }
-    void sendMessage(
-      { text },
-      { body: { subject: thread.subject, chatId: chatIdRef.current } },
-    );
+    void sendMessage({ text }, { body: requestBody() });
   }
 
   function respondToApproval(response: { id: string; approved: boolean }) {
     return addToolApprovalResponse({
       ...response,
-      options: {
-        body: { subject: thread.subject, chatId: chatIdRef.current },
-      },
+      options: { body: requestBody() },
     });
   }
 
