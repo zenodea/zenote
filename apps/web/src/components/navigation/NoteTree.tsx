@@ -16,7 +16,6 @@ export function NoteTree({
   collapsed,
   onToggleFolder,
   pathname,
-  modified,
   naming,
   onSubmitName,
   onCancelName,
@@ -26,7 +25,6 @@ export function NoteTree({
   collapsed: Set<string>;
   onToggleFolder: (path: string) => void;
   pathname: string;
-  modified: Set<string>;
   naming: "note" | "folder" | null;
   onSubmitName: (name: string) => void;
   onCancelName: () => void;
@@ -68,7 +66,6 @@ export function NoteTree({
         collapsed={collapsed}
         onToggle={onToggleFolder}
         pathname={pathname}
-        modified={modified}
         dropTarget={dropTarget}
         onDropTarget={setDropTarget}
         onDrop={drop}
@@ -116,7 +113,6 @@ type NodeListProps = {
   collapsed: Set<string>;
   onToggle: (path: string) => void;
   pathname: string;
-  modified: Set<string>;
   dropTarget: string | null;
   onDropTarget: (path: string | null) => void;
   onDrop: (slug: string, folder: string) => void;
@@ -128,7 +124,6 @@ function NodeList({
   collapsed,
   onToggle,
   pathname,
-  modified,
   dropTarget,
   onDropTarget,
   onDrop,
@@ -138,7 +133,6 @@ function NodeList({
     collapsed,
     onToggle,
     pathname,
-    modified,
     dropTarget,
     onDropTarget,
     onDrop,
@@ -208,12 +202,6 @@ function NodeList({
               }`}
             >
               {node.name}
-              {modified.has(node.slug) && (
-                <span
-                  title="Changed locally"
-                  className="ml-1.5 inline-block size-1.5 rounded-full bg-accent align-middle"
-                />
-              )}
             </Link>
           </li>
         );

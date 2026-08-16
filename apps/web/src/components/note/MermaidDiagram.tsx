@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useThemeId } from "@/lib/use-theme";
 import { Scroller } from "@/components/ui/Scroller";
 
@@ -26,6 +26,8 @@ export function MermaidDiagram({ chart }: { chart: string }) {
   // Diagrams re-render when the active theme changes.
   const theme = useThemeId();
   const [svg, setSvg] = useState<string | null>(null);
+  // Given nowhere, mermaid measures in <body> — the flex row — taking a column until it is removed.
+  const measure = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,6 +66,7 @@ export function MermaidDiagram({ chart }: { chart: string }) {
         const rendered = await mermaid.render(
           `mermaid-${id.replace(/[^a-zA-Z0-9]/g, "")}`,
           chart,
+          measure.current ?? undefined,
         );
         if (!cancelled) setSvg(rendered.svg);
       } catch {
@@ -76,20 +79,35 @@ export function MermaidDiagram({ chart }: { chart: string }) {
     };
   }, [chart, id, theme]);
 
+  // In the document so mermaid can measure against it, out of flow so it takes space from nothing.
+  const bench = (
+    <div
+      ref={measure}
+      aria-hidden
+      className="pointer-events-none fixed left-[-10000px] top-0"
+    />
+  );
+
   if (svg === null) {
     return (
-      <pre>
-        <code>{chart}</code>
-      </pre>
+      <>
+        {bench}
+        <pre>
+          <code>{chart}</code>
+        </pre>
+      </>
     );
   }
 
   return (
-    <Scroller axis="x" className="not-prose my-6">
-      <div
-        className="flex w-max min-w-full justify-center"
-        dangerouslySetInnerHTML={{ __html: svg }}
-      />
-    </Scroller>
+    <>
+      {bench}
+      <Scroller axis="x" className="not-prose my-6">
+        <div
+          className="flex w-max min-w-full justify-center"
+          dangerouslySetInnerHTML={{ __html: svg }}
+        />
+      </Scroller>
+    </>
   );
 }

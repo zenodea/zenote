@@ -2,8 +2,8 @@
 
 import { useCallback, useRef } from "react";
 import { useLatestRef } from "@/hooks/use-latest-ref";
-import type { Size } from "@/hooks/use-canvas-surface";
-import type { View } from "@/lib/graph/draw";
+import type { Size } from "@/hooks/use-canvas-size";
+import type { Positions, View } from "@/lib/graph/geometry";
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 8;
@@ -15,7 +15,6 @@ const MIN_VELOCITY = 0.08;
 export const FIT_OVERSCAN = 2.2;
 
 type Point = { x: number; y: number };
-type Positions = { x: Float64Array; y: Float64Array };
 
 export function useGraphCamera({
   layout,
@@ -24,7 +23,8 @@ export function useGraphCamera({
   overscan,
 }: {
   layout: Positions;
-  target: Positions;
+  /** The settled layout to frame on, or null while it is still being solved. */
+  target: () => Positions | null;
   size: Size;
   overscan: number;
 }) {
@@ -67,11 +67,13 @@ export function useGraphCamera({
 
   const fit = useCallback(
     (instant = false) => {
-      const count = target.x.length;
+      const settled = target();
+      if (!settled) return;
+      const count = settled.x.length;
       if (!count) return;
 
-      const xs = Float64Array.from(target.x).sort();
-      const ys = Float64Array.from(target.y).sort();
+      const xs = Float64Array.from(settled.x).sort();
+      const ys = Float64Array.from(settled.y).sort();
       const low = Math.floor(count * 0.01);
       const high = Math.min(count - 1, Math.ceil(count * 0.99));
 

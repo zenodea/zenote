@@ -1,19 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCanvasSurface } from "@/hooks/use-canvas-surface";
+import { useCanvasSize } from "@/hooks/use-canvas-size";
 import { useEscape } from "@/hooks/use-hotkey";
 import { useLatestRef } from "@/hooks/use-latest-ref";
+import { useLoadingIndicator } from "@/hooks/use-loading-indicator";
 import { useRenderLoop } from "@/hooks/use-render-loop";
-import { createLayout, solveLayout } from "@/lib/graph/force-layout";
+import { createLayout } from "@/lib/graph/force-layout";
+import { createSolver } from "@/lib/graph/solver";
 import { indexGraph, neighbourhood, type Graph } from "@/lib/graph/model";
 import { nodesWithTags, tagCounts } from "@/lib/graph/derive";
-import { baseRadiusFor, drawGraph, hitTest } from "@/lib/graph/draw";
+import { baseRadiusFor, hitTest } from "@/lib/graph/geometry";
+import type { PixiScene } from "@/lib/graph/pixi-scene";
+import { beginPageFade } from "@/lib/page-fade";
+import { setGraphReady } from "@/lib/stores/graph-ready";
+import { useRouteWait } from "@/lib/stores/route-loading";
 import { subscribeToTheme } from "@/lib/theme";
 import { FocusChip } from "@/components/graph/FocusChip";
 import { GraphToolbar } from "@/components/graph/GraphToolbar";
+import { DiamondLoader } from "@/components/ui/DiamondLoader";
 import { useFocusFade } from "@/components/graph/use-focus-fade";
 import {
   FIT_OVERSCAN,
@@ -24,32 +30,49 @@ const STEPS_PER_FRAME = 2;
 const DRAG_ALPHA = 0.1;
 const CLICK_SLOP = 4;
 
+// Tokens resolve lazily, so the first frame never paints fallbacks in a themed session.
+function resolvePalette() {
+  const style = getComputedStyle(document.documentElement);
+  return {
+    foreground: style.getPropertyValue("--foreground").trim() || "#171717",
+    background: style.getPropertyValue("--background").trim() || "#ffffff",
+    accent: style.getPropertyValue("--accent").trim() || "#7c3aed",
+  };
+}
+
 export function GraphView({
   graph,
   focusId,
   controls = true,
+  standalone = false,
 }: {
   graph: Graph;
   focusId?: string;
   controls?: boolean;
+  standalone?: boolean;
 }) {
   const router = useRouter();
-  const { canvasRef, contextRef, size } = useCanvasSurface();
+  const { canvasRef, size } = useCanvasSize();
+  const sceneRef = useRef<PixiScene | null>(null);
 
   const layout = useMemo(() => createLayout(graph, 1000, 700), [graph]);
 
-  // Solved up front to place the camera once; live-fitting reads as drift.
-  const target = useMemo(() => solveLayout(graph, 1000, 700), [graph]);
+  // Solved once to place the camera — live-fitting reads as drift — and off the main thread.
+  const solver = useMemo(() => createSolver(graph, 1000, 700), [graph]);
+  const target = useCallback(() => solver.get(), [solver]);
 
   const { edges, neighbours } = useMemo(() => indexGraph(graph), [graph]);
   const baseRadius = baseRadiusFor(graph.nodes.length);
 
-  const [seeds, setSeeds] = useState<number[]>(() => {
-    const index = focusId
-      ? graph.nodes.findIndex((node) => node.id === focusId)
-      : -1;
-    return index < 0 ? [] : [index];
-  });
+  // Held by id: a rebuilt graph renumbers nodes, and a positional focus would move to another note.
+  const [seedIds, setSeedIds] = useState<string[]>(focusId ? [focusId] : []);
+  const seeds = useMemo(
+    () =>
+      seedIds
+        .map((id) => graph.nodes.findIndex((node) => node.id === id))
+        .filter((index) => index >= 0),
+    [seedIds, graph],
+  );
   const [depth, setDepth] = useState(1);
   const [activeTags, setActiveTags] = useState<string[]>([]);
 
@@ -65,6 +88,8 @@ export function GraphView({
 
   const seedsRef = useLatestRef(seeds);
   const visibleRef = useLatestRef(visible);
+  const sizeRef = useLatestRef(size);
+  const graphRef = useLatestRef({ graph, edges, baseRadius });
 
   const {
     viewRef,
@@ -91,6 +116,7 @@ export function GraphView({
     highlightRef,
     labelFocusRef,
     focusAmountRef,
+    activeSet,
     setHovered,
     advanceFade,
   } = useFocusFade({
@@ -104,51 +130,54 @@ export function GraphView({
   const drag = useRef<{ node: number; moved: number; active: boolean } | null>(
     null,
   );
-  // Hoisted out of draw(): resolving theme tokens is expensive per frame in Firefox.
-  const colors = useRef({ foreground: "#171717", accent: "#7c3aed" });
+  const layoutMovingRef = useRef(true);
+  const [booted, setBooted] = useState(false);
+
+  // Standalone the wait is the route's, already running from the fallback; inset it stays local to the box.
+  useRouteWait(standalone && !booted);
+  const localLoader = useLoadingIndicator(!standalone && !booted);
+  const covered = !booted || localLoader;
+
+  // Counts and controls describe a graph nobody can see yet, so they wait for the cover, not the data.
+  useEffect(() => {
+    if (standalone) setGraphReady(!covered);
+  }, [standalone, covered]);
+
+  useEffect(() => () => setGraphReady(false), []);
 
   const clearFocus = useCallback(() => {
-    setSeeds([]);
+    setSeedIds([]);
     setDepth(1);
   }, []);
 
   const draw = useCallback(() => {
-    const context = contextRef.current;
-    if (!context || !size.width || !size.height) return;
+    const scene = sceneRef.current;
+    if (!scene) return;
 
-    drawGraph({
-      context,
-      width: size.width,
-      height: size.height,
-      view: viewRef.current,
-      foreground: colors.current.foreground,
-      accent: colors.current.accent,
-      fitScale: fitScaleRef.current,
+    scene.update({
       x: layout.x,
       y: layout.y,
-      nodes: graph.nodes,
-      edges,
-      baseRadius,
+      view: viewRef.current,
+      fitScale: fitScaleRef.current,
       highlight: highlightRef.current,
       labelFocus: labelFocusRef.current,
       focusAmount: focusAmountRef.current,
+      near: activeSet(),
       seeds: seedsRef.current,
       visible: visibleRef.current,
+      positionsDirty: layoutMovingRef.current,
     });
+    scene.render();
   }, [
-    contextRef,
+    layout,
     viewRef,
     fitScaleRef,
     highlightRef,
     labelFocusRef,
     focusAmountRef,
+    activeSet,
     seedsRef,
     visibleRef,
-    size,
-    layout,
-    graph,
-    edges,
-    baseRadius,
   ]);
 
   const toLocal = useCallback(
@@ -179,6 +208,7 @@ export function GraphView({
     for (let i = 0; i < STEPS_PER_FRAME; i++) {
       moving = layout.step() || moving;
     }
+    layoutMovingRef.current = moving;
 
     if (!drag.current && !panningRef.current && pointer.current) {
       const node = nodeAt(pointer.current);
@@ -194,24 +224,86 @@ export function GraphView({
     );
   });
 
+  const ready = size.width > 0 && size.height > 0;
+
+  // One Application per canvas: a canvas cannot host a second WebGL context, so swaps go through setGraph.
   useEffect(() => {
+    if (!ready) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    let disposed = false;
+
+    // Started before anything is awaited, so the worker solves through the download and WebGL init.
+    const settled = solver.prime();
+
+    (async () => {
+      const { PixiScene } = await import("@/lib/graph/pixi-scene");
+      const scene = await PixiScene.create(
+        canvas,
+        sizeRef.current.width,
+        sizeRef.current.height,
+        resolvePalette(),
+      );
+      if (disposed) {
+        scene.destroy();
+        return;
+      }
+      const latest = graphRef.current;
+      scene.setGraph(latest.graph.nodes, latest.edges, latest.baseRadius);
+      sceneRef.current = scene;
+
+      await settled;
+      if (disposed) return;
+
+      fitIfUntouched();
+      start();
+      setBooted(true);
+    })();
+
+    return () => {
+      disposed = true;
+      sceneRef.current?.destroy();
+      sceneRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready]);
+
+  useEffect(() => () => solver.dispose(), [solver]);
+
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    scene.setGraph(graph.nodes, edges, baseRadius);
+    layoutMovingRef.current = true;
+    start();
+
+    // A swapped graph has its own solve to wait on; the sim runs meanwhile.
+    let stale = false;
+    solver.prime().then(() => {
+      if (stale) return;
+      fitIfUntouched();
+      start();
+    });
+    return () => {
+      stale = true;
+    };
+  }, [graph, edges, baseRadius, fitIfUntouched, start, solver]);
+
+  useEffect(() => {
+    if (!ready) return;
+    sceneRef.current?.resize(size.width, size.height);
     fitIfUntouched();
     draw();
-  }, [fitIfUntouched, draw]);
+  }, [ready, size, fitIfUntouched, draw]);
 
   // Read through refs by draw(), so a change has to wake the parked loop by hand.
   useEffect(() => {
     start();
   }, [start, focus, seeds, visible]);
 
-  // Canvas needs concrete colours: resolve theme tokens on data-theme changes.
   useEffect(() => {
     const sync = () => {
-      const style = getComputedStyle(document.documentElement);
-      colors.current = {
-        foreground: style.getPropertyValue("--foreground").trim() || "#171717",
-        accent: style.getPropertyValue("--accent").trim() || "#7c3aed",
-      };
+      sceneRef.current?.setPalette(resolvePalette());
       draw();
     };
 
@@ -223,12 +315,12 @@ export function GraphView({
 
   const focusNode = useCallback(
     (node: number) => {
-      setSeeds([node]);
+      setSeedIds([graph.nodes[node].id]);
       setDepth(1);
       frameNodes(neighbourhood(neighbours, [node], 1));
       start();
     },
-    [frameNodes, neighbours, start],
+    [graph, frameNodes, neighbours, start],
   );
 
   useEffect(() => {
@@ -253,10 +345,11 @@ export function GraphView({
         return;
       }
 
-      setSeeds((current) =>
-        current.includes(node)
-          ? current.filter((seed) => seed !== node)
-          : [...current, node],
+      const id = graph.nodes[node].id;
+      setSeedIds((current) =>
+        current.includes(id)
+          ? current.filter((seed) => seed !== id)
+          : [...current, id],
       );
     }
 
@@ -266,7 +359,7 @@ export function GraphView({
       canvas.removeEventListener("wheel", onWheel);
       canvas.removeEventListener("contextmenu", onContextMenu);
     };
-  }, [canvasRef, toLocal, nodeAt, zoomAt, start, clearFocus, controls]);
+  }, [canvasRef, graph, toLocal, nodeAt, zoomAt, start, clearFocus, controls]);
 
   function onPointerDown(event: React.PointerEvent) {
     if (event.button === 2) return;
@@ -308,7 +401,7 @@ export function GraphView({
 
     if (panningRef.current) {
       panTo(point);
-      draw();
+      start();
       return;
     }
 
@@ -327,6 +420,7 @@ export function GraphView({
         layout.unpin(node);
         layout.setAlphaTarget(0);
       } else {
+        beginPageFade();
         router.push(`/notes/${graph.nodes[node].id}`);
       }
       start();
@@ -354,7 +448,7 @@ export function GraphView({
 
   return (
     <div className="relative h-full w-full">
-      {controls && seeds.length > 0 && (
+      {controls && !covered && seeds.length > 0 && (
         <FocusChip
           label={seeds.map((seed) => graph.nodes[seed].title).join(", ")}
           depth={depth}
@@ -365,7 +459,7 @@ export function GraphView({
         />
       )}
 
-      {controls && (
+      {controls && !covered && (
         <GraphToolbar
           nodes={graph.nodes}
           onSelectNode={focusNode}
@@ -393,13 +487,20 @@ export function GraphView({
         onPointerLeave={onPointerLeave}
       />
 
+      {/* Lifts with the loader, not before it, so the mark never stands over a graph that is already up. */}
+      <div
+        className="pointer-events-none absolute inset-0 z-20 grid place-items-center bg-background transition-opacity duration-200"
+        style={{ opacity: covered ? 1 : 0 }}
+        aria-hidden={!covered}
+      >
+        {!standalone && localLoader && <DiamondLoader size={20} />}
+      </div>
+
       {/* Canvas is opaque to keyboards and screen readers; mirror nodes as links. */}
       <ul className="sr-only">
         {graph.nodes.map((node) => (
           <li key={node.id}>
-            <Link href={`/notes/${node.id}`} prefetch={false}>
-              {node.title}
-            </Link>
+            <a href={`/notes/${node.id}`}>{node.title}</a>
           </li>
         ))}
       </ul>

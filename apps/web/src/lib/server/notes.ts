@@ -1,73 +1,72 @@
 import "server-only";
-import fs from "node:fs/promises";
-import path from "node:path";
 import { cache } from "react";
-import matter from "gray-matter";
-
-const CONTENT_DIR = path.join(process.cwd(), "content");
+import { createClient } from "./supabase";
 
 export type Note = {
   slug: string;
   title: string;
   tags: string[];
-  created: string | null;
+  created: string;
+  updated: string;
   body: string;
 };
 
-function toNote(slug: string, raw: string): Note {
-  const { data, content } = matter(raw);
+type NoteRow = {
+  slug: string;
+  title: string;
+  tags: string[];
+  body: string;
+  created_at: string;
+  updated_at: string;
+};
 
+const COLUMNS = "slug,title,tags,body,created_at,updated_at";
+
+// PostgREST caps a response at max_rows, so a single select can silently truncate.
+const PAGE_SIZE = 1000;
+
+function toNote(row: NoteRow): Note {
   return {
-    slug,
-    title: typeof data.title === "string" ? data.title : slug,
-    tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
-    created: data.created ? new Date(data.created).toISOString() : null,
-    body: content.trim(),
+    slug: row.slug,
+    title: row.title || row.slug,
+    tags: row.tags,
+    created: row.created_at,
+    updated: row.updated_at,
+    body: row.body,
   };
 }
 
-async function walk(dir: string): Promise<string[]> {
-  const entries = await fs.readdir(dir, { withFileTypes: true });
+export const getAllNotes = cache(async (): Promise<Note[]> => {
+  const supabase = await createClient();
+  const rows: NoteRow[] = [];
 
-  const nested = await Promise.all(
-    entries.map(async (entry) => {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) return walk(full);
-      return entry.name.endsWith(".md") ? [full] : [];
-    }),
-  );
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("notes")
+      .select(COLUMNS)
+      .order("slug")
+      .range(from, from + PAGE_SIZE - 1)
+      .returns<NoteRow[]>();
 
-  return nested.flat();
-}
+    if (error) throw new Error(`Could not load notes: ${error.message}`);
 
-function toSlug(absolute: string): string {
-  return path
-    .relative(CONTENT_DIR, absolute)
-    .replace(/\.md$/, "")
-    .split(path.sep)
-    .join("/");
-}
-
-export const getNote = cache(async (slug: string): Promise<Note | null> => {
-  const target = path.join(CONTENT_DIR, `${slug}.md`);
-
-  if (!target.startsWith(CONTENT_DIR + path.sep)) return null;
-
-  try {
-    return toNote(slug, await fs.readFile(target, "utf8"));
-  } catch {
-    return null;
+    rows.push(...data);
+    if (data.length < PAGE_SIZE) break;
   }
+
+  return rows.map(toNote).sort((a, b) => a.slug.localeCompare(b.slug));
 });
 
-export const getAllNotes = cache(async (): Promise<Note[]> => {
-  const files = await walk(CONTENT_DIR);
+export const getNote = cache(async (slug: string): Promise<Note | null> => {
+  const supabase = await createClient();
 
-  const notes = await Promise.all(
-    files.map(async (file) =>
-      toNote(toSlug(file), await fs.readFile(file, "utf8")),
-    ),
-  );
+  const { data, error } = await supabase
+    .from("notes")
+    .select(COLUMNS)
+    .eq("slug", slug)
+    .maybeSingle<NoteRow>();
 
-  return notes.sort((a, b) => a.slug.localeCompare(b.slug));
+  if (error) throw new Error(`Could not load note "${slug}": ${error.message}`);
+
+  return data ? toNote(data) : null;
 });

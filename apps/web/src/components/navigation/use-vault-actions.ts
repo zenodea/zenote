@@ -2,39 +2,47 @@
 
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import type { SearchDoc } from "@/lib/search";
+import { createFolder, createNote, moveNote } from "@/app/actions/notes";
+import type { NoteRef } from "@/lib/search";
 import { filename, joinSlug, sanitizeName } from "@/lib/slug";
-import { createFolder, createNote, moveNote } from "@/lib/stores/vault";
 
 export type Naming = "note" | "folder" | null;
 
-export function useVaultActions(baseDocs: SearchDoc[], docs: SearchDoc[]) {
+export function useVaultActions(docs: NoteRef[]) {
   const [naming, setNaming] = useState<Naming>(null);
   const pathname = usePathname();
   const router = useRouter();
 
-  function submitName(raw: string) {
+  async function submitName(raw: string) {
     const name = sanitizeName(raw);
     setNaming(null);
     if (!name) return;
+
     if (naming === "folder") {
-      createFolder(name);
+      const { error } = await createFolder(name);
+      if (error) alert(error);
       return;
     }
-    if (!docs.some((doc) => doc.slug === name)) createNote(name);
+
+    if (!docs.some((doc) => doc.slug === name)) {
+      const { error } = await createNote(name);
+      if (error) {
+        alert(error);
+        return;
+      }
+    }
     router.push(`/notes/${name}`);
   }
 
-  function handleMove(slug: string, folder: string) {
-    const doc = docs.find((entry) => entry.slug === slug);
-    if (!doc) return;
+  async function handleMove(slug: string, folder: string) {
     const next = joinSlug(folder, filename(slug));
     if (next === slug) return;
 
-    moveNote(slug, folder, {
-      body: doc.body,
-      isBaseNote: baseDocs.some((entry) => entry.slug === slug),
-    });
+    const { error } = await moveNote(slug, folder);
+    if (error) {
+      alert(error);
+      return;
+    }
     if (pathname === `/notes/${slug}`) router.push(`/notes/${next}`);
   }
 

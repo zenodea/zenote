@@ -4,20 +4,17 @@ import { Modal } from "@/components/ui/Modal";
 
 export function DeleteNoteModal({
   title,
-  restorable,
   onClose,
   onConfirm,
 }: {
   title: string;
-  restorable: boolean;
   onClose: () => void;
   onConfirm: () => void;
 }) {
   return (
     <Modal title="Delete note" onClose={onClose}>
       <p className="mt-3 opacity-70">
-        Delete “{title}”?
-        {restorable ? " You can restore it from this page until you sync." : ""}
+        Delete “{title}”? This cannot be undone.
       </p>
       <div className="mt-4 flex justify-end gap-2">
         <button

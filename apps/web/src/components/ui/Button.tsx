@@ -9,6 +9,10 @@ const VARIANTS = {
     base: "rounded px-3 py-1.5 font-medium",
     idle: "bg-foreground/10 hover:bg-foreground/15 disabled:opacity-40 disabled:hover:bg-foreground/10",
   },
+  accent: {
+    base: "rounded px-3 py-1.5 font-medium transition-opacity",
+    idle: "bg-accent text-background hover:opacity-85 disabled:opacity-50 disabled:hover:opacity-50",
+  },
   row: {
     base: "flex w-full items-center gap-1 rounded py-1.5 pr-2 text-left",
     idle: "opacity-70 hover:bg-foreground/10",

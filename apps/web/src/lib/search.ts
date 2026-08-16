@@ -1,9 +1,10 @@
 export const SEARCH_MODES = ["titles", "content"] as const;
 export type SearchMode = (typeof SEARCH_MODES)[number];
 
-export type SearchDoc = {
-  slug: string;
-  title: string;
+/** Enough to link to a note and show its name — no body. */
+export type NoteRef = { slug: string; title: string };
+
+export type SearchDoc = NoteRef & {
   tags: string[];
   body: string;
 };
@@ -43,7 +44,10 @@ export function parseQuery(raw: string): ParsedQuery {
 export type FuzzyMatch = { score: number; indices: number[] };
 
 /** Greedy subsequence match; consecutive runs and word starts score higher. */
-export function fuzzyMatch(query: string, textLower: string): FuzzyMatch | null {
+export function fuzzyMatch(
+  query: string,
+  textLower: string,
+): FuzzyMatch | null {
   const indices: number[] = [];
   let score = 0;
   let from = 0;
@@ -91,12 +95,7 @@ export type SearchResult = {
   score: number;
 };
 
-/**
- * Titles always match fuzzily (query as subsequence of the title). With
- * includeContent, notes whose body contains every term also match — content
- * matching is deliberately substring-based, since a character subsequence
- * scattered across a whole document would match almost anything.
- */
+/** Titles match fuzzily; content by substring, since a subsequence scattered over a document matches anything. */
 export function searchDocs(
   docs: PreparedDoc[],
   { terms, tags }: ParsedQuery,
@@ -114,8 +113,7 @@ export function searchDocs(
       includeContent &&
       terms.length > 0 &&
       terms.every(
-        (term) =>
-          doc.bodyLower.includes(term) || doc.titleLower.includes(term),
+        (term) => doc.bodyLower.includes(term) || doc.titleLower.includes(term),
       );
 
     if (terms.length > 0 && !title && !inContent) continue;

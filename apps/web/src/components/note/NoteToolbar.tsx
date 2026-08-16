@@ -2,27 +2,21 @@
 
 import Link from "next/link";
 import type { Note } from "@/lib/server/notes";
-import { revertNote } from "@/lib/stores/vault";
 import { noteTags } from "@/lib/tags";
 import { Button, iconClass } from "@/components/ui/Button";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { EllipsisIcon, PencilIcon } from "@/components/ui/Icons";
+import { SaveStatus } from "@/components/note/SaveStatus";
 import { PageHeader } from "@/components/frame/PageHeader";
 
 export function NoteToolbar({
   note,
-  slug,
-  isLocal,
-  hasBaseNote,
   reading,
   onToggleReading,
   onRename,
   onDelete,
 }: {
   note: Note;
-  slug: string;
-  isLocal: boolean;
-  hasBaseNote: boolean;
   reading: boolean;
   onToggleReading: () => void;
   onRename: () => void;
@@ -33,15 +27,13 @@ export function NoteToolbar({
       title={note.title}
       meta={
         <>
-          {note.created && (
-            <time dateTime={note.created} className="shrink-0">
-              {new Date(note.created).toLocaleDateString("en-GB", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
-            </time>
-          )}
+          <time dateTime={note.created} className="shrink-0">
+            {new Date(note.created).toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
+          </time>
           {noteTags(note).map((tag) => (
             <Link
               key={tag}
@@ -51,24 +43,7 @@ export function NoteToolbar({
               #{tag}
             </Link>
           ))}
-          {isLocal && (
-            <span className="shrink-0 rounded-full bg-accent/15 px-2 py-0.5 text-xs text-accent">
-              {hasBaseNote ? "edited locally" : "local note"}
-            </span>
-          )}
-          {isLocal && hasBaseNote && reading && (
-            <button
-              type="button"
-              onClick={() => {
-                if (confirm("Revert this note to the vault version?")) {
-                  revertNote(slug);
-                }
-              }}
-              className="shrink-0 text-xs opacity-60 hover:opacity-100"
-            >
-              Revert
-            </button>
-          )}
+          <SaveStatus />
         </>
       }
       actions={

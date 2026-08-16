@@ -2,19 +2,12 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { deleteNote, renameNote } from "@/app/actions/notes";
 import type { Backlink } from "@/lib/backlinks";
 import type { Graph } from "@/lib/graph/model";
 import type { Note } from "@/lib/server/notes";
 import { stripTitleHeading } from "@/lib/note-body";
-import { filename } from "@/lib/slug";
 import { useSettings } from "@/lib/stores/settings";
-import {
-  deleteNote,
-  renameNote,
-  updateNote,
-  useLocalNoteSlugs,
-  useOverlay,
-} from "@/lib/stores/vault";
 import { Scroller } from "@/components/ui/Scroller";
 import { Backlinks } from "@/components/note/Backlinks";
 import { DeleteNoteModal } from "@/components/note/DeleteNoteModal";
@@ -24,6 +17,8 @@ import { NoteMarkdown } from "@/components/note/NoteMarkdown";
 import { NoteMissing } from "@/components/note/NoteMissing";
 import { NoteToolbar } from "@/components/note/NoteToolbar";
 import { RenameNoteModal } from "@/components/note/RenameNoteModal";
+import { useAutosave } from "@/components/note/use-autosave";
+import { beginPageFade } from "@/lib/page-fade";
 
 export function NoteView({
   note,
@@ -42,65 +37,80 @@ export function NoteView({
   neighbourhood: Graph;
 }) {
   const router = useRouter();
-  const overlay = useOverlay();
-  const localSlugs = useLocalNoteSlugs();
   const settings = useSettings();
-  const local = overlay.notes[slug];
-  const body = local?.hidden ? undefined : (local?.body ?? note?.body);
+  const autosave = useAutosave(slug, note?.updated ?? "");
 
   // Empty notes open in the editor; else the setting decides, pencil overrides.
-  const [startedEmpty] = useState(body === "");
+  const [startedEmpty] = useState(note?.body === "");
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [readingOverride, setReadingOverride] = useState<boolean | null>(null);
   const vimBarRef = useRef<HTMLDivElement>(null);
   const reading =
     readingOverride ?? (startedEmpty ? false : !settings.openInEditMode);
+
+  // The prop is only as fresh as the last server render, and the editor never remounts between modes.
+  const typed = useRef<{ revision: string; body: string } | null>(null);
+  const revision = `${slug}\u0000${note?.updated ?? ""}`;
+  const [held, setHeld] = useState({ revision, body: note?.body ?? "" });
+  if (held.revision !== revision) setHeld({ revision, body: note?.body ?? "" });
+  const body = held.body;
   const resolverMap = useMemo(
     () => new Map(Object.entries(resolver)),
     [resolver],
   );
-  const linkTargets = useMemo(() => {
-    const titles = new Set(linkTitles);
-    for (const localSlug of localSlugs) titles.add(filename(localSlug));
-    return [...titles].sort((a, b) => a.localeCompare(b));
-  }, [linkTitles, localSlugs]);
+  const linkTargets = useMemo(
+    () => [...new Set(linkTitles)].sort((a, b) => a.localeCompare(b)),
+    [linkTitles],
+  );
 
-  if (body === undefined) {
-    return (
-      <NoteMissing
-        slug={slug}
-        deletedLocally={Boolean(local?.hidden && !local.movedTo && note)}
-      />
-    );
+  if (!note) return <NoteMissing slug={slug} />;
+
+  function toggleReading() {
+    const next = !reading;
+    setReadingOverride(next);
+    if (!next) return;
+
+    const draft = typed.current;
+    if (draft?.revision === revision) setHeld({ revision, body: draft.body });
+
+    // Land the save, then pick the note up again so its tags and backlinks match the new body.
+    void autosave.publish();
   }
 
-  const effective: Note = note
-    ? { ...note, body }
-    : { slug, title: filename(slug), tags: [], created: null, body };
-
-  function submitRename(next: string | null) {
+  async function submitRename(next: string | null) {
     setRenaming(false);
     if (!next || next === slug) return;
-    renameNote(slug, next, { body: effective.body, isBaseNote: note !== null });
+
+    await autosave.flush();
+    const { error } = await renameNote(slug, next);
+    if (error) {
+      alert(error);
+      return;
+    }
+    beginPageFade();
     router.push(`/notes/${next}`);
   }
 
-  function submitDelete() {
+  async function submitDelete() {
     setDeleting(false);
-    deleteNote(slug, note !== null);
+    autosave.discard();
+
+    const { error } = await deleteNote(slug);
+    if (error) {
+      alert(error);
+      return;
+    }
+    beginPageFade();
     router.push("/");
   }
 
   return (
     <>
       <NoteToolbar
-        note={effective}
-        slug={slug}
-        isLocal={local?.body !== undefined}
-        hasBaseNote={note !== null}
+        note={note}
         reading={reading}
-        onToggleReading={() => setReadingOverride(!reading)}
+        onToggleReading={toggleReading}
         onRename={() => setRenaming(true)}
         onDelete={() => setDeleting(true)}
       />
@@ -110,16 +120,18 @@ export function NoteView({
           {reading ? (
             <div className="prose max-w-none">
               <NoteMarkdown
-                source={stripTitleHeading(effective)}
+                source={stripTitleHeading({ ...note, body })}
                 resolver={resolverMap}
               />
             </div>
           ) : (
-            // Keyed so toggling back in re-reads the current overlay body.
             <MarkdownEditor
               key={slug}
               initialBody={body}
-              onChange={(next) => updateNote(slug, next)}
+              onChange={(next) => {
+                typed.current = { revision, body: next };
+                autosave.change(next);
+              }}
               linkTargets={linkTargets}
               vimMode={settings.vimMode}
               vimStatusBar={() => vimBarRef.current}
@@ -142,8 +154,7 @@ export function NoteView({
 
       {deleting && (
         <DeleteNoteModal
-          title={effective.title}
-          restorable={note !== null}
+          title={note.title}
           onClose={() => setDeleting(false)}
           onConfirm={submitDelete}
         />

@@ -1,10 +1,17 @@
 "use client";
 
-import { useCallback, useRef, type RefObject } from "react";
+import { useCallback, useEffect, useRef, type RefObject } from "react";
 import { useLatestRef } from "@/hooks/use-latest-ref";
 import { neighbourhood } from "@/lib/graph/model";
 
 const FADE = 0.18;
+
+/** Refitted to a rebuilt graph, keeping the overlap so a fade in flight carries. */
+function refit(values: Float32Array, count: number, rest: number) {
+  const next = new Float32Array(count).fill(rest);
+  next.set(values.subarray(0, Math.min(values.length, count)));
+  return next;
+}
 
 export function useFocusFade({
   nodeCount,
@@ -24,6 +31,15 @@ export function useFocusFade({
   const labelFocus = useRef<Float32Array>(new Float32Array(nodeCount));
   const hoverSet = useRef<{ node: number; set: Set<number> } | null>(null);
   const focusRef = useLatestRef(focus);
+
+  // Indexed by node: a length left behind gives new nodes no highlight, which the scene paints as NaN.
+  useEffect(() => {
+    if (highlight.current.length === nodeCount) return;
+    highlight.current = refit(highlight.current, nodeCount, 1);
+    labelFocus.current = refit(labelFocus.current, nodeCount, 0);
+    hovered.current = null;
+    hoverSet.current = null;
+  }, [nodeCount]);
 
   const activeSet = useCallback(() => {
     if (focusRef.current) return focusRef.current;
@@ -78,6 +94,7 @@ export function useFocusFade({
     highlightRef: highlight,
     labelFocusRef: labelFocus,
     focusAmountRef: focusAmount,
+    activeSet,
     setHovered,
     advanceFade,
   };

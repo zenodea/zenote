@@ -37,13 +37,7 @@ const EASE = "cubic-bezier(0.7, 0, 0.2, 1)";
 
 // in: idle→working→closing→framing→app   out: app→(leaving)→unframing→opening→idle
 type Phase =
-  | "app"
-  | "unframing"
-  | "opening"
-  | "idle"
-  | "working"
-  | "closing"
-  | "framing";
+  "app" | "unframing" | "opening" | "idle" | "working" | "closing" | "framing";
 
 type Env = { width: number; height: number; reduce: boolean };
 
@@ -121,10 +115,7 @@ export function Frame() {
       endLeaving();
       timer.current = setTimeout(() => {
         setPhase("opening");
-        timer.current = setTimeout(
-          () => setPhase("idle"),
-          CLOSE_MS + FADE_MS,
-        );
+        timer.current = setTimeout(() => setPhase("idle"), CLOSE_MS + FADE_MS);
       }, LINES_MS);
     });
     return () => cancelAnimationFrame(id);
@@ -210,7 +201,11 @@ export function Frame() {
 
   const drawn = authed || leaving.active || phase === "framing";
   const shut =
-    authed || leaving.active || phase === "unframing" || phase === "closing" || phase === "framing";
+    authed ||
+    leaving.active ||
+    phase === "unframing" ||
+    phase === "closing" ||
+    phase === "framing";
 
   const crossfade = reduce
     ? 0
