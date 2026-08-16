@@ -1,9 +1,9 @@
 "use client";
 
 import type { FormEvent } from "react";
+import { Diamond } from "@/components/frame/Diamond";
 import { Button } from "@/components/ui/Button";
 import { LogoIcon } from "@/components/ui/Icons";
-import { Input } from "@/components/ui/Input";
 
 export function LoginForm({
   busy,
@@ -24,31 +24,38 @@ export function LoginForm({
     <form
       onSubmit={onSubmit}
       inert={hidden}
-      className="flex flex-col items-center gap-3 transition-opacity"
+      className="flex flex-col items-center gap-4 transition-opacity"
       style={{
         opacity: hidden ? 0 : 1,
         transitionDuration: `${duration}ms`,
         transitionDelay: `${delay}ms`,
       }}
     >
-      <LogoIcon />
-      <h1 className="sr-only">Sign in to Zenote</h1>
+      <h1 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+        <LogoIcon />
+        Zenote
+      </h1>
 
-      <Field name="email" type="email" label="Email" autoFocus />
-      <Field name="password" type="password" label="Password" />
+      {/* One hairline block with junction marks, the same chrome as Modal —
+          two separate boxes read as a different app inside the frame. */}
+      <div className="relative w-full border border-foreground/15">
+        <Diamond className="left-0 top-0" />
+        <Diamond className="left-full top-0" />
+        <Diamond className="left-0 top-full" />
+        <Diamond className="left-full top-full" />
 
-      <Button
-        variant="solid"
-        type="submit"
-        disabled={busy}
-        className="mt-1 w-full"
-      >
+        <Field name="email" type="email" label="Email" autoFocus />
+        <div aria-hidden className="h-px bg-foreground/15" />
+        <Field name="password" type="password" label="Password" />
+      </div>
+
+      <Button variant="accent" type="submit" disabled={busy} className="w-full">
         {busy ? "Opening your vault…" : "Sign in"}
       </Button>
 
       <p
         role="alert"
-        className="min-h-[1.25rem] text-center text-sm text-red-500"
+        className="min-h-[1.25rem] text-center text-sm text-danger"
       >
         {error}
       </p>
@@ -68,7 +75,7 @@ function Field({
   autoFocus?: boolean;
 }) {
   return (
-    <Input
+    <input
       name={name}
       type={type}
       required
@@ -76,7 +83,9 @@ function Field({
       autoComplete={type === "password" ? "current-password" : "email"}
       placeholder={label}
       aria-label={label}
-      className="w-full py-1.5"
+      // An inset rule rather than a ring: it marks which field has focus
+      // without thickening the block the diamond has to fit around.
+      className="block w-full bg-transparent px-3 py-2 placeholder:opacity-50 focus:shadow-[inset_2px_0_0_var(--accent)] focus:outline-none"
     />
   );
 }
