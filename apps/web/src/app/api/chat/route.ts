@@ -2,6 +2,12 @@ import { createGoogle } from "@ai-sdk/google";
 import { convertToModelMessages, streamText, validateUIMessages } from "ai";
 import { isChatSubject, messageText, type VaultUIMessage } from "@/lib/chat";
 import { gatherContext, type ContextNote } from "@/lib/server/chat-context";
+import {
+  getNoteId,
+  getOrCreateChat,
+  replayable,
+  saveMessage,
+} from "@/lib/server/chats";
 import { getUser } from "@/lib/server/supabase";
 
 const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.5-flash-lite";
@@ -58,15 +64,35 @@ export async function POST(request: Request) {
     return new Response("Nothing to talk about.", { status: 404 });
   }
 
+  // Note threads persist; a graph selection is an ephemeral conversation.
+  let chatId: string | null = null;
+  if (subject.kind === "note") {
+    const noteId = await getNoteId(subject.slug);
+    chatId = noteId ? await getOrCreateChat(noteId) : null;
+  }
+
+  const history = replayable(messages);
+  const last = history[history.length - 1];
+  if (chatId && last?.role === "user") {
+    await saveMessage(chatId, last, "complete");
+  }
+
   const google = createGoogle({ apiKey });
   const result = streamText({
     model: google(MODEL),
     system: systemPrompt(title, notes),
-    messages: await convertToModelMessages(messages),
+    messages: await convertToModelMessages(history),
   });
 
+  // Finish generating (and saving) even if the reader navigates away mid-answer.
+  void result.consumeStream({ onError: () => {} });
+
   return result.toUIMessageStreamResponse({
-    originalMessages: messages,
+    originalMessages: history,
+    onEnd: async ({ responseMessage, isAborted }) => {
+      if (!chatId) return;
+      await saveMessage(chatId, responseMessage, isAborted ? "aborted" : "complete");
+    },
     onError: (error) => {
       console.error("Chat stream failed:", error);
       return "The AI provider returned an error.";

@@ -110,7 +110,7 @@ function ChatArea({
   resolver: WikilinkResolver;
   show: boolean;
 }) {
-  const { messages, input, setInput, busy, send, error, scrollRef } =
+  const { messages, input, setInput, busy, send, stop, error, scrollRef } =
     useNoteChat(subject, resolver);
 
   return (
@@ -153,14 +153,25 @@ function ChatArea({
           aria-label="Message the assistant"
           className="min-w-0 flex-1 bg-transparent placeholder:opacity-50 focus:outline-none"
         />
-        <Button
-          type="submit"
-          disabled={busy || input.trim().length === 0}
-          aria-label="Send"
-          className="shrink-0"
-        >
-          <SendIcon />
-        </Button>
+        {busy ? (
+          <Button
+            type="button"
+            onClick={() => void stop()}
+            aria-label="Stop"
+            className="shrink-0"
+          >
+            <CloseIcon />
+          </Button>
+        ) : (
+          <Button
+            type="submit"
+            disabled={input.trim().length === 0}
+            aria-label="Send"
+            className="shrink-0"
+          >
+            <SendIcon />
+          </Button>
+        )}
       </form>
     </>
   );
@@ -182,13 +193,15 @@ function Turn({
   }
 
   const text = messageText(message);
+  const stopped = message.metadata?.status === "aborted";
   return (
-    <div className="prose prose-sm max-w-none">
+    <div className={`prose prose-sm max-w-none ${stopped ? "opacity-50" : ""}`}>
       {text ? (
         <NoteMarkdown source={text} resolver={resolver} />
       ) : (
         <p className="animate-pulse opacity-50">Thinking…</p>
       )}
+      {stopped && <p className="text-xs italic opacity-60">Stopped early.</p>}
     </div>
   );
 }

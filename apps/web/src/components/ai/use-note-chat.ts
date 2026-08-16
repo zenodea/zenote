@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
+import { loadChat } from "@/app/actions/chats";
 import { useAiAssistant } from "@/components/ai/AiAssistantContext";
 import { messageText, type ChatSubject, type VaultUIMessage } from "@/lib/chat";
 import { setGraphFocus } from "@/lib/stores/graph-focus";
@@ -24,7 +25,7 @@ export function useNoteChat(subject: ChatSubject, resolver: WikilinkResolver) {
     [subject],
   );
 
-  const { messages, sendMessage, status, stop, error } =
+  const { messages, sendMessage, setMessages, status, stop, error } =
     useChat<VaultUIMessage>({
       transport,
       onFinish: ({ message }) => {
@@ -37,6 +38,23 @@ export function useNoteChat(subject: ChatSubject, resolver: WikilinkResolver) {
     });
 
   const busy = status === "submitted" || status === "streaming";
+
+  // A note's thread is stored; pick it up where it was left.
+  const fetchedRef = useRef(false);
+  useEffect(() => {
+    if (fetchedRef.current || subject.kind !== "note") return;
+    fetchedRef.current = true;
+    let alive = true;
+    loadChat(subject.slug)
+      .then((history) => {
+        if (!alive || history.length === 0) return;
+        setMessages((current) => (current.length === 0 ? history : current));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [subject, setMessages]);
 
   useEffect(() => {
     setBusy(busy);
