@@ -150,6 +150,13 @@ function ChatArea({
             active={busy && index === messages.length - 1}
           />
         ))}
+        {/* Before the stream opens there is no assistant message to render yet. */}
+        {busy && messages[messages.length - 1]?.role === "user" && (
+          <div className="flex gap-2.5">
+            <AiDiamond size={14} busy className="mt-1 shrink-0" />
+            <p className="animate-pulse text-sm opacity-50">Thinking…</p>
+          </div>
+        )}
         {error && <p className="opacity-70">⚠️ {error.message}</p>}
       </Scroller>
 
@@ -338,12 +345,7 @@ function ToolLine({
       label = "Working…";
   }
 
-  return (
-    <p className="flex items-center gap-1.5 text-xs italic opacity-50">
-      <AiDiamond size={9} className="shrink-0" />
-      {label}
-    </p>
-  );
+  return <p className="text-xs italic opacity-50">{label}</p>;
 }
 
 /** A proposed change to the vault; nothing runs until the reader says so. */
