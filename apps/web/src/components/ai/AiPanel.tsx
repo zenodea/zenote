@@ -53,22 +53,24 @@ export function AiPanel({
       ? { kind: "selection", slugs: focus.slugs }
       : null;
 
-  // What is on screen: null while a thread is being fetched. A conversation
-  // outlives navigation — new threads come from the plus button, a fresh
-  // session, or the reader picking a new selection out on the graph. An
-  // untouched empty thread is not a conversation yet; it follows the page.
+  // What is on screen: a conversation outlives navigation — new threads come
+  // from the plus button, a fresh session, or the reader picking a selection
+  // out on the graph. An untouched empty thread is not a conversation yet; it
+  // follows the page. `wanted` is the one being fetched, loaded behind the
+  // current view and swapped in whole, so nothing blanks or flickers.
   const [thread, setThread] = useState<OpenThread | null>(null);
-  const [pending, setPending] = useState(live);
+  const [wanted, setWanted] = useState<{ subject: ChatSubject | null } | null>(
+    { subject: live },
+  );
   const [view, setView] = useState<"chat" | "history">("chat");
   const [fresh, setFresh] = useState(0);
   const [touched, setTouched] = useState(false);
 
   const historyOpen = view === "history";
 
-  const untouched =
-    !touched &&
-    (thread === null ||
-      (thread.chatId === null && thread.messages.length === 0));
+  // Touched is about this session: a resumed thread's stored history is
+  // display, not engagement. Until the reader talks, the panel follows them.
+  const untouched = !touched;
 
   const liveKey = subjectKey(live);
   const [lastLiveKey, setLastLiveKey] = useState(liveKey);
@@ -76,43 +78,46 @@ export function AiPanel({
     setLastLiveKey(liveKey);
     if (live?.kind === "selection" && focus.from === "reader") {
       setThread({ chatId: null, subject: live, messages: [] });
+      setWanted(null);
       setTouched(false);
       setView("chat");
     } else if (untouched && live?.kind === "note") {
       // Only a note re-aims an untouched thread; passing through the graph or
       // settings, which have no subject of their own, changes nothing.
-      setPending(live);
-      setThread(null);
+      setWanted({ subject: live });
       setView("chat");
     }
   }
 
-  // Resolve the pending subject into its most recent stored thread. Without a
+  // Resolve the wanted subject into its most recent stored thread. Without a
   // subject the vault-at-large conversation picks up where it left off; only a
   // graph selection starts fresh, since its identity changes with every pick.
   useEffect(() => {
-    if (thread !== null) return;
+    if (wanted === null) return;
     let alive = true;
     (async () => {
+      const target = wanted.subject;
       const opened =
-        pending?.kind === "note"
-          ? await openNoteChat(pending.slug).catch(() => null)
-          : pending === null
+        target?.kind === "note"
+          ? await openNoteChat(target.slug).catch(() => null)
+          : target === null
             ? await openFreeChat().catch(() => null)
             : null;
       if (!alive) return;
       setThread({
         chatId: opened?.chatId ?? null,
-        subject: pending,
+        subject: target,
         messages: opened?.messages ?? [],
       });
+      setTouched(false);
+      setWanted(null);
     })();
     return () => {
       alive = false;
     };
-  }, [thread, pending]);
+  }, [wanted]);
 
-  const subject = thread ? thread.subject : pending;
+  const subject = thread ? thread.subject : (wanted?.subject ?? null);
   const show = open;
   // A thread that loads quickly never flashes a loader at all.
   const slowLoad = useLoadingIndicator(thread === null);
@@ -120,6 +125,7 @@ export function AiPanel({
   // About what the reader is looking at now — not the held thread's subject.
   function startNewChat() {
     setThread({ chatId: null, subject: live, messages: [] });
+    setWanted(null);
     setTouched(false);
     setFresh((count) => count + 1);
     setView("chat");
@@ -133,6 +139,7 @@ export function AiPanel({
       subject: opened.subject,
       messages: opened.messages,
     });
+    setWanted(null);
     setTouched(false);
     // A reopened selection points the graph back at what it was about.
     if (opened.subject?.kind === "selection") {
