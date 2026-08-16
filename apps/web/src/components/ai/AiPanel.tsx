@@ -132,18 +132,22 @@ function ChatArea({
         contentClassName="space-y-4 p-4"
       >
         {messages.length === 0 && (
-          <p className="opacity-50">
-            {subject.kind === "note"
-              ? "Ask anything about this note"
-              : "Ask anything about what you have picked out"}
-          </p>
+          <div className="flex flex-col items-center gap-3 py-10 opacity-50">
+            <AiDiamond size={24} />
+            <p>
+              {subject.kind === "note"
+                ? "Ask anything about this note"
+                : "Ask anything about what you have picked out"}
+            </p>
+          </div>
         )}
-        {messages.map((message) => (
+        {messages.map((message, index) => (
           <Turn
             key={message.id}
             message={message}
             resolver={resolver}
             onApproval={respondToApproval}
+            active={busy && index === messages.length - 1}
           />
         ))}
         {error && <p className="opacity-70">⚠️ {error.message}</p>}
@@ -202,10 +206,12 @@ function Turn({
   message,
   resolver,
   onApproval,
+  active,
 }: {
   message: VaultUIMessage;
   resolver: WikilinkResolver;
   onApproval: ApprovalResponder;
+  active: boolean;
 }) {
   if (message.role === "user") {
     return (
@@ -237,18 +243,21 @@ function Turn({
     .filter(Boolean);
 
   return (
-    <div
-      className={`prose prose-sm max-w-none space-y-2 ${stopped ? "opacity-50" : ""}`}
-    >
-      {parts.length > 0 ? (
-        parts
-      ) : (
-        <p className="flex items-center gap-2 opacity-60">
-          <AiDiamond size={14} busy />
-          Thinking…
-        </p>
-      )}
-      {stopped && <p className="text-xs italic opacity-60">Stopped early.</p>}
+    <div className={`flex gap-2.5 ${stopped ? "opacity-50" : ""}`}>
+      {/* The reply's mark: alive while this answer is still being written. */}
+      <AiDiamond
+        size={14}
+        busy={active}
+        className={`mt-1 shrink-0 ${active ? "" : "opacity-60"}`}
+      />
+      <div className="prose prose-sm min-w-0 max-w-none flex-1 space-y-2">
+        {parts.length > 0 ? (
+          parts
+        ) : (
+          <p className="animate-pulse opacity-50">Thinking…</p>
+        )}
+        {stopped && <p className="text-xs italic opacity-60">Stopped early.</p>}
+      </div>
     </div>
   );
 }
@@ -329,7 +338,12 @@ function ToolLine({
       label = "Working…";
   }
 
-  return <p className="text-xs italic opacity-50">{label}</p>;
+  return (
+    <p className="flex items-center gap-1.5 text-xs italic opacity-50">
+      <AiDiamond size={9} className="shrink-0" />
+      {label}
+    </p>
+  );
 }
 
 /** A proposed change to the vault; nothing runs until the reader says so. */
