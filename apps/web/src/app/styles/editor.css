@@ -47,13 +47,6 @@
   outline: solid 1px var(--accent) !important;
 }
 
-/* Vim's footer command bar: only visible while a : or / prompt is open. */
-.vim-bar {
-  display: none;
-}
-.vim-bar:has(.vim-statusbar > div) {
-  display: block;
-}
 .vim-statusbar > span {
   display: none;
 }
