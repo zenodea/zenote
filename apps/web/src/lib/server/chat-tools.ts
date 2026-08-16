@@ -91,6 +91,56 @@ export function vaultTools() {
       },
     }),
 
+    draw_graph: tool({
+      description:
+        "Sketch a small concept map that renders inside the conversation: concepts and the relations between them, whether or not the vault links them. Name real notes by their exact titles and they become links.",
+      inputSchema: z.object({
+        nodes: z
+          .array(z.string().min(1))
+          .min(2)
+          .max(20)
+          .describe("Concept names; a note's exact title when it is a note"),
+        edges: z
+          .array(
+            z.object({
+              from: z.string(),
+              to: z.string(),
+              label: z
+                .string()
+                .optional()
+                .describe("Short relation, e.g. 'enables'"),
+            }),
+          )
+          .max(40),
+      }),
+      execute: async ({ nodes, edges }) => {
+        const resolver = await getResolver();
+        const seen = new Set<string>();
+        const named = nodes
+          .map((label) => label.trim())
+          .filter((label) => {
+            const key = label.toLowerCase();
+            if (!label || seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          })
+          .map((label) => ({ label, slug: resolveWikilink(resolver, label) }));
+
+        const drawn = edges
+          .map((edge) => ({ ...edge, from: edge.from.trim(), to: edge.to.trim() }))
+          .filter(
+            (edge) =>
+              seen.has(edge.from.toLowerCase()) &&
+              seen.has(edge.to.toLowerCase()),
+          )
+          .map(({ from, to, label }) =>
+            label ? { from, to, label } : { from, to },
+          );
+
+        return { nodes: named, edges: drawn };
+      },
+    }),
+
     // No execute: the reader's browser aims the graph and reports back.
     focus_graph: tool({
       description:

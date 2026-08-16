@@ -5,6 +5,10 @@ import { openChat, openFreeChat, openNoteChat } from "@/app/actions/chats";
 import { useAiAssistant } from "@/components/ai/AiAssistantContext";
 import { AiDiamond } from "@/components/ai/AiDiamond";
 import { ChatHistory } from "@/components/ai/ChatHistory";
+import {
+  ConceptGraph,
+  type ConceptGraphData,
+} from "@/components/ai/ConceptGraph";
 import { useNoteChat, type OpenThread } from "@/components/ai/use-note-chat";
 import { NoteMarkdown } from "@/components/note/NoteMarkdown";
 import { Button } from "@/components/ui/Button";
@@ -372,6 +376,16 @@ function Turn({
         return part.text ? (
           <NoteMarkdown key={index} source={part.text} resolver={resolver} />
         ) : null;
+      }
+      if (part.type === "tool-draw_graph") {
+        const drawn = part as VaultToolPart;
+        return drawn.state === "output-available" && drawn.output ? (
+          <ConceptGraph key={index} data={drawn.output as ConceptGraphData} />
+        ) : (
+          <p key={index} className="text-xs italic opacity-50">
+            Sketching a map…
+          </p>
+        );
       }
       if (part.type.startsWith("tool-")) {
         return (
