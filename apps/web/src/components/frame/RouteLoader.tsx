@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DiamondLoader } from "@/components/ui/DiamondLoader";
 import { useLoadingIndicator } from "@/hooks/use-loading-indicator";
-import { useRouteWait, useRouteWaiting } from "@/lib/stores/route-loading";
+import {
+  setRouteLoaderShowing,
+  useRouteWait,
+  useRouteWaiting,
+} from "@/lib/stores/route-loading";
 
 const FADE_MS = 200;
 
@@ -11,6 +15,7 @@ const FADE_MS = 200;
 export function RouteLoader() {
   const waiting = useRouteWaiting();
   const showing = useLoadingIndicator(waiting);
+  useEffect(() => setRouteLoaderShowing(showing), [showing]);
 
   // Mounted a beat longer than it is lit, so the mark dims out rather than being cut away.
   const [marked, setMarked] = useState(false);
