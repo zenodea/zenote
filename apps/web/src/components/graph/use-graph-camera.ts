@@ -176,6 +176,14 @@ export function useGraphCamera({
     pan.current = null;
   }, []);
 
+  /** The canvas moved under the view: hold the picture still on screen. */
+  const holdStill = useCallback((byX: number, byY: number) => {
+    view.current.x += byX;
+    view.current.y += byY;
+    viewTarget.current.x += byX;
+    viewTarget.current.y += byY;
+  }, []);
+
   // The camera stops auto-fitting for good once the user has moved it.
   const fitIfUntouched = useCallback(() => {
     if (!adjusted.current) fit(true);
@@ -233,6 +241,7 @@ export function useGraphCamera({
     fitScaleRef: fitScale,
     panningRef: pan,
     fitIfUntouched,
+    holdStill,
     resetView,
     frameNodes,
     zoomAt,
