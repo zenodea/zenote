@@ -1,22 +1,46 @@
 "use client";
 
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { useMemo } from "react";
 import { useAiAssistant } from "@/components/ai/AiAssistantContext";
 import { useNoteChat } from "@/components/ai/use-note-chat";
+import { NoteMarkdown } from "@/components/note/NoteMarkdown";
 import { Button } from "@/components/ui/Button";
 import { CloseIcon, SendIcon } from "@/components/ui/Icons";
 import { Scroller } from "@/components/ui/Scroller";
 import { useNoteSlug } from "@/hooks/use-note-slug";
-import type { ChatMessage } from "@/lib/chat";
+import type { ChatMessage, ChatSubject } from "@/lib/chat";
+import { useGraphFocus } from "@/lib/stores/graph-focus";
+import type { WikilinkResolver } from "@/lib/wikilinks";
 
-export function AiPanel({ titles }: { titles: Record<string, string> }) {
+export function AiPanel({
+  titles,
+  resolver,
+}: {
+  titles: Record<string, string>;
+  /** Cited notes render as the same wikilinks the notes themselves use. */
+  resolver: Record<string, string>;
+}) {
   const { open, setOpen } = useAiAssistant();
+  const resolverMap = useMemo(
+    () => new Map(Object.entries(resolver)),
+    [resolver],
+  );
   const slug = useNoteSlug();
-  const { messages, input, setInput, busy, send, scrollRef } =
-    useNoteChat(slug);
+  const selection = useGraphFocus();
 
-  const show = open && slug !== null;
+  // A note when reading one, otherwise whatever is picked out on the graph.
+  const subject: ChatSubject | null = slug
+    ? { kind: "note", slug }
+    : selection.length > 0
+      ? { kind: "selection", slugs: selection }
+      : null;
+
+  const { messages, input, setInput, busy, send, scrollRef } = useNoteChat(
+    subject,
+    resolverMap,
+  );
+
+  const show = open && subject !== null;
 
   return (
     <aside
@@ -37,7 +61,11 @@ export function AiPanel({ titles }: { titles: Record<string, string> }) {
           <div className="min-w-0 flex-1">
             <p className="font-semibold">AI Assistant</p>
             <p className="truncate text-xs opacity-60">
-              {slug ? (titles[slug] ?? slug) : ""}
+              {subject?.kind === "note"
+                ? (titles[subject.slug] ?? subject.slug)
+                : subject
+                  ? `${subject.slugs.length} notes on the graph`
+                  : ""}
             </p>
           </div>
           <Button
@@ -55,10 +83,14 @@ export function AiPanel({ titles }: { titles: Record<string, string> }) {
           contentClassName="space-y-4 p-4"
         >
           {messages.length === 0 && (
-            <p className="opacity-50">Ask anything about this note</p>
+            <p className="opacity-50">
+              {subject?.kind === "note"
+                ? "Ask anything about this note"
+                : "Ask anything about what you have picked out"}
+            </p>
           )}
           {messages.map((message, index) => (
-            <Turn key={index} message={message} />
+            <Turn key={index} message={message} resolver={resolverMap} />
           ))}
         </Scroller>
 
@@ -74,7 +106,11 @@ export function AiPanel({ titles }: { titles: Record<string, string> }) {
             type="text"
             value={input}
             onChange={(event) => setInput(event.target.value)}
-            placeholder="Ask about this note…"
+            placeholder={
+              subject?.kind === "note"
+                ? "Ask about this note…"
+                : "Ask about these notes…"
+            }
             aria-label="Message the assistant"
             className="min-w-0 flex-1 bg-transparent placeholder:opacity-50 focus:outline-none"
           />
@@ -92,7 +128,13 @@ export function AiPanel({ titles }: { titles: Record<string, string> }) {
   );
 }
 
-function Turn({ message }: { message: ChatMessage }) {
+function Turn({
+  message,
+  resolver,
+}: {
+  message: ChatMessage;
+  resolver: WikilinkResolver;
+}) {
   if (message.role === "user") {
     return (
       <p className="ml-8 whitespace-pre-wrap rounded-lg bg-foreground/10 px-3 py-2">
@@ -104,7 +146,7 @@ function Turn({ message }: { message: ChatMessage }) {
   return (
     <div className="prose prose-sm max-w-none">
       {message.content ? (
-        <Markdown remarkPlugins={[remarkGfm]}>{message.content}</Markdown>
+        <NoteMarkdown source={message.content} resolver={resolver} />
       ) : (
         <p className="animate-pulse opacity-50">Thinking…</p>
       )}

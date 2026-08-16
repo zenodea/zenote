@@ -4,11 +4,19 @@ import { useEffect, useRef, useState } from "react";
 import { useAiAssistant } from "@/components/ai/AiAssistantContext";
 import {
   streamPlainText,
+  subjectKey,
   type ChatMessage,
   type ChatRequest,
+  type ChatSubject,
 } from "@/lib/chat";
+import { setGraphFocus } from "@/lib/stores/graph-focus";
+import { extractTargets, resolveWikilink } from "@/lib/wikilinks";
+import type { WikilinkResolver } from "@/lib/wikilinks";
 
-export function useNoteChat(slug: string | null) {
+export function useNoteChat(
+  subject: ChatSubject | null,
+  resolver: WikilinkResolver,
+) {
   const { setBusy } = useAiAssistant();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -16,16 +24,17 @@ export function useNoteChat(slug: string | null) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  // A conversation belongs to one note; reset when the note changes.
-  const [lastSlug, setLastSlug] = useState(slug);
-  if (slug !== lastSlug) {
-    setLastSlug(slug);
+  // A conversation belongs to one subject; reset when the subject changes.
+  const key = subjectKey(subject);
+  const [lastKey, setLastKey] = useState(key);
+  if (key !== lastKey) {
+    setLastKey(key);
     setMessages([]);
   }
 
   useEffect(() => {
     abortRef.current?.abort();
-  }, [slug]);
+  }, [key]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -49,7 +58,7 @@ export function useNoteChat(slug: string | null) {
 
   async function send() {
     const text = input.trim();
-    if (!text || busy || !slug) return;
+    if (!text || busy || !subject) return;
 
     const history = [...messages, { role: "user" as const, content: text }];
     setMessages([...history, { role: "assistant", content: "" }]);
@@ -59,7 +68,7 @@ export function useNoteChat(slug: string | null) {
     const controller = new AbortController();
     abortRef.current = controller;
 
-    const payload: ChatRequest = { slug, messages: history };
+    const payload: ChatRequest = { subject, messages: history };
 
     try {
       const response = await fetch("/api/chat", {
@@ -80,7 +89,17 @@ export function useNoteChat(slug: string | null) {
         throw new Error("Unexpected reply from the server.");
       }
 
-      await streamPlainText(response.body, appendToReply);
+      let answer = "";
+      await streamPlainText(response.body, (chunk) => {
+        answer += chunk;
+        appendToReply(chunk);
+      });
+
+      // The notes it cited become the graph's focus: the answer shows its sources.
+      const cited = extractTargets(answer)
+        .map((target) => resolveWikilink(resolver, target))
+        .filter((slug): slug is string => slug !== null);
+      if (cited.length > 0) setGraphFocus([...new Set(cited)]);
     } catch (error) {
       if (!controller.signal.aborted) {
         appendToReply(
