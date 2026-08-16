@@ -37,6 +37,47 @@ export function CloseIcon() {
   );
 }
 
+export function PlusIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      aria-hidden
+      className="block"
+    >
+      <path d="M8 3v10M3 8h10" />
+    </svg>
+  );
+}
+
+/** A list whose bullets are the frame's diamonds: the vault's conversations. */
+export function HistoryIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="block"
+    >
+      <path d="M3.5 1.9 5.1 3.5 3.5 5.1 1.9 3.5Z" />
+      <path d="M3.5 6.4 5.1 8 3.5 9.6 1.9 8Z" />
+      <path d="M3.5 10.9 5.1 12.5 3.5 14.1 1.9 12.5Z" />
+      <path d="M7.5 3.5H14M7.5 8H14M7.5 12.5H14" />
+    </svg>
+  );
+}
+
 export function EllipsisIcon() {
   return (
     <svg

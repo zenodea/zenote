@@ -1,7 +1,8 @@
 "use client";
 
 import { isValidElement, type ComponentProps } from "react";
-import Markdown from "react-markdown";
+import Link from "next/link";
+import Markdown, { type ExtraProps } from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -33,6 +34,25 @@ function Pre({ children }: ComponentProps<"pre">) {
   );
 }
 
+// A raw anchor reloads the document, which puts the chrome — assistant panel included — back to its defaults.
+function Anchor(props: ComponentProps<"a"> & ExtraProps) {
+  const { href, children, ...rest } = props;
+  delete rest.node;
+
+  if (href?.startsWith("/")) {
+    return (
+      <Link href={href} {...rest}>
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  );
+}
+
 export function NoteMarkdown({
   source,
   resolver,
@@ -49,7 +69,7 @@ export function NoteMarkdown({
         remarkTag,
       ]}
       rehypePlugins={[rehypeKatex]}
-      components={{ pre: Pre }}
+      components={{ pre: Pre, a: Anchor }}
     >
       {source}
     </Markdown>

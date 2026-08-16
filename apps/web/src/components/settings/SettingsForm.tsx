@@ -67,7 +67,7 @@ export function SettingsForm() {
   );
 }
 
-function Row({
+export function Row({
   title,
   description,
   children,
@@ -87,7 +87,7 @@ function Row({
   );
 }
 
-function Toggle({
+export function Toggle({
   checked,
   onChange,
   ariaLabel,

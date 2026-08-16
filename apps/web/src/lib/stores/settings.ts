@@ -10,6 +10,8 @@ export type Settings = {
   openInEditMode: boolean;
   vimMode: boolean;
   sidebarCollapsed: boolean;
+  aiWrites: boolean;
+  aiVaultOnly: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -19,6 +21,8 @@ export const DEFAULT_SETTINGS: Settings = {
   openInEditMode: false,
   vimMode: false,
   sidebarCollapsed: false,
+  aiWrites: true,
+  aiVaultOnly: false,
 };
 
 export const SETTINGS_STORAGE_KEY = "settings";

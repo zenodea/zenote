@@ -66,10 +66,14 @@ export function SidebarHeader({
         {!searchOpen && (
           <>
             <Button
-              onClick={() => onNamingChange(naming === "note" ? null : "note")}
+              onClick={() =>
+                onNamingChange(
+                  naming?.kind === "note" ? null : { kind: "note", into: "" },
+                )
+              }
               onMouseDown={(event) => event.preventDefault()}
-              active={naming === "note"}
-              aria-pressed={naming === "note"}
+              active={naming?.kind === "note"}
+              aria-pressed={naming?.kind === "note"}
               aria-label="New note"
               title="New note"
             >
@@ -77,11 +81,15 @@ export function SidebarHeader({
             </Button>
             <Button
               onClick={() =>
-                onNamingChange(naming === "folder" ? null : "folder")
+                onNamingChange(
+                  naming?.kind === "folder"
+                    ? null
+                    : { kind: "folder", into: "" },
+                )
               }
               onMouseDown={(event) => event.preventDefault()}
-              active={naming === "folder"}
-              aria-pressed={naming === "folder"}
+              active={naming?.kind === "folder"}
+              aria-pressed={naming?.kind === "folder"}
               aria-label="New folder"
               title="New folder"
             >

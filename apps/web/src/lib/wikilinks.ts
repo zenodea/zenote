@@ -19,8 +19,7 @@ export type WikilinkOccurrence = {
   target: string;
   /** The link's display text (alias if given, else the target). */
   text: string;
-  /** The surrounding line, split around the link, other wikilinks rendered
-   * to their display text and markdown list/heading prefixes stripped. */
+  /** The surrounding line, split around the link, other wikilinks flattened. */
   before: string;
   after: string;
 };
@@ -64,6 +63,26 @@ export function extractOccurrences(body: string): WikilinkOccurrence[] {
 
 export function extractTargets(body: string): string[] {
   return extractOccurrences(body).map((occurrence) => occurrence.target);
+}
+
+/** Rewrites wikilink targets outside code, keeping headings and aliases. */
+export function replaceWikilinkTargets(
+  body: string,
+  rename: (target: string) => string | null,
+): string {
+  return body
+    .split(/(```[\s\S]*?```|`[^`\n]*`)/g)
+    .map((segment, index) =>
+      index % 2 === 1
+        ? segment
+        : segment.replace(wikilinkRegex(), (full, target, heading, alias) => {
+            const next = rename(target as string);
+            if (next === null) return full;
+            const rest = `${heading ? `#${heading}` : ""}${alias ? `|${alias}` : ""}`;
+            return `[[${next}${rest}]]`;
+          }),
+    )
+    .join("");
 }
 
 function normalise(value: string): string {

@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { useHotkey } from "@/hooks/use-hotkey";
 import { scrollBehavior } from "@/lib/motion";
+import { useFooterClaim, useFooterHost } from "@/lib/stores/footer";
 import { Button } from "@/components/ui/Button";
 import { ChevronIcon, CloseIcon } from "@/components/ui/Icons";
 import { INPUT_CLASS } from "@/components/ui/Input";
@@ -93,7 +95,8 @@ function FindBarInner() {
 
   useEffect(() => {
     if (open) {
-      inputRef.current?.focus();
+      // The bar sits below the fold, so a plain focus would scroll the whole page.
+      inputRef.current?.focus({ preventScroll: true });
       inputRef.current?.select();
     }
   }, [open]);
@@ -121,62 +124,59 @@ function FindBarInner() {
     setIndex((current) => (current + delta + ranges.length) % ranges.length);
   }
 
-  return (
+  const host = useFooterHost();
+  const holds = useFooterClaim("find", open);
+
+  if (!open || !host || !holds) return null;
+
+  return createPortal(
     <div
       ref={barRef}
-      data-seam={open ? "top" : undefined}
-      className={open ? "shrink-0 border-t border-foreground/15" : "hidden"}
+      className="absolute inset-0 flex items-center gap-2 px-4 text-sm"
     >
-      {open && (
-        <div className="flex h-11 items-center gap-2 px-4 text-sm">
-          <input
-            ref={inputRef}
-            type="search"
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              runSearch(event.target.value);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") step(event.shiftKey ? -1 : 1);
-              if (event.key === "Escape") close();
-            }}
-            placeholder="Find in page…"
-            aria-label="Find in page"
-            className={`${INPUT_CLASS} h-7 min-w-0 flex-1`}
-          />
-          {query.trim() && (
-            <span className="shrink-0 text-xs tabular-nums opacity-60">
-              {ranges.length === 0
-                ? "No matches"
-                : `${index + 1} of ${ranges.length}`}
-            </span>
-          )}
-          <Button
-            onClick={() => step(-1)}
-            disabled={ranges.length === 0}
-            aria-label="Previous match"
-            className="shrink-0"
-          >
-            <ChevronIcon className="-rotate-90" />
-          </Button>
-          <Button
-            onClick={() => step(1)}
-            disabled={ranges.length === 0}
-            aria-label="Next match"
-            className="shrink-0"
-          >
-            <ChevronIcon className="rotate-90" />
-          </Button>
-          <Button
-            onClick={close}
-            aria-label="Close find bar"
-            className="shrink-0"
-          >
-            <CloseIcon />
-          </Button>
-        </div>
+      <input
+        ref={inputRef}
+        type="search"
+        value={query}
+        onChange={(event) => {
+          setQuery(event.target.value);
+          runSearch(event.target.value);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") step(event.shiftKey ? -1 : 1);
+          if (event.key === "Escape") close();
+        }}
+        placeholder="Find in page…"
+        aria-label="Find in page"
+        className={`${INPUT_CLASS} h-7 min-w-0 flex-1`}
+      />
+      {query.trim() && (
+        <span className="shrink-0 text-xs tabular-nums opacity-60">
+          {ranges.length === 0
+            ? "No matches"
+            : `${index + 1} of ${ranges.length}`}
+        </span>
       )}
-    </div>
+      <Button
+        onClick={() => step(-1)}
+        disabled={ranges.length === 0}
+        aria-label="Previous match"
+        className="shrink-0"
+      >
+        <ChevronIcon className="-rotate-90" />
+      </Button>
+      <Button
+        onClick={() => step(1)}
+        disabled={ranges.length === 0}
+        aria-label="Next match"
+        className="shrink-0"
+      >
+        <ChevronIcon className="rotate-90" />
+      </Button>
+      <Button onClick={close} aria-label="Close find bar" className="shrink-0">
+        <CloseIcon />
+      </Button>
+    </div>,
+    host,
   );
 }

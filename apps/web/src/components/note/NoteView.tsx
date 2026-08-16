@@ -18,6 +18,7 @@ import { NoteMissing } from "@/components/note/NoteMissing";
 import { NoteToolbar } from "@/components/note/NoteToolbar";
 import { RenameNoteModal } from "@/components/note/RenameNoteModal";
 import { useAutosave } from "@/components/note/use-autosave";
+import { VimPrompt } from "@/components/note/VimPrompt";
 import { beginPageFade } from "@/lib/page-fade";
 
 export function NoteView({
@@ -160,18 +161,7 @@ export function NoteView({
         />
       )}
 
-      {/* Vim's : and / prompts, in the same footer plane the find bar uses. */}
-      {!reading && settings.vimMode && (
-        <div
-          data-seam="top"
-          className="vim-bar absolute inset-x-0 bottom-0 border-t border-foreground/15 bg-background"
-        >
-          <div
-            ref={vimBarRef}
-            className="vim-statusbar flex h-11 items-center gap-2 px-4 font-mono text-xs"
-          />
-        </div>
-      )}
+      {!reading && settings.vimMode && <VimPrompt hostRef={vimBarRef} />}
     </>
   );
 }

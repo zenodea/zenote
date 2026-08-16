@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
-import type { SearchDoc } from "@/lib/search";
+import type { SearchDocMeta } from "@/lib/search";
 import { updateSettings, useSettings } from "@/lib/stores/settings";
 import { buildTree } from "@/lib/tree";
 import { NoteTree } from "@/components/navigation/NoteTree";
 import { SidebarFooter } from "@/components/navigation/SidebarFooter";
 import { SidebarHeader } from "@/components/navigation/SidebarHeader";
 import { SidebarSearch } from "@/components/navigation/SidebarSearch";
+import { useSearchDocs } from "@/components/navigation/use-search-docs";
 import { useSidebarSearch } from "@/components/navigation/use-sidebar-search";
 import { useVaultActions } from "@/components/navigation/use-vault-actions";
 import { Scroller } from "@/components/ui/Scroller";
@@ -17,7 +18,7 @@ export function Sidebar({
   docs,
   folders,
 }: {
-  docs: SearchDoc[];
+  docs: SearchDocMeta[];
   folders: string[];
 }) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -25,9 +26,17 @@ export function Sidebar({
   const settings = useSettings();
   const minimised = settings.sidebarCollapsed;
 
+  const hydrated = useSearchDocs(docs);
   const tree = useMemo(() => buildTree(docs, folders), [docs, folders]);
-  const search = useSidebarSearch(docs);
-  const { naming, setNaming, submitName, handleMove } = useVaultActions(docs);
+  const search = useSidebarSearch(hydrated);
+  const {
+    naming,
+    setNaming,
+    submitName,
+    handleMove,
+    handleMoveFolder,
+    handleDeleteFolder,
+  } = useVaultActions(docs);
 
   function toggleFolder(path: string) {
     setCollapsed((previous) => {
@@ -90,9 +99,12 @@ export function Sidebar({
             onToggleFolder={toggleFolder}
             pathname={pathname}
             naming={naming}
+            onNamingChange={setNaming}
             onSubmitName={submitName}
             onCancelName={() => setNaming(null)}
             onMove={handleMove}
+            onMoveFolder={handleMoveFolder}
+            onDeleteFolder={handleDeleteFolder}
           />
         )}
       </Scroller>

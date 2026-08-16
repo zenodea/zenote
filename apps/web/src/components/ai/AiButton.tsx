@@ -1,27 +1,30 @@
 "use client";
 
 import { useAiAssistant } from "@/components/ai/AiAssistantContext";
+import { AiDiamond } from "@/components/ai/AiDiamond";
 import { Button } from "@/components/ui/Button";
-import { SparkleIcon } from "@/components/ui/Icons";
 import { useNoteSlug } from "@/hooks/use-note-slug";
+import { useGraphFocus } from "@/lib/stores/graph-focus";
 
 export function AiButton() {
   const { open, setOpen, busy } = useAiAssistant();
   const slug = useNoteSlug();
+  const selection = useGraphFocus();
+  const subject = slug !== null || selection.length > 0;
 
   return (
     <Button
       onClick={() => setOpen(!open)}
-      disabled={!slug}
       active={open}
       aria-pressed={open}
-      aria-label={open ? "Close AI assistant" : "Ask AI about this note"}
+      aria-label={open ? "Close AI assistant" : "Ask AI"}
       title={
-        slug ? "Ask AI about this note" : "Open a note to use the AI assistant"
+        subject
+          ? "Ask AI about what you are looking at"
+          : "Ask AI about your vault"
       }
-      className={open && busy ? "animate-pulse" : undefined}
     >
-      <SparkleIcon />
+      <AiDiamond busy={open && busy} />
     </Button>
   );
 }

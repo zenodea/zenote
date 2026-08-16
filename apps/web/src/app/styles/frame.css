@@ -7,6 +7,38 @@ html[data-sidebar="collapsed"] .sidebar-reveal {
   opacity: 0;
 }
 
+/* A folder's children unfold on open rather than arriving all at once. */
+.tree-branch {
+  display: grid;
+  animation: tree-unfold 170ms ease-out;
+}
+.tree-branch > * {
+  overflow: hidden;
+}
+
+@keyframes tree-unfold {
+  from {
+    grid-template-rows: 0fr;
+  }
+  to {
+    grid-template-rows: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tree-branch {
+    animation: none;
+  }
+}
+
+/* Instant, never animated: translated rather than hidden so its input can still take focus. */
+.app-footer {
+  transform: translateY(100%);
+}
+.app-footer[data-open] {
+  transform: translateY(0);
+}
+
 /* Sign out: chrome fades out while Frame cross-fades its seams in. */
 body[data-leaving] > *:not([data-frame]) {
   opacity: 0;

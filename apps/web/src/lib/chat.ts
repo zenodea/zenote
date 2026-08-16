@@ -1,26 +1,35 @@
-export type ChatMessage = { role: "user" | "assistant"; content: string };
+import type { UIMessage } from "ai";
 
-export type ChatRequest = { slug: string; messages: ChatMessage[] };
+/** What the assistant is looking at: the note being read, or a selection made on the graph. */
+export type ChatSubject =
+  { kind: "note"; slug: string } | { kind: "selection"; slugs: string[] };
 
-export function isChatMessage(value: unknown): value is ChatMessage {
+/** Carried on replayed messages; a turn that never finished is shown but not resent. */
+export type ChatMessageMeta = { status?: "complete" | "aborted" | "failed" };
+
+export type VaultUIMessage = UIMessage<ChatMessageMeta>;
+
+export function isChatSubject(value: unknown): value is ChatSubject {
   if (typeof value !== "object" || value === null) return false;
-  const message = value as Record<string, unknown>;
+  const subject = value as Record<string, unknown>;
+  if (subject.kind === "note") return typeof subject.slug === "string";
   return (
-    (message.role === "user" || message.role === "assistant") &&
-    typeof message.content === "string"
+    subject.kind === "selection" &&
+    Array.isArray(subject.slugs) &&
+    subject.slugs.every((slug) => typeof slug === "string")
   );
 }
 
-export async function streamPlainText(
-  body: ReadableStream<Uint8Array>,
-  onChunk: (text: string) => void,
-): Promise<void> {
-  const reader = body.getReader();
-  const decoder = new TextDecoder();
+/** Identity of a subject, for spotting when the conversation is about something else. */
+export function subjectKey(subject: ChatSubject | null): string {
+  if (!subject) return "";
+  return subject.kind === "note"
+    ? `note:${subject.slug}`
+    : `selection:${[...subject.slugs].sort().join(",")}`;
+}
 
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    onChunk(decoder.decode(value, { stream: true }));
-  }
+export function messageText(message: VaultUIMessage): string {
+  return message.parts
+    .map((part) => (part.type === "text" ? part.text : ""))
+    .join("");
 }

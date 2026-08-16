@@ -1,63 +1,120 @@
-import { isChatMessage } from "@/lib/chat";
-import { getNote } from "@/lib/server/notes";
-import type { Note } from "@/lib/server/notes";
+import { createGoogle, type GoogleProvider } from "@ai-sdk/google";
+import {
+  convertToModelMessages,
+  generateId,
+  generateText,
+  stepCountIs,
+  streamText,
+  validateUIMessages,
+} from "ai";
+import { isChatSubject, messageText, type VaultUIMessage } from "@/lib/chat";
+import {
+  gatherContext,
+  type ContextNote,
+  type NeighbourNote,
+} from "@/lib/server/chat-context";
+import { vaultTools } from "@/lib/server/chat-tools";
+import {
+  getChat,
+  replayable,
+  saveMessage,
+  touchChat,
+} from "@/lib/server/chats";
+import { rateLimited } from "@/lib/server/rate-limit";
 import { getUser } from "@/lib/server/supabase";
 
-const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.5-flash";
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:streamGenerateContent?alt=sse`;
+const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.5-flash-lite";
 
-function systemPrompt(note: Note): string {
+/** Model calls per user turn; each tool round trip is one more. */
+const STEP_LIMIT = 6;
+
+// The form the model is asked to copy; a slug that is already the title needs no alias.
+function wikilink(slug: string, title: string): string {
+  return title === slug ? `[[${slug}]]` : `[[${slug}|${title}]]`;
+}
+
+function systemPrompt(
+  title: string | null,
+  notes: ContextNote[],
+  neighbours: NeighbourNote[],
+  writes: boolean,
+  notesOnly: boolean,
+): string {
   return [
-    "You are an assistant embedded in Z-Notes, a personal notes app.",
-    "The user is currently reading the note below and wants to discuss it.",
-    "Ground your answers in the note's content; if something is not covered by the note, say so before answering from general knowledge.",
+    "You are the assistant inside Zenote, a personal notes app.",
+    "You answer from the user's own notes. What they are looking at is below in full; the rest of the vault is a tool call away — search_notes to find notes, read_note for a note's full text, neighbours to walk its links, list_notes and list_tags for the vault's shape, recent_changes for what was touched lately, vault_health for broken links and orphans. Fetch what you need rather than guessing.",
+    "draw_graph sketches a small concept map inside the conversation — reach for it when the user asks how ideas relate, or when a picture would say it better than a paragraph. It may connect concepts the vault never wikilinked.",
+    writes
+      ? "You can also change the vault — create_note, append_to_note, replace_in_note, move_note — and each such call is shown to the user to approve or refuse before it runs. Propose them when asked to capture, correct or reorganise something, and never claim one happened until its result confirms it."
+      : "You cannot change the vault; the user has switched writing off. If asked to, say so and offer the content in your reply instead.",
+    "Name every note you draw on as a wikilink in the form [[slug|Title]]: its exact slug, then its title as the display text, as in [[security-concepts|Security Concepts]]. The slug is the half the app resolves and the half that survives a rename; the title is only what the reader sees. A bare [[Security Concepts]] is a link waiting to break, and a slug you invented from a title is one that never worked. Every note in this prompt is given with its slug, and search_notes, read_note, neighbours, list_notes, recent_changes and vault_health all return one — take the slug from there. After an answer drawn from the notes, call focus_graph with the slugs you cited.",
+    notesOnly
+      ? "Answer only from the notes. If they do not cover something, say so plainly and leave it there — do not answer from general knowledge."
+      : "If the notes do not cover something, say so plainly before answering from general knowledge.",
     "Keep answers concise.",
-    "",
-    `Note title: ${note.title}`,
-    "Note content:",
-    "---",
-    note.body,
-    "---",
+    ...(title === null
+      ? [
+          "",
+          "The user is not looking at any note in particular; reach for the tools.",
+        ]
+      : [
+          "",
+          `# What the user is looking at: ${title}`,
+          ...notes.flatMap((note) => [
+            "",
+            `## ${note.title} — slug: ${note.slug} (${note.relation})`,
+            note.body,
+          ]),
+        ]),
+    ...(neighbours.length > 0
+      ? [
+          "",
+          "# One link away",
+          ...neighbours.map(
+            (neighbour) =>
+              `- ${wikilink(neighbour.slug, neighbour.title)} (${neighbour.relation})`,
+          ),
+        ]
+      : []),
   ].join("\n");
 }
 
-// Re-emit only the text chunks from Gemini's SSE stream as plain text.
-function extractText(
-  upstream: ReadableStream<Uint8Array>,
-): ReadableStream<Uint8Array> {
-  const decoder = new TextDecoder();
-  const encoder = new TextEncoder();
-  let buffered = "";
-
-  return upstream.pipeThrough(
-    new TransformStream<Uint8Array, Uint8Array>({
-      transform(chunk, controller) {
-        buffered += decoder.decode(chunk, { stream: true });
-
-        const lines = buffered.split("\n");
-        buffered = lines.pop() ?? "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          try {
-            const event = JSON.parse(line.slice(6));
-            const parts: { text?: string }[] =
-              event.candidates?.[0]?.content?.parts ?? [];
-            const text = parts.map((part) => part.text ?? "").join("");
-            if (text) controller.enqueue(encoder.encode(text));
-          } catch {
-            // Ignore non-JSON keep-alive lines.
-          }
-        }
-      },
-    }),
-  );
+/** A fresh thread earns its name from its first exchange. */
+async function nameThread(
+  google: GoogleProvider,
+  chatId: string,
+  question: string,
+  answer: string,
+) {
+  const fallback = question.slice(0, 60);
+  try {
+    const { text } = await generateText({
+      model: google(MODEL),
+      prompt: [
+        "Name this conversation the way a book names a chapter: at most five words, no punctuation, no quotes.",
+        `Q: ${question.slice(0, 500)}`,
+        `A: ${answer.slice(0, 500)}`,
+        "Reply with the name only.",
+      ].join("\n"),
+      abortSignal: AbortSignal.timeout(10_000),
+    });
+    const title = text.trim().split("\n")[0].slice(0, 60);
+    await touchChat(chatId, title || fallback);
+  } catch {
+    await touchChat(chatId, fallback);
+  }
 }
 
 export async function POST(request: Request) {
   // Repeated after the middleware so note contents never depend on the matcher.
-  if (!(await getUser())) {
+  const user = await getUser();
+  if (!user) {
     return Response.json({ error: "Not authenticated." }, { status: 401 });
+  }
+  if (rateLimited(user.id)) {
+    return new Response("Too many requests — give it a few minutes.", {
+      status: 429,
+    });
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
@@ -68,42 +125,94 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => null);
-  const slug = body?.slug;
-  const messages = body?.messages;
+  const subject = body?.subject ?? null;
 
-  if (
-    typeof slug !== "string" ||
-    !Array.isArray(messages) ||
-    !messages.every(isChatMessage)
-  ) {
-    return new Response("Expected { slug, messages }.", { status: 400 });
+  let messages: VaultUIMessage[];
+  try {
+    messages = await validateUIMessages({ messages: body?.messages });
+  } catch {
+    return new Response("Expected { subject, messages }.", { status: 400 });
+  }
+  if (subject !== null && !isChatSubject(subject)) {
+    return new Response("Expected { subject, messages }.", { status: 400 });
   }
 
-  const note = await getNote(slug);
-  if (!note) return new Response("Note not found.", { status: 404 });
+  // No subject is a conversation about the vault at large, all through tools.
+  const { title, notes, neighbours } = subject
+    ? await gatherContext(subject)
+    : { title: null, notes: [], neighbours: [] };
+  if (subject && notes.length === 0) {
+    return new Response("Nothing to talk about.", { status: 404 });
+  }
 
-  const upstream = await fetch(API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": apiKey,
-    },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: systemPrompt(note) }] },
-      contents: messages.map((message) => ({
-        role: message.role === "assistant" ? "model" : "user",
-        parts: [{ text: message.content }],
-      })),
+  // Persistence follows the thread the client opened; selections stay ephemeral.
+  const chat =
+    typeof body?.chatId === "string" ? await getChat(body.chatId) : null;
+  const chatId = chat?.id ?? null;
+
+  const history = replayable(messages);
+  const last = history[history.length - 1];
+  if (chatId && last?.role === "user") {
+    await saveMessage(chatId, last, "complete");
+  }
+
+  const allowWrites = body?.allowWrites !== false;
+  const notesOnly = body?.notesOnly === true;
+
+  const google = createGoogle({ apiKey });
+  const tools = vaultTools();
+  const result = streamText({
+    model: google(MODEL),
+    system: systemPrompt(title, notes, neighbours, allowWrites, notesOnly),
+    messages: await convertToModelMessages(history, {
+      tools,
+      ignoreIncompleteToolCalls: true,
     }),
+    tools,
+    // The full set stays declared so stored turns still convert; only calls narrow.
+    activeTools: allowWrites
+      ? undefined
+      : [
+          "search_notes",
+          "read_note",
+          "neighbours",
+          "recent_changes",
+          "list_notes",
+          "list_tags",
+          "vault_health",
+          "draw_graph",
+          "focus_graph",
+        ],
+    stopWhen: stepCountIs(STEP_LIMIT),
+    // A hung upstream should not hold the connection open forever.
+    abortSignal: AbortSignal.any([request.signal, AbortSignal.timeout(90_000)]),
   });
 
-  if (!upstream.ok || !upstream.body) {
-    const detail = await upstream.text().catch(() => "");
-    console.error("Gemini request failed:", upstream.status, detail);
-    return new Response("The AI provider returned an error.", { status: 502 });
-  }
+  // Finish generating (and saving) even if the reader navigates away mid-answer.
+  void result.consumeStream({ onError: () => {} });
 
-  return new Response(extractText(upstream.body), {
-    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  return result.toUIMessageStreamResponse({
+    originalMessages: history,
+    // Both sides must store the reply under one id, or the tool-loop upsert splits it.
+    generateMessageId: generateId,
+    onEnd: async ({ responseMessage, isAborted }) => {
+      if (!chatId) return;
+      await saveMessage(chatId, responseMessage, isAborted ? "aborted" : "complete");
+      const question = history.findLast((message) => message.role === "user");
+      if (chat?.title === "" && question) {
+        await nameThread(
+          google,
+          chatId,
+          messageText(question),
+          messageText(responseMessage),
+        );
+      } else {
+        await touchChat(chatId);
+      }
+    },
+    onError: (error) => {
+      console.error("Chat stream failed:", error);
+      return "The AI provider returned an error.";
+    },
   });
 }

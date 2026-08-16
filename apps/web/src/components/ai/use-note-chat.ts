@@ -1,96 +1,178 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useAiAssistant } from "@/components/ai/AiAssistantContext";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useChat } from "@ai-sdk/react";
 import {
-  streamPlainText,
-  type ChatMessage,
-  type ChatRequest,
-} from "@/lib/chat";
+  DefaultChatTransport,
+  lastAssistantMessageIsCompleteWithApprovalResponses,
+  lastAssistantMessageIsCompleteWithToolCalls,
+} from "ai";
+import { createChat } from "@/app/actions/chats";
+import { useAiAssistant } from "@/components/ai/AiAssistantContext";
+import { useLatestRef } from "@/hooks/use-latest-ref";
+import { messageText, type ChatSubject, type VaultUIMessage } from "@/lib/chat";
+import { useSettings } from "@/lib/stores/settings";
+import { setGraphFocus } from "@/lib/stores/graph-focus";
+import { extractTargets, resolveWikilink } from "@/lib/wikilinks";
+import type { WikilinkResolver } from "@/lib/wikilinks";
 
-export function useNoteChat(slug: string | null) {
+/** A conversation on screen; a null subject is the vault at large. */
+export type OpenThread = {
+  chatId: string | null;
+  subject: ChatSubject | null;
+  messages: VaultUIMessage[];
+};
+
+const WRITE_TOOLS = new Set([
+  "tool-create_note",
+  "tool-append_to_note",
+  "tool-replace_in_note",
+  "tool-move_note",
+]);
+
+function resolveAll(targets: string[], resolver: WikilinkResolver): string[] {
+  return [
+    ...new Set(
+      targets
+        .map((target) => resolveWikilink(resolver, target))
+        .filter((slug): slug is string => slug !== null),
+    ),
+  ];
+}
+
+/** One conversation; the caller remounts it when the thread changes. */
+export function useNoteChat(
+  thread: OpenThread,
+  resolver: WikilinkResolver,
+  onActivity?: () => void,
+) {
   const { setBusy } = useAiAssistant();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const router = useRouter();
+  const settingsRef = useLatestRef(useSettings());
   const [input, setInput] = useState("");
-  const [busy, setLocalBusy] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const abortRef = useRef<AbortController | null>(null);
 
-  // A conversation belongs to one note; reset when the note changes.
-  const [lastSlug, setLastSlug] = useState(slug);
-  if (slug !== lastSlug) {
-    setLastSlug(slug);
-    setMessages([]);
+  // Minted on the first send; every request reads it at call time.
+  const chatIdRef = useRef(thread.chatId);
+
+  // Assembled at call time so the chat id and preferences are never stale.
+  function requestBody() {
+    return {
+      subject: thread.subject,
+      chatId: chatIdRef.current,
+      allowWrites: settingsRef.current.aiWrites,
+      notesOnly: settingsRef.current.aiVaultOnly,
+    };
   }
 
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport<VaultUIMessage>({
+        api: "/api/chat",
+        body: { subject: thread.subject, chatId: thread.chatId },
+      }),
+    [thread],
+  );
+
+  type AddToolOutput = ReturnType<
+    typeof useChat<VaultUIMessage>
+  >["addToolOutput"];
+  const addToolOutputRef = useRef<AddToolOutput | null>(null);
+
+  const {
+    messages,
+    sendMessage,
+    addToolOutput,
+    addToolApprovalResponse,
+    status,
+    stop,
+    error,
+  } = useChat<VaultUIMessage>({
+      messages: thread.messages,
+      transport,
+      sendAutomaticallyWhen: (options) =>
+        lastAssistantMessageIsCompleteWithToolCalls(options) ||
+        lastAssistantMessageIsCompleteWithApprovalResponses(options),
+      // The model aims the graph by name; the browser owns the graph, so it answers.
+      onToolCall: ({ toolCall }) => {
+        if (toolCall.toolName !== "focus_graph") return;
+        const targets = (toolCall.input as { notes?: string[] })?.notes ?? [];
+        const slugs = resolveAll(targets, resolver);
+        if (slugs.length > 0) setGraphFocus(slugs, "assistant");
+        void addToolOutputRef.current?.({
+          tool: "focus_graph",
+          toolCallId: toolCall.toolCallId,
+          output: { focused: slugs },
+          options: { body: requestBody() },
+        });
+      },
+      onFinish: ({ message }) => {
+        // An approved write changed the vault, so the chrome has to re-read it.
+        const wrote = message.parts.some(
+          (part) =>
+            WRITE_TOOLS.has(part.type) &&
+            (part as { state?: string }).state === "output-available",
+        );
+        if (wrote) router.refresh();
+
+        // When the model didn't aim the graph itself, its citations do.
+        const aimed = message.parts.some(
+          (part) => part.type === "tool-focus_graph",
+        );
+        if (aimed) return;
+        const cited = resolveAll(extractTargets(messageText(message)), resolver);
+        if (cited.length > 0) setGraphFocus(cited, "assistant");
+      },
+    });
+
   useEffect(() => {
-    abortRef.current?.abort();
-  }, [slug]);
+    addToolOutputRef.current = addToolOutput;
+  }, [addToolOutput]);
+
+  const busy = status === "submitted" || status === "streaming";
+
+  // An abandoned thread stops streaming with it; the server still saves the answer.
+  const latestStop = useLatestRef(stop);
+  useEffect(() => () => void latestStop.current(), [latestStop]);
+
+  useEffect(() => {
+    setBusy(busy);
+    return () => setBusy(false);
+  }, [busy, setBusy]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages]);
 
-  function markBusy(value: boolean) {
-    setLocalBusy(value);
-    setBusy(value);
+  async function send() {
+    const text = input.trim();
+    if (!text || busy) return;
+    setInput("");
+    onActivity?.();
+    // A fresh thread gets its row on first send, so empty chats never exist.
+    if (!chatIdRef.current) {
+      chatIdRef.current = await createChat(thread.subject).catch(() => null);
+    }
+    void sendMessage({ text }, { body: requestBody() });
   }
 
-  function appendToReply(chunk: string) {
-    setMessages((previous) => {
-      const last = previous[previous.length - 1];
-      if (!last || last.role !== "assistant") return previous;
-      return [
-        ...previous.slice(0, -1),
-        { ...last, content: last.content + chunk },
-      ];
+  function respondToApproval(response: { id: string; approved: boolean }) {
+    return addToolApprovalResponse({
+      ...response,
+      options: { body: requestBody() },
     });
   }
 
-  async function send() {
-    const text = input.trim();
-    if (!text || busy || !slug) return;
-
-    const history = [...messages, { role: "user" as const, content: text }];
-    setMessages([...history, { role: "assistant", content: "" }]);
-    setInput("");
-    markBusy(true);
-
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    const payload: ChatRequest = { slug, messages: history };
-
-    try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
-
-      if (response.status === 401) {
-        throw new Error("Your session has expired. Reload and sign in again.");
-      }
-      if (!response.ok || !response.body) {
-        throw new Error(await response.text());
-      }
-      // Anything but text/plain means we followed a redirect into a page.
-      if (!response.headers.get("content-type")?.startsWith("text/plain")) {
-        throw new Error("Unexpected reply from the server.");
-      }
-
-      await streamPlainText(response.body, appendToReply);
-    } catch (error) {
-      if (!controller.signal.aborted) {
-        appendToReply(
-          `⚠️ ${error instanceof Error && error.message ? error.message : "Something went wrong."}`,
-        );
-      }
-    } finally {
-      markBusy(false);
-    }
-  }
-
-  return { messages, input, setInput, busy, send, scrollRef };
+  return {
+    messages,
+    input,
+    setInput,
+    busy,
+    send,
+    stop,
+    error,
+    scrollRef,
+    respondToApproval,
+  };
 }
