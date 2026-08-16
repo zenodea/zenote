@@ -1,6 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import {
+  rewriteWikilinks,
+  type SlugRename,
+} from "@/lib/server/rewrite-links";
 import { createClient } from "@/lib/server/supabase";
 import { filename, folder as parentOf, joinSlug } from "@/lib/slug";
 
@@ -48,6 +52,7 @@ export async function renameNote(
     .eq("slug", slug);
 
   if (error) return failed(error, `“${next}” already exists.`);
+  await rewriteWikilinks([{ from: slug, to: next }]);
   refresh();
   return {};
 }
@@ -65,6 +70,7 @@ export async function moveNote(
     .eq("slug", slug);
 
   if (error) return failed(error, `“${next}” already exists.`);
+  await rewriteWikilinks([{ from: slug, to: next }]);
   refresh();
   return {};
 }
@@ -96,7 +102,7 @@ export async function createFolder(path: string): Promise<ActionResult> {
 async function reprefix(
   from: string,
   to: string | null,
-): Promise<ActionResult> {
+): Promise<ActionResult & { renames?: SlugRename[] }> {
   const supabase = await createClient();
 
   const { data: notes, error: read } = await supabase
@@ -107,13 +113,16 @@ async function reprefix(
 
   if (read) return { error: read.message };
 
+  const renames: SlugRename[] = [];
   for (const note of notes ?? []) {
     const rest = note.slug.slice(from.length + 1);
+    const next = to === null ? rest : joinSlug(to, rest);
     const { error } = await supabase
       .from("notes")
-      .update({ slug: to === null ? rest : joinSlug(to, rest) })
+      .update({ slug: next })
       .eq("id", note.id);
     if (error) return failed(error, `“${rest}” already exists.`);
+    renames.push({ from: note.slug, to: next });
   }
 
   const { data: nested, error: listed } = await supabase
@@ -133,7 +142,7 @@ async function reprefix(
     if (error) return failed(error, `“${rest}” already exists.`);
   }
 
-  return {};
+  return { renames };
 }
 
 async function relocate(path: string, next: string): Promise<ActionResult> {
@@ -154,6 +163,7 @@ async function relocate(path: string, next: string): Promise<ActionResult> {
 
   // No row is fine: a folder holding notes is implied by their slugs.
   if (error) return failed(error, `“${next}” already exists.`);
+  await rewriteWikilinks(moved.renames ?? []);
   refresh();
   return {};
 }
@@ -183,6 +193,7 @@ export async function deleteFolder(path: string): Promise<ActionResult> {
   const { error } = await supabase.from("folders").delete().eq("path", path);
   if (error) return { error: error.message };
 
+  await rewriteWikilinks(lifted.renames ?? []);
   refresh();
   return {};
 }
