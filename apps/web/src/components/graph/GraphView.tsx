@@ -8,14 +8,19 @@ import { useLatestRef } from "@/hooks/use-latest-ref";
 import { useLoadingIndicator } from "@/hooks/use-loading-indicator";
 import { useRenderLoop } from "@/hooks/use-render-loop";
 import { createLayout } from "@/lib/graph/force-layout";
+import { findClusters } from "@/lib/graph/clusters";
 import { createSolver } from "@/lib/graph/solver";
 import { indexGraph, neighbourhood, type Graph } from "@/lib/graph/model";
 import { nodesWithTags, tagCounts } from "@/lib/graph/derive";
 import { baseRadiusFor, hitTest } from "@/lib/graph/geometry";
 import type { PixiScene } from "@/lib/graph/pixi-scene";
 import { beginPageFade } from "@/lib/page-fade";
+import { setGraphFocus, useGraphFocus } from "@/lib/stores/graph-focus";
 import { setGraphReady } from "@/lib/stores/graph-ready";
-import { useRouteWait } from "@/lib/stores/route-loading";
+import {
+  useRouteLoaderShowing,
+  useRouteWait,
+} from "@/lib/stores/route-loading";
 import { subscribeToTheme } from "@/lib/theme";
 import { FocusChip } from "@/components/graph/FocusChip";
 import { GraphToolbar } from "@/components/graph/GraphToolbar";
@@ -65,7 +70,14 @@ export function GraphView({
   const baseRadius = baseRadiusFor(graph.nodes.length);
 
   // Held by id: a rebuilt graph renumbers nodes, and a positional focus would move to another note.
-  const [seedIds, setSeedIds] = useState<string[]>(focusId ? [focusId] : []);
+  // Standalone it is shared state, so the assistant can point the graph at what it just cited.
+  const shared = useGraphFocus();
+  const [own, setOwn] = useState<string[]>(focusId ? [focusId] : []);
+  const seedIds = standalone ? shared : own;
+  const setSeedIds = useMemo(
+    () => (standalone ? setGraphFocus : setOwn),
+    [standalone],
+  );
   const seeds = useMemo(
     () =>
       seedIds
@@ -96,6 +108,7 @@ export function GraphView({
     fitScaleRef,
     panningRef,
     fitIfUntouched,
+    holdStill,
     resetView,
     frameNodes,
     zoomAt,
@@ -135,8 +148,9 @@ export function GraphView({
 
   // Standalone the wait is the route's, already running from the fallback; inset it stays local to the box.
   useRouteWait(standalone && !booted);
+  const routeShowing = useRouteLoaderShowing();
   const localLoader = useLoadingIndicator(!standalone && !booted);
-  const covered = !booted || localLoader;
+  const covered = !booted || (standalone ? routeShowing : localLoader);
 
   // Counts and controls describe a graph nobody can see yet, so they wait for the cover, not the data.
   useEffect(() => {
@@ -148,7 +162,7 @@ export function GraphView({
   const clearFocus = useCallback(() => {
     setSeedIds([]);
     setDepth(1);
-  }, []);
+  }, [setSeedIds]);
 
   const draw = useCallback(() => {
     const scene = sceneRef.current;
@@ -289,12 +303,23 @@ export function GraphView({
     };
   }, [graph, edges, baseRadius, fitIfUntouched, start, solver]);
 
+  const placed = useRef<DOMRect | null>(null);
   useEffect(() => {
     if (!ready) return;
     sceneRef.current?.resize(size.width, size.height);
-    fitIfUntouched();
+
+    // Only the first measurement frames the graph. After that a pane sliding
+    // open moves the canvas, and the view goes with it rather than re-framing.
+    const previous = placed.current;
+    const rect = canvasRef.current?.getBoundingClientRect() ?? null;
+    placed.current = rect;
+
+    if (!previous) fitIfUntouched();
+    else if (rect)
+      holdStill(previous.left - rect.left, previous.top - rect.top);
+
     draw();
-  }, [ready, size, fitIfUntouched, draw]);
+  }, [ready, size, canvasRef, fitIfUntouched, holdStill, draw]);
 
   // Read through refs by draw(), so a change has to wake the parked loop by hand.
   useEffect(() => {
@@ -311,6 +336,45 @@ export function GraphView({
     return subscribeToTheme(sync);
   }, [draw]);
 
+  // Regions: the layout has already grouped these notes, the model says what they are.
+  useEffect(() => {
+    if (!standalone || !booted) return;
+    const scene = sceneRef.current;
+    if (!scene) return;
+
+    const clusters = findClusters(graph);
+    if (clusters.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch("/api/clusters", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clusters: clusters.map((c) => c.slugs) }),
+        });
+        const { names } = (await response.json()) as { names?: string[] };
+        if (cancelled || !names?.length) return;
+
+        scene.setRegions(
+          clusters
+            .map((cluster, index) => ({
+              name: names[index] ?? "",
+              nodes: cluster.nodes,
+            }))
+            .filter((region) => region.name),
+        );
+        start();
+      } catch {
+        // No names is simply a graph without regions.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [standalone, booted, graph, start]);
+
   useEscape(clearFocus, controls);
 
   const focusNode = useCallback(
@@ -320,7 +384,7 @@ export function GraphView({
       frameNodes(neighbourhood(neighbours, [node], 1));
       start();
     },
-    [graph, frameNodes, neighbours, start],
+    [graph, frameNodes, neighbours, start, setSeedIds],
   );
 
   useEffect(() => {
@@ -359,7 +423,17 @@ export function GraphView({
       canvas.removeEventListener("wheel", onWheel);
       canvas.removeEventListener("contextmenu", onContextMenu);
     };
-  }, [canvasRef, graph, toLocal, nodeAt, zoomAt, start, clearFocus, controls]);
+  }, [
+    canvasRef,
+    graph,
+    toLocal,
+    nodeAt,
+    zoomAt,
+    start,
+    clearFocus,
+    controls,
+    setSeedIds,
+  ]);
 
   function onPointerDown(event: React.PointerEvent) {
     if (event.button === 2) return;

@@ -21,6 +21,8 @@ const LABEL_SCALE = 2.0;
 const LABEL_HUB_SCALE = 0.8;
 const LABEL_FADE = 0.2;
 const NODE_TEXTURE_RADIUS = 32;
+// Region names are for the wide view: they give way as node labels come in.
+const REGION_FADE_OUT = 1.4;
 
 export type SceneFrame = {
   x: Float64Array;
@@ -43,6 +45,7 @@ export class PixiScene {
   private focusEdges = new Graphics();
   private nodeLayer = new Container();
   private labelLayer = new Container();
+  private regionLayer = new Container();
   private rings = new Graphics();
 
   private nodes: GraphNode[] = [];
@@ -50,6 +53,7 @@ export class PixiScene {
   private radii: number[] = [];
   private sprites: Sprite[] = [];
   private labels: BitmapText[] = [];
+  private regions: { label: BitmapText; nodes: number[] }[] = [];
   private circle: Texture | null = null;
   private palette: Palette;
   private lastVisible: Set<number> | null | undefined = undefined;
@@ -141,11 +145,28 @@ export class PixiScene {
     }
   }
 
+  /** Named clusters, drawn at the centre of wherever the layout has put their members. */
+  setRegions(regions: { name: string; nodes: number[] }[]) {
+    for (const region of this.regions) region.label.destroy();
+    this.regions = regions.map(({ name, nodes }) => {
+      const label = new BitmapText({
+        text: name.toUpperCase(),
+        style: { fontFamily: "system-ui", fontSize: 13, fill: 0xffffff },
+      });
+      label.anchor.set(0.5);
+      label.tint = this.palette.foreground;
+      label.visible = false;
+      this.regionLayer.addChild(label);
+      return { label, nodes };
+    });
+  }
+
   setPalette(palette: Palette) {
     this.palette = palette;
     this.app.renderer.background.color = palette.background;
     this.edges.tint = palette.foreground;
     this.focusEdges.tint = palette.foreground;
+    for (const region of this.regions) region.label.tint = palette.foreground;
     for (let i = 0; i < this.sprites.length; i++) {
       this.sprites[i].tint =
         this.nodes[i].degree === 0 ? palette.foreground : palette.accent;
@@ -249,6 +270,35 @@ export class PixiScene {
         label.position.set(x[i], y[i] + (radius + 3) / scale);
         label.scale.set(1 / scale);
       }
+    }
+
+    // Fades as the view closes in, and out of the way entirely under a focus.
+    const regionAlpha =
+      Math.max(0, 1 - relativeScale / REGION_FADE_OUT) * (1 - focusAmount);
+    for (const { label, nodes: members } of this.regions) {
+      if (regionAlpha < 0.02) {
+        label.visible = false;
+        continue;
+      }
+
+      let sumX = 0;
+      let sumY = 0;
+      let seen = 0;
+      for (const i of members) {
+        if (!shown(i)) continue;
+        sumX += x[i];
+        sumY += y[i];
+        seen++;
+      }
+      if (seen === 0) {
+        label.visible = false;
+        continue;
+      }
+
+      label.visible = true;
+      label.alpha = regionAlpha * 0.55;
+      label.position.set(sumX / seen, sumY / seen);
+      label.scale.set(1 / scale);
     }
 
     this.rings.clear();
