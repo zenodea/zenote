@@ -72,6 +72,21 @@ export function AiPanel({
   // display, not engagement. Until the reader talks, the panel follows them.
   const untouched = !touched;
 
+  // Closing the panel puts the conversation down: reopening starts the
+  // follow-the-reader cycle over, aimed at wherever they are now.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setTouched(false);
+      setView("chat");
+      const showing = thread ? thread.subject : (wanted?.subject ?? null);
+      if (subjectKey(live) !== subjectKey(showing)) {
+        setWanted({ subject: live });
+      }
+    }
+  }
+
   const liveKey = subjectKey(live);
   const [lastLiveKey, setLastLiveKey] = useState(liveKey);
   if (liveKey !== lastLiveKey) {
