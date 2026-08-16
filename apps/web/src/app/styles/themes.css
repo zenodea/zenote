@@ -10,12 +10,26 @@
   color-scheme: light;
 }
 
+/*
+ * The one colour no theme can express: a failure has to read as a failure even
+ * where the accent is green or amber. Split on the shared `-dark` suffix rather
+ * than per theme, so a new theme block still inherits a legible pair.
+ */
+:root {
+  --danger: #b3261e;
+}
+
+[data-theme$="-dark"] {
+  --danger: #ff8a80;
+}
+
 /* System fallback until the init script sets data-theme (and without JS). */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
     --background: #0a0a0a;
     --foreground: #ededed;
     --accent: #a78bfa;
+    --danger: #ff8a80;
     color-scheme: dark;
   }
 }
