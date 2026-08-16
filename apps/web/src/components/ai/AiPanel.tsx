@@ -48,12 +48,11 @@ export function AiPanel({
       ? { kind: "selection", slugs: focus.slugs }
       : null;
 
-  // What is on screen: null while a thread is being fetched. A thread opened
-  // from history holds until the reader moves; only the reader re-aims it —
-  // the assistant pointing the graph at its citations must not reset the
-  // conversation that produced them.
+  // What is on screen: null while a thread is being fetched. A conversation
+  // outlives navigation — new threads come from the plus button, a fresh
+  // session, or the reader picking a new selection out on the graph.
   const [thread, setThread] = useState<OpenThread | null>(null);
-  const [pending, setPending] = useState(live);
+  const [pending] = useState(live);
   const [view, setView] = useState<"chat" | "history">("chat");
   const [fresh, setFresh] = useState(0);
 
@@ -61,11 +60,12 @@ export function AiPanel({
 
   const liveKey = subjectKey(live);
   const [lastLiveKey, setLastLiveKey] = useState(liveKey);
-  if ((slug !== null || focus.from === "reader") && liveKey !== lastLiveKey) {
+  if (liveKey !== lastLiveKey) {
     setLastLiveKey(liveKey);
-    setPending(live);
-    setThread(null);
-    setView("chat");
+    if (live?.kind === "selection" && focus.from === "reader") {
+      setThread({ chatId: null, subject: live, messages: [] });
+      setView("chat");
+    }
   }
 
   // Resolve the pending subject into its most recent stored thread. Without a
@@ -96,8 +96,9 @@ export function AiPanel({
   const subject = thread ? thread.subject : pending;
   const show = open;
 
+  // About what the reader is looking at now — not the held thread's subject.
   function startNewChat() {
-    setThread({ chatId: null, subject, messages: [] });
+    setThread({ chatId: null, subject: live, messages: [] });
     setFresh((count) => count + 1);
     setView("chat");
   }
