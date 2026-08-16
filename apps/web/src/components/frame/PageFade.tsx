@@ -9,16 +9,12 @@ import {
   usePageFading,
 } from "@/lib/page-fade";
 
-/**
- * Cross-fades page content across navigations. Links are picked up from the
- * document, so only imperative `router.push` callers need `beginPageFade`.
- */
+/** Links are picked up from the document, so only `router.push` callers need `beginPageFade`. */
 export function PageFade({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const fading = usePageFading();
 
-  // Capture phase: Link commits the navigation on bubble, and a handler in
-  // between may stop propagation before the fade would ever hear about it.
+  // Capture phase: Link commits on bubble, and a handler between may stop propagation first.
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
       if (navigatesAway(event)) beginPageFade();
@@ -28,8 +24,7 @@ export function PageFade({ children }: { children: ReactNode }) {
     return () => document.removeEventListener("click", onClick, true);
   }, []);
 
-  // The incoming tree is already committed by the time the path changes, so
-  // this paints it at the opacity the outgoing fade reached and rides back up.
+  // The incoming tree is already committed, so this rides back up from wherever the fade reached.
   useEffect(() => {
     endPageFade();
   }, [pathname]);

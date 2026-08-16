@@ -1,19 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { LOADER_GRACE_MS } from "@/components/ui/DiamondLoader";
 
-/**
- * Once shown, a loader stays this long. Short enough not to be felt as a
- * stall, long enough that it never reads as a glitch.
- */
+/** Work that finishes inside this window never shows a loader at all. */
+export const LOADER_GRACE_MS = 130;
+
+/** Once shown a loader stays this long: not long enough to feel a stall, long enough not to read as a glitch. */
 const MIN_VISIBLE_MS = 400;
 
-/**
- * Whether `loading` has gone on long enough to deserve an indicator, and has
- * shown one for long enough to take it away. A fixed minimum delay would tax
- * every fast load to protect the slow ones; this taxes neither.
- */
+/** Long enough to deserve an indicator, shown long enough to take away; a fixed delay would tax every load. */
 export function useLoadingIndicator(loading: boolean): boolean {
   const [visible, setVisible] = useState(false);
   const shownAt = useRef(0);

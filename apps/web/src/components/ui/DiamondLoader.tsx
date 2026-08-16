@@ -1,17 +1,7 @@
 const TRACE_MS = 700;
 const APPEAR_MS = 140;
 
-/** Work that finishes inside this window never shows a loader at all. */
-export const LOADER_GRACE_MS = 130;
-
-/**
- * The frame's diamond with an arc running its outline. A stroke on the path
- * rather than a shape travelling along it, so it turns the corners exactly
- * instead of cutting them.
- *
- * Mounted only once the grace window is spent, so it fades in on sight; the
- * caller owns the wait.
- */
+/** A stroke on the diamond's own path, so the arc turns the corners instead of cutting them. */
 export function DiamondLoader({
   size = 20,
   className,
@@ -35,8 +25,7 @@ export function DiamondLoader({
           stroke="var(--foreground)"
           strokeOpacity={0.2}
         />
-        {/* pathLength normalises the perimeter to 100, so one dash pattern and
-            one keyframe offset hold at any size. */}
+        {/* pathLength normalises the perimeter, so one dash pattern holds at any size. */}
         <path
           d={diamond}
           pathLength={100}

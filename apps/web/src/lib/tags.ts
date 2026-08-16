@@ -17,7 +17,9 @@ function extractInlineTags(body: string): string[] {
 }
 
 export function noteTags(note: Note): string[] {
-  const tags = [...note.tags, ...extractInlineTags(note.body)].map(normaliseTag);
+  const tags = [...note.tags, ...extractInlineTags(note.body)].map(
+    normaliseTag,
+  );
   return [...new Set(tags)].sort();
 }
 

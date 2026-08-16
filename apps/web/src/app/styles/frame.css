@@ -1,9 +1,4 @@
-/*
- * The stored sidebar width, for the one paint between the boot script in
- * layout.tsx and React reading the same value. The attribute is dropped on
- * mount, from where Sidebar's own classes carry it — so these widths are the
- * `w-[60px]` and `w-64` there, and have to keep agreeing with them.
- */
+/* The width for the paint before React reads it; must keep agreeing with Sidebar's own classes. */
 html[data-sidebar="collapsed"] .sidebar {
   width: 60px;
 }
@@ -51,17 +46,7 @@ body[data-entering] > *:not([data-frame]) {
   }
 }
 
-/*
- * Page navigation: the outgoing page dips out on click, the incoming one rides
- * back up. Interruptible transitions rather than keyframes, so a prefetched
- * navigation that lands mid-fade reverses from wherever it got to instead of
- * snapping to zero and flashing.
- *
- * The fade is applied one level in, never to .page-fade itself: seam-bearing
- * elements keep their rule at full strength and fade only their contents. The
- * seams are frame, not page — Junctions pins its marks to them from outside
- * main, so a header line that dipped would part company with its own junction.
- */
+/* One level in, never .page-fade itself: a seam that dipped would part company with its junction. */
 .page-fade > [data-seam] > *,
 .page-fade > *:not([data-seam]) {
   opacity: 1;

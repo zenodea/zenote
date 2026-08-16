@@ -9,7 +9,11 @@ import {
 import type { GraphNode } from "@/lib/graph/model";
 import { nodeRadius, type View } from "@/lib/graph/geometry";
 
-export type Palette = { foreground: string; background: string; accent: string };
+export type Palette = {
+  foreground: string;
+  background: string;
+  accent: string;
+};
 
 const EDGE_ALPHA = 0.28;
 const EDGE_FOCUS_DROP = 0.22;
@@ -54,7 +58,12 @@ export class PixiScene {
   private constructor(app: Application, palette: Palette) {
     this.app = app;
     this.palette = palette;
-    this.world.addChild(this.edges, this.focusEdges, this.nodeLayer, this.labelLayer);
+    this.world.addChild(
+      this.edges,
+      this.focusEdges,
+      this.nodeLayer,
+      this.labelLayer,
+    );
     this.app.stage.addChild(this.world, this.rings);
   }
 
@@ -79,8 +88,7 @@ export class PixiScene {
     return new PixiScene(app, palette);
   }
 
-  // A canvas can only ever hold one WebGL context, so graph swaps rebuild the
-  // scene's content instead of re-initialising the Application.
+  // A canvas holds one WebGL context, so swaps rebuild content rather than re-initialising the Application.
   setGraph(
     nodes: GraphNode[],
     edgePairs: ReadonlyArray<readonly [number, number]>,
@@ -116,7 +124,8 @@ export class PixiScene {
     for (const node of nodes) {
       const sprite = new Sprite(circle);
       sprite.anchor.set(0.5);
-      sprite.tint = node.degree === 0 ? this.palette.foreground : this.palette.accent;
+      sprite.tint =
+        node.degree === 0 ? this.palette.foreground : this.palette.accent;
       this.nodeLayer.addChild(sprite);
       this.sprites.push(sprite);
 
@@ -183,8 +192,7 @@ export class PixiScene {
     }
     this.edges.alpha = EDGE_ALPHA - EDGE_FOCUS_DROP * focusAmount;
 
-    // Only edges touching the focused neighbourhood highlight; everything
-    // else is carried by the base layer's uniform dim.
+    // Only edges touching the focus highlight; the rest is carried by the base layer's uniform dim.
     this.focusEdges.clear();
     if (focusAmount > 0.01 && near !== null) {
       for (const [a, b] of this.edgePairs) {
@@ -265,10 +273,7 @@ export class PixiScene {
   }
 
   destroy() {
-    this.app.destroy(
-      { removeView: false },
-      { children: true, texture: true },
-    );
+    this.app.destroy({ removeView: false }, { children: true, texture: true });
     this.circle?.destroy(true);
   }
 }

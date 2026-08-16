@@ -1,7 +1,6 @@
 import { solveLayout } from "./force-layout";
 import type { Graph } from "./model";
-
-export type Positions = { x: Float64Array; y: Float64Array };
+import type { Positions } from "./geometry";
 
 export type Solver = {
   /** The settled positions, or null until the solve has landed. */
@@ -11,13 +10,7 @@ export type Solver = {
   dispose: () => void;
 };
 
-/**
- * The settled layout the camera frames itself on, solved on a worker.
- *
- * It is only ever wanted once, during the wait a loader is already covering,
- * and it is the longest single piece of arithmetic on that path — long enough
- * that solving it here would hold the frame and stop the loader dead.
- */
+/** The layout the camera frames on: the longest arithmetic on the wait, so it runs off the main thread. */
 export function createSolver(
   graph: Graph,
   width: number,

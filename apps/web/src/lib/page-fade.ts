@@ -2,8 +2,7 @@
 
 import { createStore } from "./store";
 
-// A navigation that never lands — blocked by a guard, cancelled, or a route
-// that throws — must not strand the page invisible.
+// A navigation that never lands must not strand the page invisible.
 const FAILSAFE_MS = 1500;
 
 const store = createStore(false);

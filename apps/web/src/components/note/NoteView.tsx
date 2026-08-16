@@ -49,10 +49,7 @@ export function NoteView({
   const reading =
     readingOverride ?? (startedEmpty ? false : !settings.openInEditMode);
 
-  // What the note actually says right now. The prop is only as fresh as the
-  // last server render and the editor is never remounted between modes, so
-  // reading straight from it shows the note as it was before this sitting.
-  // A new revision from the server supersedes what we are holding.
+  // The prop is only as fresh as the last server render, and the editor never remounts between modes.
   const typed = useRef<{ revision: string; body: string } | null>(null);
   const revision = `${slug}\u0000${note?.updated ?? ""}`;
   const [held, setHeld] = useState({ revision, body: note?.body ?? "" });
@@ -77,8 +74,7 @@ export function NoteView({
     const draft = typed.current;
     if (draft?.revision === revision) setHeld({ revision, body: draft.body });
 
-    // Leaving the editor: land the save, then pick the note back up from the
-    // server so its tags, backlinks and neighbourhood match the new body.
+    // Land the save, then pick the note up again so its tags and backlinks match the new body.
     void autosave.publish();
   }
 

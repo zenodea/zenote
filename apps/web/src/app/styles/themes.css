@@ -1,8 +1,4 @@
-/*
- * Each theme is one block of tokens; every colour in the app derives from
- * these three variables (plus foreground/background alpha mixes), so a new
- * theme is a new block here and an entry in src/lib/theme.ts.
- */
+/* A theme is one block of tokens plus an entry in src/lib/theme.ts; everything else derives from these. */
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -10,11 +6,7 @@
   color-scheme: light;
 }
 
-/*
- * The one colour no theme can express: a failure has to read as a failure even
- * where the accent is green or amber. Split on the shared `-dark` suffix rather
- * than per theme, so a new theme block still inherits a legible pair.
- */
+/* Failure must read as failure even where the accent is green; split on `-dark` so new themes inherit a pair. */
 :root {
   --danger: #b3261e;
 }

@@ -1,40 +1,30 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState } from "react";
 import { DiamondLoader } from "@/components/ui/DiamondLoader";
 import { useLoadingIndicator } from "@/hooks/use-loading-indicator";
-import {
-  LOADER_FADE_MS,
-  setRouteLoaderShowing,
-  useRouteLoaderMarked,
-  useRouteWait,
-  useRouteWaiting,
-} from "@/lib/stores/route-loading";
+import { useRouteWait, useRouteWaiting } from "@/lib/stores/route-loading";
 
-/**
- * The one loader for a page that is still arriving. It lives in the layout,
- * outside the tree the router swaps, so a route fallback handing over to the
- * page it stood in for leaves the arc untouched mid-lap.
- *
- * Inset by the page header's height: the header is up before the wait starts,
- * so the mark centres on the body it is standing in for rather than on the whole pane.
- */
+const FADE_MS = 200;
+
+/** Lives outside the tree the router swaps, so a fallback handing over leaves the arc mid-lap. */
 export function RouteLoader() {
   const waiting = useRouteWaiting();
   const showing = useLoadingIndicator(waiting);
 
-  useEffect(() => setRouteLoaderShowing(showing), [showing]);
-
-  // Outlives `showing` by the fade, so the mark dims out with the cover under
-  // it instead of being cut away from a background still on its way down.
-  const marked = useRouteLoaderMarked();
+  // Mounted a beat longer than it is lit, so the mark dims out rather than being cut away.
+  const [marked, setMarked] = useState(false);
+  if (showing && !marked) setMarked(true);
 
   return (
     <div
       className="pointer-events-none absolute inset-x-0 bottom-0 top-14 z-20 grid place-items-center transition-opacity"
       style={{
         opacity: showing ? 1 : 0,
-        transitionDuration: showing ? "0ms" : `${LOADER_FADE_MS}ms`,
+        transitionDuration: showing ? "0ms" : `${FADE_MS}ms`,
+      }}
+      onTransitionEnd={() => {
+        if (!showing) setMarked(false);
       }}
       aria-hidden={!showing}
     >

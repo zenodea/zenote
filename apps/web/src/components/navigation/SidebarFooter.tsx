@@ -21,7 +21,9 @@ export function SidebarFooter({
     <div
       data-seam="top"
       className={`flex shrink-0 border-t border-foreground/15 p-2 ${
-        minimised ? "flex-col items-center gap-1" : "items-center justify-between"
+        minimised
+          ? "flex-col items-center gap-1"
+          : "items-center justify-between"
       }`}
     >
       <Link

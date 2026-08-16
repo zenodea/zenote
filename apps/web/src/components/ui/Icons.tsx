@@ -211,12 +211,12 @@ export function SparkleIcon() {
   );
 }
 
-/** The notes-Z wordmark: three text lines, the accent slash through them. */
-export function LogoIcon() {
+/** Three text lines with the accent slash through them; the drawing fills the middle 60% of `size`. */
+export function LogoIcon({ size = 28 }: { size?: number }) {
   return (
     <svg
-      width="28"
-      height="28"
+      width={size}
+      height={size}
       viewBox="0 0 64 64"
       fill="none"
       aria-hidden
@@ -227,6 +227,46 @@ export function LogoIcon() {
         stroke="var(--foreground)"
         strokeWidth="6.5"
         strokeLinecap="round"
+      />
+      <path
+        d="M51 13 13 51"
+        stroke="var(--accent)"
+        strokeWidth="6.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/** The monogram is the Z, unchanged; the rest is drawn around it on the same rules, 32 wide on a 48 advance. */
+export function LogoWordmark({ height = 28 }: { height?: number }) {
+  return (
+    <svg
+      width={height * (304 / 64)}
+      height={height}
+      viewBox="0 0 304 64"
+      fill="none"
+      aria-hidden
+      className="block shrink-0"
+    >
+      <path
+        d={[
+          "M16 16h32M16 32h22M16 48h32", // Z, the monogram's own rules
+          "M64 16V48M64 16h32M64 32h22M64 48h32", // E
+          "M112 16V48M112 16 144 48M144 16V48", // N
+          "M208 16h32M224 16V48", // T
+          "M256 16V48M256 16h32M256 32h22M256 48h32", // E
+        ].join("")}
+        stroke="var(--foreground)"
+        strokeWidth="6.5"
+        strokeLinecap="round"
+      />
+      {/* O as the frame's diamond: the one letter no arrangement of rules makes. */}
+      <path
+        d="M176 16 192 32 176 48 160 32Z"
+        stroke="var(--foreground)"
+        strokeWidth="6.5"
+        strokeLinejoin="round"
       />
       <path
         d="M51 13 13 51"

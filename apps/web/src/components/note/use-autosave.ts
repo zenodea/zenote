@@ -54,28 +54,15 @@ export function useAutosave(slug: string, updated: string) {
     pending.current = null;
   }, [stop]);
 
-  /**
-   * Lands whatever is outstanding and reports whether the note has moved since
-   * the last time it settled — that is, whether anything reading the note from
-   * the server is now out of date.
-   */
-  const settle = useCallback(async () => {
-    await flush();
-    const changed = dirty.current;
-    dirty.current = false;
-    return changed;
-  }, [flush]);
-
-  /**
-   * Lands the note and lets the rest of the vault catch up with it. The
-   * revalidation is what reaches routes other than this one — the graph a new
-   * wikilink belongs in is not refreshed by refreshing the note it was typed in.
-   */
+  /** Lands the note, then revalidates: refreshing this route never reaches the graph a wikilink belongs in. */
   const publish = useCallback(async () => {
-    if (!(await settle())) return;
+    await flush();
+    if (!dirty.current) return;
+    dirty.current = false;
+
     await revalidateVault();
     router.refresh();
-  }, [settle, router]);
+  }, [flush, router]);
 
   useEffect(() => {
     setSaveStatus("idle");
@@ -88,8 +75,7 @@ export function useAutosave(slug: string, updated: string) {
 
     return () => {
       window.removeEventListener("beforeunload", warn);
-      // Server-rendered sidebar/search/backlinks catch up when the note is left,
-      // not on every pause in typing.
+      // Sidebar, search and backlinks catch up when the note is left, not on every pause in typing.
       void publish();
     };
   }, [publish]);

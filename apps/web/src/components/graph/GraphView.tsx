@@ -15,10 +15,7 @@ import { baseRadiusFor, hitTest } from "@/lib/graph/geometry";
 import type { PixiScene } from "@/lib/graph/pixi-scene";
 import { beginPageFade } from "@/lib/page-fade";
 import { setGraphReady } from "@/lib/stores/graph-ready";
-import {
-  useRouteLoaderShowing,
-  useRouteWait,
-} from "@/lib/stores/route-loading";
+import { useRouteWait } from "@/lib/stores/route-loading";
 import { subscribeToTheme } from "@/lib/theme";
 import { FocusChip } from "@/components/graph/FocusChip";
 import { GraphToolbar } from "@/components/graph/GraphToolbar";
@@ -33,8 +30,7 @@ const STEPS_PER_FRAME = 2;
 const DRAG_ALPHA = 0.1;
 const CLICK_SLOP = 4;
 
-// The scene needs concrete colours; tokens resolve lazily so the first frame
-// never paints fallback colours in a themed session.
+// Tokens resolve lazily, so the first frame never paints fallbacks in a themed session.
 function resolvePalette() {
   const style = getComputedStyle(document.documentElement);
   return {
@@ -61,18 +57,14 @@ export function GraphView({
 
   const layout = useMemo(() => createLayout(graph, 1000, 700), [graph]);
 
-  // Solved once to place the camera; live-fitting reads as drift. The solve
-  // runs on a worker and the camera fits when it lands, so the wait is spent
-  // on a thread that owes the loader nothing.
+  // Solved once to place the camera — live-fitting reads as drift — and off the main thread.
   const solver = useMemo(() => createSolver(graph, 1000, 700), [graph]);
   const target = useCallback(() => solver.get(), [solver]);
 
   const { edges, neighbours } = useMemo(() => indexGraph(graph), [graph]);
   const baseRadius = baseRadiusFor(graph.nodes.length);
 
-  // Held by id, not index: a rebuilt graph renumbers every node, and a focus
-  // kept positionally would quietly move to whichever note took that slot. A
-  // note that has gone drops out of the focus instead.
+  // Held by id: a rebuilt graph renumbers nodes, and a positional focus would move to another note.
   const [seedIds, setSeedIds] = useState<string[]>(focusId ? [focusId] : []);
   const seeds = useMemo(
     () =>
@@ -141,16 +133,12 @@ export function GraphView({
   const layoutMovingRef = useRef(true);
   const [booted, setBooted] = useState(false);
 
-  // Standalone, the wait is the route's and the layout's loader carries it —
-  // already running from the fallback, so nothing restarts here. Inset in a
-  // note, the route arrived long ago and the mark stays local to the box.
+  // Standalone the wait is the route's, already running from the fallback; inset it stays local to the box.
   useRouteWait(standalone && !booted);
-  const routeShowing = useRouteLoaderShowing();
   const localLoader = useLoadingIndicator(!standalone && !booted);
-  const covered = !booted || (standalone ? routeShowing : localLoader);
+  const covered = !booted || localLoader;
 
-  // Counts and controls describe a graph nobody can see yet, so they wait for
-  // the cover rather than for the data.
+  // Counts and controls describe a graph nobody can see yet, so they wait for the cover, not the data.
   useEffect(() => {
     if (standalone) setGraphReady(!covered);
   }, [standalone, covered]);
@@ -238,16 +226,14 @@ export function GraphView({
 
   const ready = size.width > 0 && size.height > 0;
 
-  // One Application per canvas lifetime: a canvas cannot host a second WebGL
-  // context, so graph swaps go through scene.setGraph instead.
+  // One Application per canvas: a canvas cannot host a second WebGL context, so swaps go through setGraph.
   useEffect(() => {
     if (!ready) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     let disposed = false;
 
-    // Started before anything is awaited, so the worker solves through the
-    // chunk download and the WebGL init rather than after them.
+    // Started before anything is awaited, so the worker solves through the download and WebGL init.
     const settled = solver.prime();
 
     (async () => {
@@ -501,9 +487,7 @@ export function GraphView({
         onPointerLeave={onPointerLeave}
       />
 
-      {/* Covers the WebGL chunk download and context creation, which is most of
-          the wait on a cold graph. It lifts with the loader, not before it, so
-          the mark is never left standing over a graph that is already up. */}
+      {/* Lifts with the loader, not before it, so the mark never stands over a graph that is already up. */}
       <div
         className="pointer-events-none absolute inset-0 z-20 grid place-items-center bg-background transition-opacity duration-200"
         style={{ opacity: covered ? 1 : 0 }}

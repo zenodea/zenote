@@ -3,7 +3,7 @@
 import type { FormEvent } from "react";
 import { Diamond } from "@/components/frame/Diamond";
 import { Button } from "@/components/ui/Button";
-import { LogoIcon } from "@/components/ui/Icons";
+import { LogoWordmark } from "@/components/ui/Icons";
 
 export function LoginForm({
   busy,
@@ -31,13 +31,13 @@ export function LoginForm({
         transitionDelay: `${delay}ms`,
       }}
     >
-      <h1 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-        <LogoIcon />
-        Zenote
+      {/* Drawn rather than set: the monogram is the Z, so mark and name are one object. */}
+      <h1>
+        <LogoWordmark height={26} />
+        <span className="sr-only">Zenote</span>
       </h1>
 
-      {/* One hairline block with junction marks, the same chrome as Modal —
-          two separate boxes read as a different app inside the frame. */}
+      {/* The same chrome as Modal: two separate boxes read as a different app inside the frame. */}
       <div className="relative w-full border border-foreground/15">
         <Diamond className="left-0 top-0" />
         <Diamond className="left-full top-0" />
@@ -83,8 +83,7 @@ function Field({
       autoComplete={type === "password" ? "current-password" : "email"}
       placeholder={label}
       aria-label={label}
-      // An inset rule rather than a ring: it marks which field has focus
-      // without thickening the block the diamond has to fit around.
+      // An inset rule, not a ring: it marks focus without thickening the block the diamond fits around.
       className="block w-full bg-transparent px-3 py-2 placeholder:opacity-50 focus:shadow-[inset_2px_0_0_var(--accent)] focus:outline-none"
     />
   );

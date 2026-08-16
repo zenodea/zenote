@@ -32,9 +32,7 @@ export function useFocusFade({
   const hoverSet = useRef<{ node: number; set: Set<number> } | null>(null);
   const focusRef = useLatestRef(focus);
 
-  // The vault gains and loses notes while the graph is up. These are indexed by
-  // node, so a length left behind gives the new ones no highlight at all, which
-  // the scene multiplies into an alpha of NaN and paints as nothing.
+  // Indexed by node: a length left behind gives new nodes no highlight, which the scene paints as NaN.
   useEffect(() => {
     if (highlight.current.length === nodeCount) return;
     highlight.current = refit(highlight.current, nodeCount, 1);

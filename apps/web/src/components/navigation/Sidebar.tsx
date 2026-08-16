@@ -43,8 +43,7 @@ export function Sidebar({
     updateSettings({ sidebarCollapsed: next });
   }
 
-  // The boot script sizes the rail before paint; from here the classes below
-  // are the width, and leaving the attribute up would outrank them.
+  // The boot script sizes the rail before paint; left up, the attribute would outrank the classes below.
   useEffect(() => {
     delete document.documentElement.dataset.sidebar;
   }, []);

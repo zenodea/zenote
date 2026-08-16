@@ -11,10 +11,7 @@ import {
 } from "@/lib/theme";
 import "./globals.css";
 
-// Runs before paint so the stored theme and sidebar width apply without a
-// flash. Both live in localStorage, which the server cannot read: without this
-// the first paint is the default, and correcting it afterwards moves the page
-// under the reader.
+// Before paint: localStorage is unreadable on the server, so without this the first paint is the default.
 const boot = `(function () {
   try {
     var themes = ${JSON.stringify(THEME_IDS)};
