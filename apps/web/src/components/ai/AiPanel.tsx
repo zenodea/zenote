@@ -50,13 +50,20 @@ export function AiPanel({
 
   // What is on screen: null while a thread is being fetched. A conversation
   // outlives navigation — new threads come from the plus button, a fresh
-  // session, or the reader picking a new selection out on the graph.
+  // session, or the reader picking a new selection out on the graph. An
+  // untouched empty thread is not a conversation yet; it follows the page.
   const [thread, setThread] = useState<OpenThread | null>(null);
-  const [pending] = useState(live);
+  const [pending, setPending] = useState(live);
   const [view, setView] = useState<"chat" | "history">("chat");
   const [fresh, setFresh] = useState(0);
+  const [touched, setTouched] = useState(false);
 
   const historyOpen = view === "history";
+
+  const untouched =
+    !touched &&
+    (thread === null ||
+      (thread.chatId === null && thread.messages.length === 0));
 
   const liveKey = subjectKey(live);
   const [lastLiveKey, setLastLiveKey] = useState(liveKey);
@@ -64,6 +71,11 @@ export function AiPanel({
     setLastLiveKey(liveKey);
     if (live?.kind === "selection" && focus.from === "reader") {
       setThread({ chatId: null, subject: live, messages: [] });
+      setTouched(false);
+      setView("chat");
+    } else if (untouched) {
+      setPending(live);
+      setThread(null);
       setView("chat");
     }
   }
@@ -99,6 +111,7 @@ export function AiPanel({
   // About what the reader is looking at now — not the held thread's subject.
   function startNewChat() {
     setThread({ chatId: null, subject: live, messages: [] });
+    setTouched(false);
     setFresh((count) => count + 1);
     setView("chat");
   }
@@ -111,6 +124,7 @@ export function AiPanel({
       subject: opened.subject,
       messages: opened.messages,
     });
+    setTouched(false);
     // A reopened selection points the graph back at what it was about.
     if (opened.subject?.kind === "selection") {
       setGraphFocus(opened.subject.slugs, "assistant");
@@ -206,6 +220,7 @@ export function AiPanel({
               thread={thread}
               resolver={resolverMap}
               show={show}
+              onActivity={() => setTouched(true)}
             />
           ) : (
             <div className="flex min-h-0 flex-1 items-center justify-center">
@@ -222,10 +237,12 @@ function ChatArea({
   thread,
   resolver,
   show,
+  onActivity,
 }: {
   thread: OpenThread;
   resolver: WikilinkResolver;
   show: boolean;
+  onActivity: () => void;
 }) {
   const subject = thread.subject ?? null;
   const {
@@ -238,7 +255,7 @@ function ChatArea({
     error,
     scrollRef,
     respondToApproval,
-  } = useNoteChat(thread, resolver);
+  } = useNoteChat(thread, resolver, onActivity);
 
   return (
     <>

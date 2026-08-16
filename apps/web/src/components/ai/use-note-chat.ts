@@ -42,7 +42,11 @@ function resolveAll(targets: string[], resolver: WikilinkResolver): string[] {
 }
 
 /** One conversation; the caller remounts it when the thread changes. */
-export function useNoteChat(thread: OpenThread, resolver: WikilinkResolver) {
+export function useNoteChat(
+  thread: OpenThread,
+  resolver: WikilinkResolver,
+  onActivity?: () => void,
+) {
   const { setBusy } = useAiAssistant();
   const router = useRouter();
   const settingsRef = useLatestRef(useSettings());
@@ -142,6 +146,7 @@ export function useNoteChat(thread: OpenThread, resolver: WikilinkResolver) {
     const text = input.trim();
     if (!text || busy) return;
     setInput("");
+    onActivity?.();
     // A fresh thread gets its row on first send, so empty chats never exist.
     if (!chatIdRef.current) {
       chatIdRef.current = await createChat(thread.subject).catch(() => null);
