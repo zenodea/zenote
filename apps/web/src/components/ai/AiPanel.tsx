@@ -110,8 +110,17 @@ function ChatArea({
   resolver: WikilinkResolver;
   show: boolean;
 }) {
-  const { messages, input, setInput, busy, send, stop, error, scrollRef } =
-    useNoteChat(subject, resolver);
+  const {
+    messages,
+    input,
+    setInput,
+    busy,
+    send,
+    stop,
+    error,
+    scrollRef,
+    respondToApproval,
+  } = useNoteChat(subject, resolver);
 
   return (
     <>
@@ -128,7 +137,12 @@ function ChatArea({
           </p>
         )}
         {messages.map((message) => (
-          <Turn key={message.id} message={message} resolver={resolver} />
+          <Turn
+            key={message.id}
+            message={message}
+            resolver={resolver}
+            onApproval={respondToApproval}
+          />
         ))}
         {error && <p className="opacity-70">⚠️ {error.message}</p>}
       </Scroller>
@@ -177,12 +191,19 @@ function ChatArea({
   );
 }
 
+type ApprovalResponder = (response: {
+  id: string;
+  approved: boolean;
+}) => void | PromiseLike<void>;
+
 function Turn({
   message,
   resolver,
+  onApproval,
 }: {
   message: VaultUIMessage;
   resolver: WikilinkResolver;
+  onApproval: ApprovalResponder;
 }) {
   if (message.role === "user") {
     return (
@@ -201,7 +222,13 @@ function Turn({
         ) : null;
       }
       if (part.type.startsWith("tool-")) {
-        return <ToolLine key={index} part={part as VaultToolPart} />;
+        return (
+          <ToolLine
+            key={index}
+            part={part as VaultToolPart}
+            onApproval={onApproval}
+          />
+        );
       }
       return null;
     })
@@ -227,18 +254,53 @@ type VaultToolPart = {
   input?: unknown;
   output?: unknown;
   errorText?: string;
+  approval?: { id: string; approved?: boolean };
 };
 
-function ToolLine({ part }: { part: VaultToolPart }) {
+const WRITE_LABELS: Record<string, (input: Record<string, unknown>) => string> =
+  {
+    "tool-create_note": (input) => `Create “${input.slug ?? "a note"}”`,
+    "tool-append_to_note": (input) => `Add to “${input.note ?? "a note"}”`,
+    "tool-move_note": (input) =>
+      `Move “${input.note ?? "a note"}” into “${input.folder || "the vault root"}”`,
+  };
+
+function ToolLine({
+  part,
+  onApproval,
+}: {
+  part: VaultToolPart;
+  onApproval: ApprovalResponder;
+}) {
   const input = (part.input ?? {}) as Record<string, unknown>;
   const output = (part.output ?? {}) as Record<string, unknown>;
   const failed =
     part.state === "output-error" || typeof output.error === "string";
 
+  const write = WRITE_LABELS[part.type];
+  if (write) {
+    return (
+      <WriteCard
+        part={part}
+        label={write(input)}
+        preview={
+          typeof (input.body ?? input.text) === "string"
+            ? String(input.body ?? input.text)
+            : null
+        }
+        failed={failed}
+        error={typeof output.error === "string" ? output.error : part.errorText}
+        onApproval={onApproval}
+      />
+    );
+  }
+
   let label: string;
   switch (part.type) {
     case "tool-search_notes":
-      label = input.query ? `Searched the vault for “${input.query}”` : "Searching the vault…";
+      label = input.query
+        ? `Searched the vault for “${input.query}”`
+        : "Searching the vault…";
       if (Array.isArray(output.results)) {
         label += ` — ${output.results.length} found`;
       }
@@ -263,4 +325,62 @@ function ToolLine({ part }: { part: VaultToolPart }) {
   }
 
   return <p className="text-xs italic opacity-50">{label}</p>;
+}
+
+/** A proposed change to the vault; nothing runs until the reader says so. */
+function WriteCard({
+  part,
+  label,
+  preview,
+  failed,
+  error,
+  onApproval,
+}: {
+  part: VaultToolPart;
+  label: string;
+  preview: string | null;
+  failed: boolean;
+  error: string | undefined;
+  onApproval: ApprovalResponder;
+}) {
+  const pending = part.state === "approval-requested" && part.approval;
+  const refused =
+    part.state === "output-denied" || part.approval?.approved === false;
+
+  return (
+    <div className="not-prose rounded-lg border border-foreground/15 px-3 py-2 text-xs">
+      <p className="font-semibold">{label}</p>
+      {preview && (
+        <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-foreground/5 p-2 opacity-80">
+          {preview}
+        </pre>
+      )}
+      {pending ? (
+        <div className="mt-2 flex gap-2">
+          <Button
+            onClick={() => void onApproval({ id: part.approval!.id, approved: true })}
+          >
+            Approve
+          </Button>
+          <Button
+            onClick={() =>
+              void onApproval({ id: part.approval!.id, approved: false })
+            }
+          >
+            Refuse
+          </Button>
+        </div>
+      ) : (
+        <p className="mt-1 italic opacity-60">
+          {refused
+            ? "Refused."
+            : failed
+              ? (error ?? "It did not work.")
+              : part.state === "output-available"
+                ? "Done."
+                : "Waiting…"}
+        </p>
+      )}
+    </div>
+  );
 }

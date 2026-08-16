@@ -2,7 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
+import {
+  DefaultChatTransport,
+  lastAssistantMessageIsCompleteWithApprovalResponses,
+  lastAssistantMessageIsCompleteWithToolCalls,
+} from "ai";
 import { loadChat } from "@/app/actions/chats";
 import { useAiAssistant } from "@/components/ai/AiAssistantContext";
 import { messageText, type ChatSubject, type VaultUIMessage } from "@/lib/chat";
@@ -40,10 +44,20 @@ export function useNoteChat(subject: ChatSubject, resolver: WikilinkResolver) {
   >["addToolOutput"];
   const addToolOutputRef = useRef<AddToolOutput | null>(null);
 
-  const { messages, sendMessage, setMessages, addToolOutput, status, stop, error } =
-    useChat<VaultUIMessage>({
+  const {
+    messages,
+    sendMessage,
+    setMessages,
+    addToolOutput,
+    addToolApprovalResponse,
+    status,
+    stop,
+    error,
+  } = useChat<VaultUIMessage>({
       transport,
-      sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+      sendAutomaticallyWhen: (options) =>
+        lastAssistantMessageIsCompleteWithToolCalls(options) ||
+        lastAssistantMessageIsCompleteWithApprovalResponses(options),
       // The model aims the graph by name; the browser owns the graph, so it answers.
       onToolCall: ({ toolCall }) => {
         if (toolCall.toolName !== "focus_graph") return;
@@ -106,5 +120,15 @@ export function useNoteChat(subject: ChatSubject, resolver: WikilinkResolver) {
     void sendMessage({ text });
   }
 
-  return { messages, input, setInput, busy, send, stop, error, scrollRef };
+  return {
+    messages,
+    input,
+    setInput,
+    busy,
+    send,
+    stop,
+    error,
+    scrollRef,
+    respondToApproval: addToolApprovalResponse,
+  };
 }
