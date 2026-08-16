@@ -2,13 +2,23 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
+import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { loadChat } from "@/app/actions/chats";
 import { useAiAssistant } from "@/components/ai/AiAssistantContext";
 import { messageText, type ChatSubject, type VaultUIMessage } from "@/lib/chat";
 import { setGraphFocus } from "@/lib/stores/graph-focus";
 import { extractTargets, resolveWikilink } from "@/lib/wikilinks";
 import type { WikilinkResolver } from "@/lib/wikilinks";
+
+function resolveAll(targets: string[], resolver: WikilinkResolver): string[] {
+  return [
+    ...new Set(
+      targets
+        .map((target) => resolveWikilink(resolver, target))
+        .filter((slug): slug is string => slug !== null),
+    ),
+  ];
+}
 
 /** One conversation about one subject; the caller remounts it when the subject changes. */
 export function useNoteChat(subject: ChatSubject, resolver: WikilinkResolver) {
@@ -25,17 +35,41 @@ export function useNoteChat(subject: ChatSubject, resolver: WikilinkResolver) {
     [subject],
   );
 
-  const { messages, sendMessage, setMessages, status, stop, error } =
+  type AddToolOutput = ReturnType<
+    typeof useChat<VaultUIMessage>
+  >["addToolOutput"];
+  const addToolOutputRef = useRef<AddToolOutput | null>(null);
+
+  const { messages, sendMessage, setMessages, addToolOutput, status, stop, error } =
     useChat<VaultUIMessage>({
       transport,
+      sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+      // The model aims the graph by name; the browser owns the graph, so it answers.
+      onToolCall: ({ toolCall }) => {
+        if (toolCall.toolName !== "focus_graph") return;
+        const targets = (toolCall.input as { notes?: string[] })?.notes ?? [];
+        const slugs = resolveAll(targets, resolver);
+        if (slugs.length > 0) setGraphFocus(slugs, "assistant");
+        void addToolOutputRef.current?.({
+          tool: "focus_graph",
+          toolCallId: toolCall.toolCallId,
+          output: { focused: slugs },
+        });
+      },
       onFinish: ({ message }) => {
-        // The notes it cited become the graph's focus: the answer shows its sources.
-        const cited = extractTargets(messageText(message))
-          .map((target) => resolveWikilink(resolver, target))
-          .filter((slug): slug is string => slug !== null);
-        if (cited.length > 0) setGraphFocus([...new Set(cited)], "assistant");
+        // When the model didn't aim the graph itself, its citations do.
+        const aimed = message.parts.some(
+          (part) => part.type === "tool-focus_graph",
+        );
+        if (aimed) return;
+        const cited = resolveAll(extractTargets(messageText(message)), resolver);
+        if (cited.length > 0) setGraphFocus(cited, "assistant");
       },
     });
+
+  useEffect(() => {
+    addToolOutputRef.current = addToolOutput;
+  }, [addToolOutput]);
 
   const busy = status === "submitted" || status === "streaming";
 

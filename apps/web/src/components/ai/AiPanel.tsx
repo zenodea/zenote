@@ -192,16 +192,75 @@ function Turn({
     );
   }
 
-  const text = messageText(message);
   const stopped = message.metadata?.status === "aborted";
+  const parts = message.parts
+    .map((part, index) => {
+      if (part.type === "text") {
+        return part.text ? (
+          <NoteMarkdown key={index} source={part.text} resolver={resolver} />
+        ) : null;
+      }
+      if (part.type.startsWith("tool-")) {
+        return <ToolLine key={index} part={part as VaultToolPart} />;
+      }
+      return null;
+    })
+    .filter(Boolean);
+
   return (
-    <div className={`prose prose-sm max-w-none ${stopped ? "opacity-50" : ""}`}>
-      {text ? (
-        <NoteMarkdown source={text} resolver={resolver} />
+    <div
+      className={`prose prose-sm max-w-none space-y-2 ${stopped ? "opacity-50" : ""}`}
+    >
+      {parts.length > 0 ? (
+        parts
       ) : (
         <p className="animate-pulse opacity-50">Thinking…</p>
       )}
       {stopped && <p className="text-xs italic opacity-60">Stopped early.</p>}
     </div>
   );
+}
+
+type VaultToolPart = {
+  type: `tool-${string}`;
+  state: string;
+  input?: unknown;
+  output?: unknown;
+  errorText?: string;
+};
+
+function ToolLine({ part }: { part: VaultToolPart }) {
+  const input = (part.input ?? {}) as Record<string, unknown>;
+  const output = (part.output ?? {}) as Record<string, unknown>;
+  const failed =
+    part.state === "output-error" || typeof output.error === "string";
+
+  let label: string;
+  switch (part.type) {
+    case "tool-search_notes":
+      label = input.query ? `Searched the vault for “${input.query}”` : "Searching the vault…";
+      if (Array.isArray(output.results)) {
+        label += ` — ${output.results.length} found`;
+      }
+      break;
+    case "tool-read_note":
+      label = failed
+        ? `Looked for “${input.note}” — not found`
+        : input.note
+          ? `Read “${(output.title as string) ?? input.note}”`
+          : "Reading a note…";
+      break;
+    case "tool-neighbours":
+      label = input.note
+        ? `Followed the links around “${input.note}”`
+        : "Following links…";
+      break;
+    case "tool-focus_graph":
+      label = "Pointed the graph at the notes cited";
+      break;
+    default:
+      label = "Working…";
+  }
+
+  return <p className="text-xs italic opacity-50">{label}</p>;
 }

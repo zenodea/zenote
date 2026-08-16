@@ -1,7 +1,17 @@
 import { createGoogle } from "@ai-sdk/google";
-import { convertToModelMessages, streamText, validateUIMessages } from "ai";
-import { isChatSubject, messageText, type VaultUIMessage } from "@/lib/chat";
-import { gatherContext, type ContextNote } from "@/lib/server/chat-context";
+import {
+  convertToModelMessages,
+  stepCountIs,
+  streamText,
+  validateUIMessages,
+} from "ai";
+import { isChatSubject, type VaultUIMessage } from "@/lib/chat";
+import {
+  gatherContext,
+  type ContextNote,
+  type NeighbourNote,
+} from "@/lib/server/chat-context";
+import { vaultTools } from "@/lib/server/chat-tools";
 import {
   getNoteId,
   getOrCreateChat,
@@ -12,11 +22,18 @@ import { getUser } from "@/lib/server/supabase";
 
 const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.5-flash-lite";
 
-function systemPrompt(title: string, notes: ContextNote[]): string {
+/** Model calls per user turn; each tool round trip is one more. */
+const STEP_LIMIT = 6;
+
+function systemPrompt(
+  title: string,
+  notes: ContextNote[],
+  neighbours: NeighbourNote[],
+): string {
   return [
     "You are the assistant inside Zenote, a personal notes app.",
-    "Everything below is the user's own writing. Answer from it.",
-    "Name every note you draw on as a [[Wikilink]] with its exact title — the app turns those into links and points the graph at them, so a claim the user cannot follow back to a note is worth less than one they can.",
+    "You answer from the user's own notes. What they are looking at is below in full; the rest of the vault is a tool call away — search_notes to find notes, read_note for a note's full text, neighbours to walk its links. Fetch what you need rather than guessing.",
+    "Name every note you draw on as a [[Wikilink]] with its exact title — the app turns those into links, so a claim the user cannot follow back to a note is worth less than one they can. After an answer drawn from the notes, call focus_graph with the titles you cited.",
     "If the notes do not cover something, say so plainly before answering from general knowledge.",
     "Keep answers concise.",
     "",
@@ -26,6 +43,15 @@ function systemPrompt(title: string, notes: ContextNote[]): string {
       `## ${note.title} (${note.relation})`,
       note.body,
     ]),
+    ...(neighbours.length > 0
+      ? [
+          "",
+          "# One link away",
+          ...neighbours.map(
+            (neighbour) => `- [[${neighbour.title}]] (${neighbour.relation})`,
+          ),
+        ]
+      : []),
   ].join("\n");
 }
 
@@ -55,11 +81,7 @@ export async function POST(request: Request) {
     return new Response("Expected { subject, messages }.", { status: 400 });
   }
 
-  const question = messages.findLast((message) => message.role === "user");
-  const { title, notes } = await gatherContext(
-    subject,
-    question ? messageText(question) : "",
-  );
+  const { title, notes, neighbours } = await gatherContext(subject);
   if (notes.length === 0) {
     return new Response("Nothing to talk about.", { status: 404 });
   }
@@ -78,10 +100,16 @@ export async function POST(request: Request) {
   }
 
   const google = createGoogle({ apiKey });
+  const tools = vaultTools();
   const result = streamText({
     model: google(MODEL),
-    system: systemPrompt(title, notes),
-    messages: await convertToModelMessages(history),
+    system: systemPrompt(title, notes, neighbours),
+    messages: await convertToModelMessages(history, {
+      tools,
+      ignoreIncompleteToolCalls: true,
+    }),
+    tools,
+    stopWhen: stepCountIs(STEP_LIMIT),
   });
 
   // Finish generating (and saving) even if the reader navigates away mid-answer.
