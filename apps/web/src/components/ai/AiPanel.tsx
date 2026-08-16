@@ -57,6 +57,12 @@ export function AiPanel({
   const [view, setView] = useState<"chat" | "history">("chat");
   const [fresh, setFresh] = useState(0);
 
+  // Like the footer: the drawer's edge joins the frame only once it has
+  // landed — claimed mid-slide, the junction marks would ride the moving edge.
+  const historyOpen = view === "history";
+  const [settled, setSettled] = useState(false);
+  if (!historyOpen && settled) setSettled(false);
+
   const liveKey = subjectKey(live);
   const [lastLiveKey, setLastLiveKey] = useState(liveKey);
   if ((slug !== null || focus.from === "reader") && liveKey !== lastLiveKey) {
@@ -165,18 +171,24 @@ export function AiPanel({
           {/* The footer's slide, turned upside down: history descends from the
               header on a transform, so the conversation never reflows. */}
           <div
+            data-seam={settled ? "bottom" : undefined}
+            onTransitionEnd={(event) => {
+              if (historyOpen && event.propertyName === "transform") {
+                setSettled(true);
+              }
+            }}
             className={`absolute inset-x-0 top-0 z-20 border-b border-foreground/15 bg-background transition-transform duration-300 ease-in-out ${
-              view === "history" ? "translate-y-0" : "-translate-y-full"
+              historyOpen ? "translate-y-0" : "-translate-y-full"
             }`}
           >
             <Scroller
               className={`max-h-64 transition-opacity duration-200 ${
-                view === "history" ? "opacity-100" : "opacity-0"
+                historyOpen ? "opacity-100" : "opacity-0"
               }`}
               contentClassName="p-2"
             >
               <ChatHistory
-                open={view === "history"}
+                open={historyOpen}
                 activeChatId={thread?.chatId ?? null}
                 onOpen={openFromHistory}
                 onDeleted={(id) => {
