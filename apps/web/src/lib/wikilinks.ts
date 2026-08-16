@@ -66,6 +66,26 @@ export function extractTargets(body: string): string[] {
   return extractOccurrences(body).map((occurrence) => occurrence.target);
 }
 
+/** Rewrites wikilink targets outside code, keeping headings and aliases. */
+export function replaceWikilinkTargets(
+  body: string,
+  rename: (target: string) => string | null,
+): string {
+  return body
+    .split(/(```[\s\S]*?```|`[^`\n]*`)/g)
+    .map((segment, index) =>
+      index % 2 === 1
+        ? segment
+        : segment.replace(wikilinkRegex(), (full, target, heading, alias) => {
+            const next = rename(target as string);
+            if (next === null) return full;
+            const rest = `${heading ? `#${heading}` : ""}${alias ? `|${alias}` : ""}`;
+            return `[[${next}${rest}]]`;
+          }),
+    )
+    .join("");
+}
+
 function normalise(value: string): string {
   return value.trim().toLowerCase();
 }

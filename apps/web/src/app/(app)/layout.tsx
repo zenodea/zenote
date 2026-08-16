@@ -13,7 +13,7 @@ import {
   getNoteRefs,
   getNoteTitles,
   getResolver,
-  getSearchDocs,
+  getSearchDocMeta,
 } from "@/lib/server/vault-data";
 import { getUser } from "@/lib/server/supabase";
 
@@ -22,7 +22,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (!(await getUser())) redirect("/login");
 
   const [docs, refs, titles, folders, resolver] = await Promise.all([
-    getSearchDocs(),
+    getSearchDocMeta(),
     getNoteRefs(),
     getNoteTitles(),
     getFolders(),

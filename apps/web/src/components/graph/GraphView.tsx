@@ -2,11 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAiAssistant } from "@/components/ai/AiAssistant";
 import { useCanvasSize } from "@/hooks/use-canvas-size";
 import { useEscape } from "@/hooks/use-hotkey";
 import { useLatestRef } from "@/hooks/use-latest-ref";
 import { useLoadingIndicator } from "@/hooks/use-loading-indicator";
 import { useRenderLoop } from "@/hooks/use-render-loop";
+import {
+  cachedClusterNames,
+  storeClusterNames,
+} from "@/lib/cluster-name-cache";
 import { createLayout } from "@/lib/graph/force-layout";
 import { findClusters } from "@/lib/graph/clusters";
 import { createSolver } from "@/lib/graph/solver";
@@ -57,6 +62,7 @@ export function GraphView({
   standalone?: boolean;
 }) {
   const router = useRouter();
+  const { open: assisting } = useAiAssistant();
   const { canvasRef, size } = useCanvasSize();
   const sceneRef = useRef<PixiScene | null>(null);
 
@@ -348,13 +354,18 @@ export function GraphView({
     let cancelled = false;
     (async () => {
       try {
-        const response = await fetch("/api/clusters", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ clusters: clusters.map((c) => c.slugs) }),
-        });
-        const { names } = (await response.json()) as { names?: string[] };
-        if (cancelled || !names?.length) return;
+        const groups = clusters.map((c) => c.slugs);
+        let names = cachedClusterNames(groups);
+        if (!names) {
+          const response = await fetch("/api/clusters", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ clusters: groups }),
+          });
+          names = ((await response.json()) as { names?: string[] }).names ?? [];
+          if (names.length > 0) storeClusterNames(groups, names);
+        }
+        if (cancelled || names.length === 0) return;
 
         scene.setRegions(
           clusters
@@ -375,7 +386,9 @@ export function GraphView({
     };
   }, [standalone, booted, graph, start]);
 
-  useEscape(clearFocus, controls);
+  // Not while the assistant is open: the focus is its subject, and clearing it
+  // would take the conversation down with it.
+  useEscape(clearFocus, controls && !assisting);
 
   const focusNode = useCallback(
     (node: number) => {

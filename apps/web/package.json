@@ -14,6 +14,8 @@
     "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.44",
+    "@ai-sdk/react": "^4.0.69",
     "@codemirror/autocomplete": "^6.20.3",
     "@codemirror/commands": "^6.10.4",
     "@codemirror/lang-markdown": "^6.5.2",
@@ -25,6 +27,7 @@
     "@replit/codemirror-vim": "^6.4.0",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.3",
+    "ai": "^7.0.66",
     "gray-matter": "^4.0.3",
     "katex": "^0.18.4",
     "mdast-util-find-and-replace": "^3.0.2",
@@ -37,7 +40,8 @@
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
-    "server-only": "^0.0.1"
+    "server-only": "^0.0.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -7,6 +7,30 @@ html[data-sidebar="collapsed"] .sidebar-reveal {
   opacity: 0;
 }
 
+/* A folder's children unfold on open rather than arriving all at once. */
+.tree-branch {
+  display: grid;
+  animation: tree-unfold 170ms ease-out;
+}
+.tree-branch > * {
+  overflow: hidden;
+}
+
+@keyframes tree-unfold {
+  from {
+    grid-template-rows: 0fr;
+  }
+  to {
+    grid-template-rows: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tree-branch {
+    animation: none;
+  }
+}
+
 /* The page's bottom plane, rising the way the assistant panel comes in. */
 .app-footer {
   transform: translateY(100%);

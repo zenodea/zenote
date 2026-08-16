@@ -4,8 +4,13 @@ export type SearchMode = (typeof SEARCH_MODES)[number];
 /** Enough to link to a note and show its name — no body. */
 export type NoteRef = { slug: string; title: string };
 
-export type SearchDoc = NoteRef & {
+/** Everything but the body, which the client caches and fetches by delta. */
+export type SearchDocMeta = NoteRef & {
   tags: string[];
+  updated: string;
+};
+
+export type SearchDoc = SearchDocMeta & {
   body: string;
 };
 
