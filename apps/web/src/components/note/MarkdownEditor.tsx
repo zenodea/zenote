@@ -51,6 +51,25 @@ export function MarkdownEditor({
     if (vimMode) adoptStatusBar(viewRef.current, statusBarRef.current?.());
   }, [vimMode, statusBarRef]);
 
+  // The keyboard opening shrinks the editor around a caret that may now be under it.
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    function reveal() {
+      const view = viewRef.current;
+      if (!view?.hasFocus) return;
+      view.dispatch({
+        effects: EditorView.scrollIntoView(view.state.selection.main.head, {
+          y: "center",
+        }),
+      });
+    }
+
+    viewport.addEventListener("resize", reveal);
+    return () => viewport.removeEventListener("resize", reveal);
+  }, []);
+
   useEffect(() => {
     const vimCompartment = new Compartment();
     vimCompartmentRef.current = vimCompartment;
@@ -93,5 +112,5 @@ export function MarkdownEditor({
     };
   }, [onChangeRef, statusBarRef]);
 
-  return <div ref={containerRef} className="min-h-[50vh]" />;
+  return <div ref={containerRef} className="min-h-[50dvh]" />;
 }

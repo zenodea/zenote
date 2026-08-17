@@ -3,10 +3,14 @@
 import type { ReactNode } from "react";
 import { SEARCH_MODES } from "@/lib/search";
 import { updateSettings, useSettings } from "@/lib/stores/settings";
+import { useCoarsePointer, useLayoutMode } from "@/hooks/use-media-query";
 import { Segmented } from "@/components/ui/Segmented";
 
 export function SettingsForm() {
   const settings = useSettings();
+  const phone = useLayoutMode() === "phone";
+  const coarse = useCoarsePointer();
+  const touchPhone = phone && coarse;
 
   return (
     <ul className="divide-y divide-foreground/15">
@@ -40,16 +44,19 @@ export function SettingsForm() {
           onChange={(checked) => updateSettings({ openInEditMode: checked })}
         />
       </Row>
-      <Row
-        title="Vim keybindings"
-        description="Edit notes with Vim motions, operators and modes."
-      >
-        <Toggle
-          checked={settings.vimMode}
-          ariaLabel="Use Vim keybindings in the editor"
-          onChange={(checked) => updateSettings({ vimMode: checked })}
-        />
-      </Row>
+      {/* A soft keyboard has no Escape and no modifiers; vim needs a real one. */}
+      {!touchPhone && (
+        <Row
+          title="Vim keybindings"
+          description="Edit notes with Vim motions, operators and modes."
+        >
+          <Toggle
+            checked={settings.vimMode}
+            ariaLabel="Use Vim keybindings in the editor"
+            onChange={(checked) => updateSettings({ vimMode: checked })}
+          />
+        </Row>
+      )}
       <Row
         title="Search in"
         description="What sidebar search matches by default: note titles only, or note content too."

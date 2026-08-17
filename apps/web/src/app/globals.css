@@ -30,6 +30,13 @@
   --safe-left: env(safe-area-inset-left, 0px);
   /* The bottom bar's height, so the footer can sit above it without measuring. */
   --mobile-bar: 0px;
+  /* How much of the viewport the soft keyboard covers; written by KeyboardInset. */
+  --keyboard: 0px;
+}
+
+/* The shell gives the keyboard its space rather than being covered by it. */
+html {
+  height: calc(100dvh - var(--keyboard));
 }
 
 /* FOOTER_HEIGHT in lib/frame.ts: the bar is the sidebar footer's row, moved. */

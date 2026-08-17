@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Frame } from "@/components/frame/Frame";
+import { KeyboardInset } from "@/components/frame/KeyboardInset";
 import { ThemeFavicon } from "@/components/frame/ThemeFavicon";
 import { SETTINGS_STORAGE_KEY } from "@/lib/stores/settings";
 import {
@@ -67,7 +68,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-dvh antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       suppressHydrationWarning
     >
       <head>
@@ -76,6 +77,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="relative flex h-full overflow-hidden">
         {children}
         <Frame />
+        <KeyboardInset />
         <ThemeFavicon />
       </body>
     </html>
