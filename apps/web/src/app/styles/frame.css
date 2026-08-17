@@ -1,10 +1,13 @@
-/* The width for the paint before React reads it; must keep agreeing with Sidebar's own classes. */
-html[data-sidebar="collapsed"] .sidebar {
-  width: 60px;
-}
+/* The width for the paint before React reads it; must keep agreeing with Sidebar's own classes.
+   Desktop only: below md the sidebar is a drawer, and the collapsed rail doesn't exist. */
+@media (min-width: 768px) {
+  html[data-sidebar="collapsed"] .sidebar {
+    width: 60px;
+  }
 
-html[data-sidebar="collapsed"] .sidebar-reveal {
-  opacity: 0;
+  html[data-sidebar="collapsed"] .sidebar-reveal {
+    opacity: 0;
+  }
 }
 
 /* A folder's children unfold on open rather than arriving all at once. */

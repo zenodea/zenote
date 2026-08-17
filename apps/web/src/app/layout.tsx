@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Frame } from "@/components/frame/Frame";
 import { ThemeFavicon } from "@/components/frame/ThemeFavicon";
@@ -47,6 +47,19 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: { default: "Zenote", template: "%s — Zenote" },
   description: "Read your notes online",
+  appleWebApp: { capable: true, title: "Zenote", statusBarStyle: "default" },
+};
+
+// No maximumScale/userScalable: pinch-zoom is an accessibility feature.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  interactiveWidget: "resizes-content",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
 };
 
 // Shared with /login, so anything here survives the sign-in navigation untouched.
@@ -54,7 +67,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-dvh antialiased`}
       suppressHydrationWarning
     >
       <head>

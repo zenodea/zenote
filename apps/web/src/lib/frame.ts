@@ -36,7 +36,19 @@ export function sidebarWidth(collapsed: boolean) {
 export function fallbackGeometry(
   collapsed: boolean,
   viewportHeight: number,
+  rails = true,
 ): Geometry {
+  // No sidebar on a phone: the header seam is the whole frame.
+  if (!rails) {
+    return {
+      x: 0,
+      head: HEADER_HEIGHT - 0.5,
+      foot: viewportHeight,
+      sidebar: 0,
+      panel: null,
+    };
+  }
+
   const width = sidebarWidth(collapsed);
   const footer = collapsed ? FOOTER_COLLAPSED_HEIGHT : FOOTER_HEIGHT;
 
