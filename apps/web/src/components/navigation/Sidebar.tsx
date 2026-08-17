@@ -94,7 +94,7 @@ export function Sidebar({
         <div
           aria-hidden
           onClick={closeDrawer}
-          className={`fixed inset-0 z-30 bg-foreground/25 transition-opacity duration-300 ${
+          className={`fixed inset-0 z-30 bg-black/50 transition-opacity duration-300 ${
             drawerOpen ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
         />
@@ -158,7 +158,8 @@ export function Sidebar({
             />
           )}
         </Scroller>
-        <SidebarFooter minimised={minimised} pathname={pathname} />
+        {/* The bottom bar is the drawer's footer on a phone; two would be one too many. */}
+        {!drawer && <SidebarFooter minimised={minimised} pathname={pathname} />}
       </nav>
     </>
   );

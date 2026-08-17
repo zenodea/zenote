@@ -1,12 +1,14 @@
 "use client";
 
-import { Button } from "@/components/ui/Button";
+import Link from "next/link";
+import { Button, iconClass } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import {
   FilePlusIcon,
   FolderPlusIcon,
   LogoIcon,
   SearchIcon,
+  SlidersIcon,
 } from "@/components/ui/Icons";
 import type { useSidebarSearch } from "@/components/navigation/use-sidebar-search";
 import type { Naming } from "@/components/navigation/use-vault-actions";
@@ -114,6 +116,16 @@ export function SidebarHeader({
         >
           <SearchIcon />
         </Button>
+        {/* The phone drawer has no footer to hold it. */}
+        {drawer && !searchOpen && (
+          <Link
+            href="/settings"
+            aria-label="Settings"
+            className={`block ${iconClass(false)}`}
+          >
+            <SlidersIcon />
+          </Link>
+        )}
       </div>
     </div>
   );
