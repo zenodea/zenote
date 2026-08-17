@@ -8,6 +8,7 @@ import { Dropdown } from "@/components/ui/Dropdown";
 import { EllipsisIcon, PencilIcon } from "@/components/ui/Icons";
 import { SaveStatus } from "@/components/note/SaveStatus";
 import { PageHeader } from "@/components/frame/PageHeader";
+import { requestFind } from "@/lib/stores/commands";
 
 export function NoteToolbar({
   note,
@@ -27,22 +28,25 @@ export function NoteToolbar({
       title={note.title}
       meta={
         <>
-          <time dateTime={note.created} className="shrink-0">
-            {new Date(note.created).toLocaleDateString("en-GB", {
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })}
-          </time>
-          {noteTags(note).map((tag) => (
-            <Link
-              key={tag}
-              href={`/tags/${tag}`}
-              className="shrink-0 rounded-full bg-foreground/10 px-2 py-0.5 text-xs hover:opacity-70"
-            >
-              #{tag}
-            </Link>
-          ))}
+          {/* Contents, not a wrapper: on a phone the title needs the whole row. */}
+          <span className="hidden md:contents">
+            <time dateTime={note.created} className="shrink-0">
+              {new Date(note.created).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </time>
+            {noteTags(note).map((tag) => (
+              <Link
+                key={tag}
+                href={`/tags/${tag}`}
+                className="shrink-0 rounded-full bg-foreground/10 px-2 py-0.5 text-xs hover:opacity-70"
+              >
+                #{tag}
+              </Link>
+            ))}
+          </span>
           <SaveStatus />
         </>
       }
@@ -62,6 +66,13 @@ export function NoteToolbar({
             ariaLabel="Note actions"
             triggerClassName={iconClass()}
           >
+            <button
+              type="button"
+              onClick={requestFind}
+              className="block w-full rounded px-2 py-1 text-left hover:bg-foreground/10"
+            >
+              Find in page…
+            </button>
             <button
               type="button"
               onClick={onRename}

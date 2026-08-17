@@ -95,6 +95,24 @@ export function EllipsisIcon() {
   );
 }
 
+export function MenuIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      aria-hidden
+      className="block"
+    >
+      <path d="M2 4h12M2 8h12M2 12h12" />
+    </svg>
+  );
+}
+
 export function SearchIcon() {
   return (
     <svg

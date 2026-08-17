@@ -34,9 +34,11 @@
   }
 }
 
-/* Translated rather than hidden, so its input can still take focus on the way in. */
+/* Translated rather than hidden, so its input can still take focus on the way in.
+   It rides above the phone's bottom bar; --mobile-bar is 0 everywhere else. */
 .app-footer {
-  transform: translateY(100%);
+  bottom: var(--mobile-bar);
+  transform: translateY(calc(100% + var(--mobile-bar)));
   transition: transform 110ms ease-out;
 }
 .app-footer[data-open] {

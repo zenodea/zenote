@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AiAssistantProvider, AiPanel } from "@/components/ai/AiAssistant";
 import { FocusReset } from "@/components/graph/FocusReset";
 import { FindBar } from "@/components/navigation/FindBar";
+import { MobileBar } from "@/components/navigation/MobileBar";
 import { Footer } from "@/components/frame/Footer";
 import { Junctions } from "@/components/frame/Junctions";
 import { PageFade } from "@/components/frame/PageFade";
@@ -40,6 +41,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <RouteLoader />
           <FindBar />
           <Footer />
+          <MobileBar />
         </main>
         <AiPanel titles={titles} resolver={Object.fromEntries(resolver)} />
       </AiAssistantProvider>

@@ -19,6 +19,7 @@ import {
   SendIcon,
 } from "@/components/ui/Icons";
 import { Scroller } from "@/components/ui/Scroller";
+import { useLayoutMode } from "@/hooks/use-media-query";
 import { useLoadingIndicator } from "@/hooks/use-loading-indicator";
 import { useNoteSlug } from "@/hooks/use-note-slug";
 import {
@@ -123,6 +124,7 @@ export function AiPanel({
 
   const subject = thread ? thread.subject : (wanted?.subject ?? null);
   const show = open;
+  const phone = useLayoutMode() === "phone";
   const slowLoad = useLoadingIndicator(thread === null);
 
   // About what the reader is looking at now — not the held thread's subject.
@@ -154,16 +156,26 @@ export function AiPanel({
     <aside
       aria-hidden={!show}
       aria-label="AI assistant"
-      className={`shrink-0 overflow-hidden transition-[width] duration-300 ${
-        show ? "w-96" : "w-0"
-      }`}
+      inert={!show}
+      className={
+        phone
+          ? `fixed inset-0 z-40 overflow-hidden bg-background transition-transform duration-300 ease-in-out ${
+              show ? "translate-y-0" : "translate-y-full"
+            }`
+          : `shrink-0 overflow-hidden transition-[width] duration-300 ${
+              show ? "w-96" : "w-0"
+            }`
+      }
     >
       <div
-        data-seam={show ? "left" : undefined}
-        className="flex h-full w-96 flex-col border-l border-foreground/15 text-sm"
+        // A sheet is over the page, not beside it: no seam to frame, and no rail to line up with.
+        data-seam={show && !phone ? "left" : undefined}
+        className={`flex h-full flex-col text-sm ${
+          phone ? "w-full" : "w-96 border-l border-foreground/15"
+        }`}
       >
         <div
-          data-seam={show ? "bottom" : undefined}
+          data-seam={show && !phone ? "bottom" : undefined}
           className="flex h-14 shrink-0 items-center gap-2 border-b border-foreground/15 px-4"
         >
           <div className="min-w-0 flex-1">
@@ -206,7 +218,7 @@ export function AiPanel({
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
           {/* Closed, this edge sits on the header's seam, so it can claim one mid-slide. */}
           <div
-            data-seam={show ? "bottom" : undefined}
+            data-seam={show && !phone ? "bottom" : undefined}
             className={`absolute inset-x-0 top-0 z-20 border-b border-foreground/15 bg-background transition-transform duration-300 ease-in-out ${
               historyOpen ? "translate-y-0" : "-translate-y-full"
             }`}
@@ -270,6 +282,7 @@ function ChatArea({
     scrollRef,
     respondToApproval,
   } = useNoteChat(thread, resolver, onActivity);
+  const phone = useLayoutMode() === "phone";
 
   return (
     <>
@@ -314,7 +327,7 @@ function ChatArea({
           event.preventDefault();
           send();
         }}
-        data-seam={show ? "top" : undefined}
+        data-seam={show && !phone ? "top" : undefined}
         className="flex h-[45px] shrink-0 items-center gap-2 border-t border-foreground/15 px-3"
       >
         <input
