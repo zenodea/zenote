@@ -1,5 +1,3 @@
-/** The app mark, drawn from an accent: the favicon and every installed icon. */
-
 export function shade(hex: string, amount: number): string {
   const value = hex.replace("#", "");
   if (!/^[0-9a-fA-F]{6}$/.test(value)) return hex;
@@ -15,10 +13,6 @@ export function shade(hex: string, amount: number): string {
   return `#${mixed.join("")}`;
 }
 
-/**
- * `radius` 14 is the browser-tab mark; 0 with `inset` is the maskable one,
- * which must fill its square and keep the drawing inside the safe circle.
- */
 export function iconSvg(
   accent: string,
   { radius = 14, inset = 0 }: { radius?: number; inset?: number } = {},

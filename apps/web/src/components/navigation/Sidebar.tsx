@@ -30,7 +30,6 @@ export function Sidebar({
   const settings = useSettings();
   const drawer = useLayoutMode() === "phone";
   const { open: drawerOpen, newNote } = useDrawer();
-  // The collapsed rail is a desktop shape; a drawer is either in or out.
   const minimised = !drawer && settings.sidebarCollapsed;
 
   const hydrated = useSearchDocs(docs);
@@ -68,12 +67,10 @@ export function Sidebar({
     delete document.documentElement.dataset.sidebar;
   }, []);
 
-  // Opening a note is the drawer's exit; it must not stay over what it navigated to.
   useEffect(() => {
     closeDrawer();
   }, [pathname]);
 
-  // The bottom bar's new-note button lands here, since the field lives in the tree.
   const seenNewNote = useRef(newNote);
   useEffect(() => {
     if (newNote === seenNewNote.current) return;
@@ -101,7 +98,6 @@ export function Sidebar({
       )}
       <nav
         aria-label="Vault"
-        // No seam on a phone: the drawer floats over the page rather than framing it.
         data-seam={drawer ? undefined : "right"}
         inert={drawer && !drawerOpen}
         className={
@@ -158,7 +154,6 @@ export function Sidebar({
             />
           )}
         </Scroller>
-        {/* The bottom bar is the drawer's footer on a phone; two would be one too many. */}
         {!drawer && <SidebarFooter minimised={minimised} pathname={pathname} />}
       </nav>
     </>

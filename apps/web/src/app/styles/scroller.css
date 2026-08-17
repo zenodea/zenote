@@ -33,7 +33,6 @@
   visibility: hidden;
 }
 
-/* A thumb is a mouse's tool, and its 14px strip would eat swipes along the edge. */
 @media (pointer: coarse) {
   .scroller-thumb {
     display: none;

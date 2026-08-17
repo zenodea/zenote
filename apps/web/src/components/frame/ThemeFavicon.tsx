@@ -12,7 +12,6 @@ export function ThemeFavicon() {
       const style = getComputedStyle(document.documentElement);
       const accent = style.getPropertyValue("--accent").trim();
 
-      // Installed, the theme is also the status bar: every meta gets the live value.
       const background = style.getPropertyValue("--background").trim();
       if (background) {
         for (const meta of document.querySelectorAll<HTMLMetaElement>(

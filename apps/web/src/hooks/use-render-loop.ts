@@ -24,7 +24,6 @@ export function useRenderLoop(tick: () => boolean) {
     frame.current = requestAnimationFrame(run);
   }, [latest]);
 
-  // A backgrounded phone still bills the battery for a simulation nobody is watching.
   useEffect(() => {
     function onVisibility() {
       if (document.hidden) {

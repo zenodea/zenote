@@ -168,7 +168,6 @@ export function AiPanel({
       }
     >
       <div
-        // A sheet is over the page, not beside it: no seam to frame, and no rail to line up with.
         data-seam={show && !phone ? "left" : undefined}
         className={`flex h-full flex-col text-sm ${
           phone ? "w-full" : "w-96 border-l border-foreground/15"

@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 
 export type LayoutMode = "phone" | "tablet" | "desktop";
 
-/** Keep in step with the `md:`/`lg:` breakpoints the shell branches on. */
+// Keep in step with the `md:`/`lg:` breakpoints the shell branches on.
 export const PHONE_QUERY = "(max-width: 767px)";
 export const TABLET_QUERY = "(min-width: 768px) and (max-width: 1023px)";
 export const COARSE_QUERY = "(pointer: coarse)";
@@ -41,14 +41,12 @@ export function useMediaQuery(query: string, server = false) {
   return useSyncExternalStore(store.subscribe, store.get, () => server);
 }
 
-/** Layout: what mounts where. Desktop until the client corrects it, so SSR matches. */
 export function useLayoutMode(): LayoutMode {
   const phone = useMediaQuery(PHONE_QUERY);
   const tablet = useMediaQuery(TABLET_QUERY);
   return phone ? "phone" : tablet ? "tablet" : "desktop";
 }
 
-/** Affordances: hover reveals, drag handles, tooltips. Orthogonal to width. */
 export function useCoarsePointer() {
   return useMediaQuery(COARSE_QUERY);
 }

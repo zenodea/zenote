@@ -7,10 +7,6 @@ import { Scroller } from "@/components/ui/Scroller";
 
 export type Moving = { kind: "note" | "folder"; path: string };
 
-/**
- * Drag and drop is the desktop's way to move a note. Touch never fires an
- * HTML5 drag, so the same two calls are reachable from a list instead.
- */
 export function MoveModal({
   moving,
   folders,
@@ -22,13 +18,11 @@ export function MoveModal({
   onMove: (moving: Moving, into: string) => void;
   onClose: () => void;
 }) {
-  // For a folder this is its parent; for a note, the folder holding it.
   const from = folderOf(moving.path);
 
   const destinations = ["", ...folders].filter((into) => {
     if (into === from) return false;
     if (moving.kind !== "folder") return true;
-    // A folder cannot land in itself, nor in anything it contains.
     return into !== moving.path && !into.startsWith(`${moving.path}/`);
   });
 

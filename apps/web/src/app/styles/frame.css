@@ -1,5 +1,4 @@
-/* The width for the paint before React reads it; must keep agreeing with Sidebar's own classes.
-   Desktop only: below md the sidebar is a drawer, and the collapsed rail doesn't exist. */
+/* The width for the paint before React reads it; must keep agreeing with Sidebar's own classes. */
 @media (min-width: 768px) {
   html[data-sidebar="collapsed"] .sidebar {
     width: 60px;
@@ -34,8 +33,7 @@
   }
 }
 
-/* Translated rather than hidden, so its input can still take focus on the way in.
-   It rides above the phone's bottom bar; --mobile-bar is 0 everywhere else. */
+/* Translated rather than hidden, so its input can still take focus on the way in. */
 .app-footer {
   bottom: var(--mobile-bar);
   transform: translateY(calc(100% + var(--mobile-bar)));

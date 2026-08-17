@@ -208,7 +208,6 @@ export function ConceptGraph({ data }: { data: ConceptGraphData }) {
     return () => svg.removeEventListener("wheel", onWheel);
   }, [model]);
 
-  /** Two fingers zoom about their midpoint; a wheel does the same about the cursor. */
   function zoomAbout(px: number, py: number, factor: number) {
     const current = view.current;
     const next = Math.min(

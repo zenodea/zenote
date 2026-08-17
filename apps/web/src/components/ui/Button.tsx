@@ -2,7 +2,6 @@ import type { ButtonHTMLAttributes } from "react";
 
 const VARIANTS = {
   icon: {
-    // coarse: a 26px hit area is a mouse's, not a thumb's.
     base: "rounded p-1.5 coarse:flex coarse:min-h-11 coarse:min-w-11 coarse:items-center coarse:justify-center",
     idle: "opacity-60 hover:bg-foreground/10 hover:opacity-100 disabled:opacity-25 disabled:hover:bg-transparent",
   },

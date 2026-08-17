@@ -7,7 +7,6 @@ import { setSaveStatus } from "@/lib/stores/save-status";
 
 const DEBOUNCE_MS = 1000;
 const RETRY_MS = 4000;
-/** Away for longer than this and the note on screen may no longer be the note. */
 const STALE_MS = 30000;
 
 export function useAutosave(slug: string, updated: string) {
@@ -40,7 +39,6 @@ export function useAutosave(slug: string, updated: string) {
       base.current = result.updated;
       setSaveStatus("saved");
     } catch {
-      // A phone drops its connection mid-sentence: hold the buffer and try again.
       if (pending.current === null) pending.current = body;
       setSaveStatus("error");
       stop();
@@ -85,8 +83,7 @@ export function useAutosave(slug: string, updated: string) {
       if (pending.current !== null) event.preventDefault();
     }
 
-    // A phone suspends and kills backgrounded tabs without warning, and
-    // beforeunload never fires for it: the debounce has to land here instead.
+    // beforeunload never fires on a backgrounded mobile tab; pagehide is the last chance to save.
     function onHide() {
       hiddenAt = performance.now();
       void flush();
@@ -97,7 +94,6 @@ export function useAutosave(slug: string, updated: string) {
         onHide();
         return;
       }
-      // Back after a while: the note may have moved on, and nothing said so.
       if (pending.current !== null) return;
       if (hiddenAt && performance.now() - hiddenAt > STALE_MS) router.refresh();
       hiddenAt = 0;

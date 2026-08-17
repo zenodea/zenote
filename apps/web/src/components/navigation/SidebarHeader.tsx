@@ -116,7 +116,6 @@ export function SidebarHeader({
         >
           <SearchIcon />
         </Button>
-        {/* The phone drawer has no footer to hold it. */}
         {drawer && !searchOpen && (
           <Link
             href="/settings"

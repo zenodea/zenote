@@ -38,7 +38,6 @@ export function fallbackGeometry(
   viewportHeight: number,
   rails = true,
 ): Geometry {
-  // No sidebar on a phone: the header seam is the whole frame.
   if (!rails) {
     return {
       x: 0,

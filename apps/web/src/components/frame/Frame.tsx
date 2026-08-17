@@ -248,7 +248,6 @@ export function Frame() {
 
   const box = Math.min(MAX_BOX, env.width - 40, env.height - 40);
   const compact = box < MIN_BOX;
-  // No rail to frame on a phone: the header seam is drawn alone, from the centre.
   const rails = geometry.sidebar > 0;
   const anchor = rails ? geometry.x : env.width / 2;
 

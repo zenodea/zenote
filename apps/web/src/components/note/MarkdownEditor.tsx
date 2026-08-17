@@ -51,7 +51,6 @@ export function MarkdownEditor({
     if (vimMode) adoptStatusBar(viewRef.current, statusBarRef.current?.());
   }, [vimMode, statusBarRef]);
 
-  // The keyboard opening shrinks the editor around a caret that may now be under it.
   useEffect(() => {
     const viewport = window.visualViewport;
     if (!viewport) return;

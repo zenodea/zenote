@@ -150,7 +150,6 @@ export function GraphView({
   const drag = useRef<{ node: number; moved: number; active: boolean } | null>(
     null,
   );
-  // Touch: every finger down, the pinch it may become, and the press it may become.
   const touches = useRef(new Map<number, { x: number; y: number }>());
   const pinch = useRef<number | null>(null);
   const press = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -177,7 +176,6 @@ export function GraphView({
     setDepth(1);
   }, [setSeedIds]);
 
-  // Right-click on a desktop, long-press on a phone: the same pick.
   const toggleSeedAt = useCallback(
     (node: number | null) => {
       if (node === null) {
@@ -453,7 +451,6 @@ export function GraphView({
     press.current = null;
   }
 
-  /** Whatever the first finger began, a second one ends: the gesture is a pinch now. */
   function abandonGesture() {
     cancelPress();
     if (drag.current) {
@@ -495,7 +492,6 @@ export function GraphView({
 
     const node = nodeAt(point);
 
-    // No right button to press: a held finger picks a node out, or clears the focus.
     if (controls && event.pointerType !== "mouse") {
       press.current = setTimeout(() => {
         press.current = null;
@@ -576,7 +572,6 @@ export function GraphView({
     if (pinch.current !== null && touches.current.size < 2) {
       pinch.current = null;
       endPan();
-      // A finger still down carries the pan on from wherever it is.
       const remaining = [...touches.current.values()][0];
       if (remaining) beginPan(remaining);
       start();

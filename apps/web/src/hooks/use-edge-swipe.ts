@@ -6,7 +6,6 @@ import { useLatestRef } from "./use-latest-ref";
 const EDGE = 24;
 const DISTANCE = 48;
 
-/** Drags from the screen's left edge open the drawer; drags left across it close it. */
 export function useEdgeSwipe(
   enabled: boolean,
   open: boolean,
@@ -32,7 +31,6 @@ export function useEdgeSwipe(
 
       const dx = event.clientX - start.x;
       const dy = event.clientY - start.y;
-      // A mostly-vertical drag is the page scrolling, not a drawer gesture.
       if (Math.abs(dy) > Math.abs(dx)) {
         start = null;
         return;

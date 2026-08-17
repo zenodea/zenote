@@ -65,8 +65,7 @@ function carry(response: NextResponse, carrying: NextResponse) {
 
 export const config = {
   // An open-ended `.*\.svg$` would exempt any route ending in .svg, not just static assets.
-  // The manifest and its icons are named in full for the same reason: a browser
-  // fetches both without credentials, so a guarded one redirects and never installs.
+  // The manifest and its icons are fetched without credentials: guarded, they never install.
   matcher: [
     "/((?!_next/static|_next/image|favicon\\.ico$|icon\\.svg$|manifest\\.webmanifest$|apple-touch-icon\\.png$|icon-192\\.png$|icon-512\\.png$|icon-maskable-512\\.png$).*)",
   ],

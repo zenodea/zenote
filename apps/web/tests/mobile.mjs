@@ -1,10 +1,4 @@
-/**
- * Phone-viewport checks against a running app. `npm run test:mobile`, with
- * BASE_URL for anything other than the local dev server.
- *
- * Emulation covers layout and gestures the DOM can report. It cannot cover the
- * soft keyboard, IME composition, or WebGL throughput — those need a device.
- */
+// Phone-viewport checks against a running app; set BASE_URL for anything but the dev server.
 import { chromium, devices } from "playwright";
 
 const BASE = process.env.BASE_URL ?? "http://localhost:3000";
@@ -78,7 +72,6 @@ check(
   (await drawer.evaluate((node) => node.getBoundingClientRect().right)) > 100,
   "the bottom bar opens the drawer",
 );
-// The scrim covers everything the drawer does not.
 await page.mouse.click(360, 400);
 await page.waitForTimeout(500);
 check(
@@ -96,7 +89,6 @@ check(
 await page.keyboard.press("Escape");
 
 console.log("autosave");
-// Its own note, made and removed here: the suite never writes into a real one.
 const scratch = `mobile-check-${Date.now()}`;
 await page.click("nav[aria-label='Main'] [aria-label='New note']");
 await page.waitForSelector("input[aria-label='New note name']", {
@@ -113,7 +105,6 @@ await page.click(".cm-content");
 const marker = `mobile-test-${Date.now()}`;
 await page.keyboard.type(marker);
 
-// Backgrounded, which on a phone can be the last thing that ever happens to the tab.
 const saves = [];
 page.on("request", (request) => {
   if (request.method() === "POST") saves.push(Date.now());

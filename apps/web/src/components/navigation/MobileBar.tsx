@@ -17,15 +17,10 @@ import {
   useDrawer,
 } from "@/lib/stores/drawer";
 
-// WebGL is the bulk of the graph route's chunk; a press-and-hold buys it a head start.
 function warmRenderer() {
   import("@/lib/graph/pixi-scene").catch(() => {});
 }
 
-/**
- * The phone's primary destinations. Everything here is a keyboard shortcut on
- * desktop, which a touch device has no way to reach.
- */
 export function MobileBar() {
   const pathname = usePathname();
   const { open } = useDrawer();

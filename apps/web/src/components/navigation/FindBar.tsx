@@ -93,13 +93,11 @@ function FindBarInner() {
     inputRef.current?.select();
   }
 
-  // Take over Cmd/Ctrl+F from the browser's own find dialog.
   useHotkey("mod+f", (event) => {
     event.preventDefault();
     reveal();
   });
 
-  // The bar has no hotkey to offer a phone, so the note menu asks for it instead.
   const request = useFindRequest();
   const seen = useRef(request);
   const latestReveal = useLatestRef(reveal);

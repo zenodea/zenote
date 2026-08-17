@@ -28,7 +28,6 @@ export function NoteToolbar({
       title={note.title}
       meta={
         <>
-          {/* Contents, not a wrapper: on a phone the title needs the whole row. */}
           <span className="hidden md:contents">
             <time dateTime={note.created} className="shrink-0">
               {new Date(note.created).toLocaleDateString("en-GB", {

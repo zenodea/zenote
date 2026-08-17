@@ -44,7 +44,6 @@ export function SettingsForm() {
           onChange={(checked) => updateSettings({ openInEditMode: checked })}
         />
       </Row>
-      {/* A soft keyboard has no Escape and no modifiers; vim needs a real one. */}
       {!touchPhone && (
         <Row
           title="Vim keybindings"

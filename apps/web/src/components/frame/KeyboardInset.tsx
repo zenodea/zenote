@@ -2,13 +2,7 @@
 
 import { useEffect } from "react";
 
-/**
- * iOS does not resize the layout viewport for the soft keyboard — it only
- * shrinks the visual one — so a fixed shell keeps its bottom bar under the
- * keys. This publishes the difference as `--keyboard` for the shell to give
- * back. Android with `interactiveWidget: resizes-content` already shrinks the
- * layout viewport, so the difference there stays 0 and nothing is paid twice.
- */
+// iOS shrinks only the visual viewport for the soft keyboard; the difference is 0 on Android.
 export function KeyboardInset() {
   useEffect(() => {
     const viewport = window.visualViewport;

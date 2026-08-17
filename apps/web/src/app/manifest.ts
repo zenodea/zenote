@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next";
 
-// Installed to a home screen, this is what the app calls itself and opens as.
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Zenote",
