@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import {
   DefaultChatTransport,
@@ -9,17 +10,26 @@ import {
 } from "ai";
 import { createChat } from "@/app/actions/chats";
 import { useAiAssistant } from "@/components/ai/AiAssistantContext";
+import { useLatestRef } from "@/hooks/use-latest-ref";
 import { messageText, type ChatSubject, type VaultUIMessage } from "@/lib/chat";
+import { useSettings } from "@/lib/stores/settings";
 import { setGraphFocus } from "@/lib/stores/graph-focus";
 import { extractTargets, resolveWikilink } from "@/lib/wikilinks";
 import type { WikilinkResolver } from "@/lib/wikilinks";
 
-/** A conversation on screen: its stored thread, its subject, and what was said. */
+/** A conversation on screen; a null subject is the vault at large. */
 export type OpenThread = {
   chatId: string | null;
-  subject: ChatSubject;
+  subject: ChatSubject | null;
   messages: VaultUIMessage[];
 };
+
+const WRITE_TOOLS = new Set([
+  "tool-create_note",
+  "tool-append_to_note",
+  "tool-replace_in_note",
+  "tool-move_note",
+]);
 
 function resolveAll(targets: string[], resolver: WikilinkResolver): string[] {
   return [
@@ -32,13 +42,29 @@ function resolveAll(targets: string[], resolver: WikilinkResolver): string[] {
 }
 
 /** One conversation; the caller remounts it when the thread changes. */
-export function useNoteChat(thread: OpenThread, resolver: WikilinkResolver) {
+export function useNoteChat(
+  thread: OpenThread,
+  resolver: WikilinkResolver,
+  onActivity?: () => void,
+) {
   const { setBusy } = useAiAssistant();
+  const router = useRouter();
+  const settingsRef = useLatestRef(useSettings());
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Minted on the first send; every request reads it at call time.
   const chatIdRef = useRef(thread.chatId);
+
+  // Assembled at call time so the chat id and preferences are never stale.
+  function requestBody() {
+    return {
+      subject: thread.subject,
+      chatId: chatIdRef.current,
+      allowWrites: settingsRef.current.aiWrites,
+      notesOnly: settingsRef.current.aiVaultOnly,
+    };
+  }
 
   const transport = useMemo(
     () =>
@@ -78,12 +104,18 @@ export function useNoteChat(thread: OpenThread, resolver: WikilinkResolver) {
           tool: "focus_graph",
           toolCallId: toolCall.toolCallId,
           output: { focused: slugs },
-          options: {
-            body: { subject: thread.subject, chatId: chatIdRef.current },
-          },
+          options: { body: requestBody() },
         });
       },
       onFinish: ({ message }) => {
+        // An approved write changed the vault, so the chrome has to re-read it.
+        const wrote = message.parts.some(
+          (part) =>
+            WRITE_TOOLS.has(part.type) &&
+            (part as { state?: string }).state === "output-available",
+        );
+        if (wrote) router.refresh();
+
         // When the model didn't aim the graph itself, its citations do.
         const aimed = message.parts.some(
           (part) => part.type === "tool-focus_graph",
@@ -100,6 +132,10 @@ export function useNoteChat(thread: OpenThread, resolver: WikilinkResolver) {
 
   const busy = status === "submitted" || status === "streaming";
 
+  // An abandoned thread stops streaming with it; the server still saves the answer.
+  const latestStop = useLatestRef(stop);
+  useEffect(() => () => void latestStop.current(), [latestStop]);
+
   useEffect(() => {
     setBusy(busy);
     return () => setBusy(false);
@@ -113,22 +149,18 @@ export function useNoteChat(thread: OpenThread, resolver: WikilinkResolver) {
     const text = input.trim();
     if (!text || busy) return;
     setInput("");
+    onActivity?.();
     // A fresh thread gets its row on first send, so empty chats never exist.
-    if (!chatIdRef.current && thread.subject.kind === "note") {
-      chatIdRef.current = await createChat(thread.subject.slug).catch(() => null);
+    if (!chatIdRef.current) {
+      chatIdRef.current = await createChat(thread.subject).catch(() => null);
     }
-    void sendMessage(
-      { text },
-      { body: { subject: thread.subject, chatId: chatIdRef.current } },
-    );
+    void sendMessage({ text }, { body: requestBody() });
   }
 
   function respondToApproval(response: { id: string; approved: boolean }) {
     return addToolApprovalResponse({
       ...response,
-      options: {
-        body: { subject: thread.subject, chatId: chatIdRef.current },
-      },
+      options: { body: requestBody() },
     });
   }
 

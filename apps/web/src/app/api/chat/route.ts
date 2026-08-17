@@ -1,6 +1,7 @@
 import { createGoogle, type GoogleProvider } from "@ai-sdk/google";
 import {
   convertToModelMessages,
+  generateId,
   generateText,
   stepCountIs,
   streamText,
@@ -27,31 +28,51 @@ const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.5-flash-lite";
 /** Model calls per user turn; each tool round trip is one more. */
 const STEP_LIMIT = 6;
 
+// The form the model is asked to copy; a slug that is already the title needs no alias.
+function wikilink(slug: string, title: string): string {
+  return title === slug ? `[[${slug}]]` : `[[${slug}|${title}]]`;
+}
+
 function systemPrompt(
-  title: string,
+  title: string | null,
   notes: ContextNote[],
   neighbours: NeighbourNote[],
+  writes: boolean,
+  notesOnly: boolean,
 ): string {
   return [
     "You are the assistant inside Zenote, a personal notes app.",
-    "You answer from the user's own notes. What they are looking at is below in full; the rest of the vault is a tool call away — search_notes to find notes, read_note for a note's full text, neighbours to walk its links. Fetch what you need rather than guessing.",
-    "You can also change the vault — create_note, append_to_note, move_note — and each such call is shown to the user to approve or refuse before it runs. Propose them when asked to capture or reorganise something, and never claim one happened until its result confirms it.",
-    "Name every note you draw on as a [[Wikilink]] with its exact title — the app turns those into links, so a claim the user cannot follow back to a note is worth less than one they can. After an answer drawn from the notes, call focus_graph with the titles you cited.",
-    "If the notes do not cover something, say so plainly before answering from general knowledge.",
+    "You answer from the user's own notes. What they are looking at is below in full; the rest of the vault is a tool call away — search_notes to find notes, read_note for a note's full text, neighbours to walk its links, list_notes and list_tags for the vault's shape, recent_changes for what was touched lately, vault_health for broken links and orphans. Fetch what you need rather than guessing.",
+    "draw_graph sketches a small concept map inside the conversation — reach for it when the user asks how ideas relate, or when a picture would say it better than a paragraph. It may connect concepts the vault never wikilinked.",
+    writes
+      ? "You can also change the vault — create_note, append_to_note, replace_in_note, move_note — and each such call is shown to the user to approve or refuse before it runs. Propose them when asked to capture, correct or reorganise something, and never claim one happened until its result confirms it."
+      : "You cannot change the vault; the user has switched writing off. If asked to, say so and offer the content in your reply instead.",
+    "Name every note you draw on as a wikilink in the form [[slug|Title]]: its exact slug, then its title as the display text, as in [[security-concepts|Security Concepts]]. The slug is the half the app resolves and the half that survives a rename; the title is only what the reader sees. A bare [[Security Concepts]] is a link waiting to break, and a slug you invented from a title is one that never worked. Every note in this prompt is given with its slug, and search_notes, read_note, neighbours, list_notes, recent_changes and vault_health all return one — take the slug from there. After an answer drawn from the notes, call focus_graph with the slugs you cited.",
+    notesOnly
+      ? "Answer only from the notes. If they do not cover something, say so plainly and leave it there — do not answer from general knowledge."
+      : "If the notes do not cover something, say so plainly before answering from general knowledge.",
     "Keep answers concise.",
-    "",
-    `# What the user is looking at: ${title}`,
-    ...notes.flatMap((note) => [
-      "",
-      `## ${note.title} (${note.relation})`,
-      note.body,
-    ]),
+    ...(title === null
+      ? [
+          "",
+          "The user is not looking at any note in particular; reach for the tools.",
+        ]
+      : [
+          "",
+          `# What the user is looking at: ${title}`,
+          ...notes.flatMap((note) => [
+            "",
+            `## ${note.title} — slug: ${note.slug} (${note.relation})`,
+            note.body,
+          ]),
+        ]),
     ...(neighbours.length > 0
       ? [
           "",
           "# One link away",
           ...neighbours.map(
-            (neighbour) => `- [[${neighbour.title}]] (${neighbour.relation})`,
+            (neighbour) =>
+              `- ${wikilink(neighbour.slug, neighbour.title)} (${neighbour.relation})`,
           ),
         ]
       : []),
@@ -104,7 +125,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => null);
-  const subject = body?.subject;
+  const subject = body?.subject ?? null;
 
   let messages: VaultUIMessage[];
   try {
@@ -112,12 +133,15 @@ export async function POST(request: Request) {
   } catch {
     return new Response("Expected { subject, messages }.", { status: 400 });
   }
-  if (!isChatSubject(subject)) {
+  if (subject !== null && !isChatSubject(subject)) {
     return new Response("Expected { subject, messages }.", { status: 400 });
   }
 
-  const { title, notes, neighbours } = await gatherContext(subject);
-  if (notes.length === 0) {
+  // No subject is a conversation about the vault at large, all through tools.
+  const { title, notes, neighbours } = subject
+    ? await gatherContext(subject)
+    : { title: null, notes: [], neighbours: [] };
+  if (subject && notes.length === 0) {
     return new Response("Nothing to talk about.", { status: 404 });
   }
 
@@ -132,16 +156,33 @@ export async function POST(request: Request) {
     await saveMessage(chatId, last, "complete");
   }
 
+  const allowWrites = body?.allowWrites !== false;
+  const notesOnly = body?.notesOnly === true;
+
   const google = createGoogle({ apiKey });
   const tools = vaultTools();
   const result = streamText({
     model: google(MODEL),
-    system: systemPrompt(title, notes, neighbours),
+    system: systemPrompt(title, notes, neighbours, allowWrites, notesOnly),
     messages: await convertToModelMessages(history, {
       tools,
       ignoreIncompleteToolCalls: true,
     }),
     tools,
+    // The full set stays declared so stored turns still convert; only calls narrow.
+    activeTools: allowWrites
+      ? undefined
+      : [
+          "search_notes",
+          "read_note",
+          "neighbours",
+          "recent_changes",
+          "list_notes",
+          "list_tags",
+          "vault_health",
+          "draw_graph",
+          "focus_graph",
+        ],
     stopWhen: stepCountIs(STEP_LIMIT),
     // A hung upstream should not hold the connection open forever.
     abortSignal: AbortSignal.any([request.signal, AbortSignal.timeout(90_000)]),
@@ -152,6 +193,8 @@ export async function POST(request: Request) {
 
   return result.toUIMessageStreamResponse({
     originalMessages: history,
+    // Both sides must store the reply under one id, or the tool-loop upsert splits it.
+    generateMessageId: generateId,
     onEnd: async ({ responseMessage, isAborted }) => {
       if (!chatId) return;
       await saveMessage(chatId, responseMessage, isAborted ? "aborted" : "complete");

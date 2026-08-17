@@ -14,6 +14,7 @@ export type ChatRow = {
   id: string;
   title: string;
   note_id: string | null;
+  note_ids: string[] | null;
 };
 
 export async function getNoteId(slug: string): Promise<string | null> {
@@ -30,7 +31,7 @@ export async function getChat(chatId: string): Promise<ChatRow | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("chats")
-    .select("id,title,note_id")
+    .select("id,title,note_id,note_ids")
     .eq("id", chatId)
     .maybeSingle<ChatRow>();
   return data;
@@ -49,11 +50,27 @@ export async function latestChatId(noteId: string): Promise<string | null> {
   return data?.id ?? null;
 }
 
-export async function insertChat(noteId: string): Promise<string | null> {
+export async function latestFreeChatId(): Promise<string | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("chats")
+    .select("id")
+    .is("note_id", null)
+    .is("note_ids", null)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ id: string }>();
+  return data?.id ?? null;
+}
+
+export async function insertChat(fields: {
+  note_id?: string;
+  note_ids?: string[];
+}): Promise<string | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("chats")
-    .insert({ note_id: noteId })
+    .insert(fields)
     .select("id")
     .maybeSingle<{ id: string }>();
   if (error) console.error("Could not open chat:", error.message);
@@ -81,9 +98,16 @@ export async function loadMessages(chatId: string): Promise<VaultUIMessage[]> {
 
   if (error) throw new Error(`Could not load chat: ${error.message}`);
 
-  return (data ?? []).map(({ status, message }) =>
-    status === "complete" ? message : { ...message, metadata: { status } },
-  );
+  // Threads predating agreed reply ids hold a turn twice; the later row is finished.
+  const rows = data ?? [];
+  const last = new Map<string, number>();
+  rows.forEach((row, index) => last.set(row.message.id, index));
+
+  return rows
+    .filter((row, index) => last.get(row.message.id) === index)
+    .map(({ status, message }) =>
+      status === "complete" ? message : { ...message, metadata: { status } },
+    );
 }
 
 /** Update-by-id first so a continued turn overwrites its earlier half. */

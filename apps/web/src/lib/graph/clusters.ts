@@ -7,11 +7,7 @@ const ROUNDS = 12;
 const MIN_SIZE = 3;
 const MOST = 12;
 
-/**
- * Label propagation: every note takes the label most of its neighbours hold, a
- * few times over. No parameters to tune and no distance metric — the vault's own
- * linking decides where one region ends and the next begins.
- */
+/** Label propagation: every note takes the label most of its neighbours hold. */
 export function findClusters(graph: Graph): Cluster[] {
   const { neighbours } = indexGraph(graph);
   const count = graph.nodes.length;

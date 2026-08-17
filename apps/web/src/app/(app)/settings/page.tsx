@@ -4,6 +4,7 @@ import { SignOutButton } from "@/components/auth/SignOutButton";
 import { ChevronIcon } from "@/components/ui/Icons";
 import { Scroller } from "@/components/ui/Scroller";
 import { PageHeader } from "@/components/frame/PageHeader";
+import { AssistantSettings } from "@/components/settings/AssistantSettings";
 import { SettingsForm } from "@/components/settings/SettingsForm";
 import { ThemeSettings } from "@/components/settings/ThemeSettings";
 
@@ -23,6 +24,13 @@ export default async function SettingsPage() {
               Document
             </h2>
             <SettingsForm />
+          </section>
+
+          <section className="mt-10">
+            <h2 className="text-sm font-semibold uppercase tracking-wide opacity-60">
+              Assistant
+            </h2>
+            <AssistantSettings />
           </section>
 
           <details className="group mt-10">

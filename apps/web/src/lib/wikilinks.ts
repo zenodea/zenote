@@ -19,8 +19,7 @@ export type WikilinkOccurrence = {
   target: string;
   /** The link's display text (alias if given, else the target). */
   text: string;
-  /** The surrounding line, split around the link, other wikilinks rendered
-   * to their display text and markdown list/heading prefixes stripped. */
+  /** The surrounding line, split around the link, other wikilinks flattened. */
   before: string;
   after: string;
 };

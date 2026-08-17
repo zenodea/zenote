@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { AiAssistantProvider, AiPanel } from "@/components/ai/AiAssistant";
+import { FocusReset } from "@/components/graph/FocusReset";
 import { FindBar } from "@/components/navigation/FindBar";
 import { Footer } from "@/components/frame/Footer";
 import { Junctions } from "@/components/frame/Junctions";
@@ -43,6 +44,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <AiPanel titles={titles} resolver={Object.fromEntries(resolver)} />
       </AiAssistantProvider>
       <Junctions />
+      <FocusReset />
       <QuickSwitcher docs={refs} />
     </>
   );

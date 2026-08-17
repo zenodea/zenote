@@ -8,12 +8,12 @@ const LAYOUT = {
   y: {
     area: "min-h-0 overflow-y-auto overscroll-contain",
     strip: "right-0 top-0 w-3.5",
-    mark: "inset-y-0 right-[5px] w-[2px]",
+    mark: "inset-y-0 right-[0px] w-[2px]",
   },
   x: {
     area: "min-w-0 overflow-x-auto overscroll-x-none overscroll-y-auto",
     strip: "bottom-0 left-0 h-3.5",
-    mark: "inset-x-0 bottom-[5px] h-[2px]",
+    mark: "inset-x-0 bottom-[0px] h-[2px]",
   },
 } as const;
 

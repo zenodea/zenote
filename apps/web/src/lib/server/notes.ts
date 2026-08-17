@@ -36,7 +36,8 @@ function toNote(row: NoteRow): Note {
   };
 }
 
-export const getAllNotes = cache(async (): Promise<Note[]> => {
+/** Uncached: the chat tools re-read after their own writes, which cache() would hide. */
+export async function loadAllNotes(): Promise<Note[]> {
   const supabase = await createClient();
   const rows: NoteRow[] = [];
 
@@ -55,7 +56,9 @@ export const getAllNotes = cache(async (): Promise<Note[]> => {
   }
 
   return rows.map(toNote).sort((a, b) => a.slug.localeCompare(b.slug));
-});
+}
+
+export const getAllNotes = cache(loadAllNotes);
 
 export const getNote = cache(async (slug: string): Promise<Note | null> => {
   const supabase = await createClient();

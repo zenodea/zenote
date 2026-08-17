@@ -206,7 +206,14 @@ function NodeList({
         const fileIndent = { paddingLeft: `${depth * 0.75 + 1.5}rem` };
 
         if (node.kind === "folder") {
-          const isCollapsed = collapsed.has(node.path);
+          const path = node.path;
+          const isCollapsed = collapsed.has(path);
+
+          // A new child has to be somewhere the reader can see it.
+          const startNaming = (kind: "note" | "folder") => {
+            if (isCollapsed) onToggle(path);
+            onNamingChange({ kind, into: path });
+          };
 
           return (
             <li key={node.path}>
@@ -255,38 +262,30 @@ function NodeList({
                   ariaLabel={`Actions for ${node.name}`}
                   triggerClassName="shrink-0 rounded px-1 opacity-0 hover:bg-foreground/10 focus-visible:opacity-100 group-hover/row:opacity-100"
                 >
-                  <FolderAction
-                    onClick={() =>
-                      onNamingChange({ kind: "note", into: node.path })
-                    }
-                  >
+                  <FolderAction onClick={() => startNaming("note")}>
                     New note
                   </FolderAction>
-                  <FolderAction
-                    onClick={() =>
-                      onNamingChange({ kind: "folder", into: node.path })
-                    }
-                  >
+                  <FolderAction onClick={() => startNaming("folder")}>
                     New folder
                   </FolderAction>
                   <FolderAction
                     onClick={() =>
                       onNamingChange({
                         kind: "folder",
-                        into: node.path,
-                        rename: node.path,
+                        into: path,
+                        rename: path,
                       })
                     }
                   >
                     Rename…
                   </FolderAction>
-                  <FolderAction onClick={() => onDeleteFolder(node.path)}>
+                  <FolderAction onClick={() => onDeleteFolder(path)}>
                     Delete
                   </FolderAction>
                 </Dropdown>
               </div>
 
-              {naming && naming.into === node.path && !isCollapsed && (
+              {naming && naming.into === path && (
                 <div style={{ paddingLeft: `${(depth + 1) * 0.75 + 0.5}rem` }}>
                   <NamingRow
                     kind={naming.rename === undefined ? naming.kind : "folder"}

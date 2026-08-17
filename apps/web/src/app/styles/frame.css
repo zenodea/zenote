@@ -31,7 +31,7 @@ html[data-sidebar="collapsed"] .sidebar-reveal {
   }
 }
 
-/* The page's bottom plane, rising the way the assistant panel comes in. */
+/* Translated rather than hidden, so its input can still take focus on the way in. */
 .app-footer {
   transform: translateY(100%);
   transition: transform 110ms ease-out;
@@ -39,7 +39,6 @@ html[data-sidebar="collapsed"] .sidebar-reveal {
 .app-footer[data-open] {
   transform: translateY(0);
 }
-
 @media (prefers-reduced-motion: reduce) {
   .app-footer {
     transition: none;

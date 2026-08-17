@@ -43,7 +43,9 @@ async function ensureUser(email: string, password: string): Promise<string> {
   });
   if (!created.error) return created.data.user.id;
 
-  const { data, error } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+  const { data, error } = await supabase.auth.admin.listUsers({
+    perPage: 1000,
+  });
   if (error) throw error;
 
   const existing = data.users.find((user) => user.email === email);
@@ -125,7 +127,9 @@ async function main() {
     },
   ]);
 
-  console.log(`Seeded ${notes.length} notes for ${DEV.email} / ${DEV.password}`);
+  console.log(
+    `Seeded ${notes.length} notes for ${DEV.email} / ${DEV.password}`,
+  );
   console.log(`Seeded 1 canary note for ${CANARY.email} / ${CANARY.password}`);
 }
 
