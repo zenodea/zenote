@@ -40,6 +40,7 @@ import {
 const STEPS_PER_FRAME = 2;
 const DRAG_ALPHA = 0.1;
 const CLICK_SLOP = 4;
+const LONG_PRESS_MS = 450;
 
 // Tokens resolve lazily, so the first frame never paints fallbacks in a themed session.
 function resolvePalette() {
@@ -149,6 +150,10 @@ export function GraphView({
   const drag = useRef<{ node: number; moved: number; active: boolean } | null>(
     null,
   );
+  // Touch: every finger down, the pinch it may become, and the press it may become.
+  const touches = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<number | null>(null);
+  const press = useRef<ReturnType<typeof setTimeout> | null>(null);
   const layoutMovingRef = useRef(true);
   const [booted, setBooted] = useState(false);
 
@@ -165,10 +170,30 @@ export function GraphView({
 
   useEffect(() => () => setGraphReady(false), []);
 
+  useEffect(() => () => clearTimeout(press.current ?? undefined), []);
+
   const clearFocus = useCallback(() => {
     setSeedIds([]);
     setDepth(1);
   }, [setSeedIds]);
+
+  // Right-click on a desktop, long-press on a phone: the same pick.
+  const toggleSeedAt = useCallback(
+    (node: number | null) => {
+      if (node === null) {
+        clearFocus();
+        return;
+      }
+
+      const id = graph.nodes[node].id;
+      setSeedIds((current) =>
+        current.includes(id)
+          ? current.filter((seed) => seed !== id)
+          : [...current, id],
+      );
+    },
+    [graph, clearFocus, setSeedIds],
+  );
 
   const draw = useCallback(() => {
     const scene = sceneRef.current;
@@ -412,20 +437,7 @@ export function GraphView({
     function onContextMenu(event: MouseEvent) {
       event.preventDefault();
       event.stopPropagation();
-
-      const node = nodeAt(toLocal(event));
-
-      if (node === null) {
-        clearFocus();
-        return;
-      }
-
-      const id = graph.nodes[node].id;
-      setSeedIds((current) =>
-        current.includes(id)
-          ? current.filter((seed) => seed !== id)
-          : [...current, id],
-      );
+      toggleSeedAt(nodeAt(toLocal(event)));
     }
 
     canvas.addEventListener("wheel", onWheel, { passive: false });
@@ -434,25 +446,64 @@ export function GraphView({
       canvas.removeEventListener("wheel", onWheel);
       canvas.removeEventListener("contextmenu", onContextMenu);
     };
-  }, [
-    canvasRef,
-    graph,
-    toLocal,
-    nodeAt,
-    zoomAt,
-    start,
-    clearFocus,
-    controls,
-    setSeedIds,
-  ]);
+  }, [canvasRef, toLocal, nodeAt, zoomAt, start, controls, toggleSeedAt]);
+
+  function cancelPress() {
+    clearTimeout(press.current ?? undefined);
+    press.current = null;
+  }
+
+  /** Whatever the first finger began, a second one ends: the gesture is a pinch now. */
+  function abandonGesture() {
+    cancelPress();
+    if (drag.current) {
+      if (drag.current.active) {
+        layout.unpin(drag.current.node);
+        layout.setAlphaTarget(0);
+      }
+      drag.current = null;
+    }
+    if (panningRef.current) endPan();
+  }
+
+  function pinchState() {
+    const [a, b] = [...touches.current.values()];
+    return {
+      distance: Math.hypot(a.x - b.x, a.y - b.y),
+      centre: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+    };
+  }
 
   function onPointerDown(event: React.PointerEvent) {
     if (event.button === 2) return;
 
     const point = toLocal(event);
     pointer.current = point;
-    const node = nodeAt(point);
     canvasRef.current?.setPointerCapture(event.pointerId);
+
+    if (event.pointerType !== "mouse") {
+      touches.current.set(event.pointerId, point);
+      if (touches.current.size === 2) {
+        abandonGesture();
+        const { distance, centre } = pinchState();
+        pinch.current = distance;
+        beginPan(centre);
+        return;
+      }
+      if (touches.current.size > 2) return;
+    }
+
+    const node = nodeAt(point);
+
+    // No right button to press: a held finger picks a node out, or clears the focus.
+    if (controls && event.pointerType !== "mouse") {
+      press.current = setTimeout(() => {
+        press.current = null;
+        abandonGesture();
+        toggleSeedAt(node);
+        start();
+      }, LONG_PRESS_MS);
+    }
 
     if (node !== null) {
       drag.current = { node, moved: 0, active: false };
@@ -463,11 +514,29 @@ export function GraphView({
 
   function onPointerMove(event: React.PointerEvent) {
     const point = toLocal(event);
+    const previous = pointer.current;
     pointer.current = point;
 
+    if (touches.current.has(event.pointerId)) {
+      touches.current.set(event.pointerId, point);
+    }
+
+    if (pinch.current !== null && touches.current.size >= 2) {
+      const { distance, centre } = pinchState();
+      panTo(centre);
+      if (pinch.current > 0) zoomAt(centre, distance / pinch.current);
+      pinch.current = distance;
+      start();
+      return;
+    }
+
     if (drag.current) {
-      drag.current.moved += Math.hypot(event.movementX, event.movementY);
+      // Not event.movement*: Safari leaves both at 0 for touch pointers.
+      drag.current.moved += previous
+        ? Math.hypot(point.x - previous.x, point.y - previous.y)
+        : 0;
       if (drag.current.moved < CLICK_SLOP) return;
+      cancelPress();
       if (!drag.current.active) {
         drag.current.active = true;
         layout.setAlphaTarget(DRAG_ALPHA);
@@ -485,6 +554,9 @@ export function GraphView({
     }
 
     if (panningRef.current) {
+      if (previous && Math.hypot(point.x - previous.x, point.y - previous.y) > 1) {
+        cancelPress();
+      }
       panTo(point);
       start();
       return;
@@ -497,7 +569,20 @@ export function GraphView({
     }
   }
 
-  function onPointerUp() {
+  function onPointerUp(event?: React.PointerEvent) {
+    if (event) touches.current.delete(event.pointerId);
+    cancelPress();
+
+    if (pinch.current !== null && touches.current.size < 2) {
+      pinch.current = null;
+      endPan();
+      // A finger still down carries the pan on from wherever it is.
+      const remaining = [...touches.current.values()][0];
+      if (remaining) beginPan(remaining);
+      start();
+      return;
+    }
+
     if (drag.current) {
       const { node, active } = drag.current;
       drag.current = null;
@@ -517,8 +602,8 @@ export function GraphView({
     }
   }
 
-  function onPointerLeave() {
-    onPointerUp();
+  function onPointerLeave(event: React.PointerEvent) {
+    onPointerUp(event);
     pointer.current = null;
     if (hoveredRef.current !== null) {
       setHovered(null);
@@ -569,6 +654,7 @@ export function GraphView({
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
         onPointerLeave={onPointerLeave}
       />
 

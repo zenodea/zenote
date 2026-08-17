@@ -33,6 +33,13 @@
   visibility: hidden;
 }
 
+/* A thumb is a mouse's tool, and its 14px strip would eat swipes along the edge. */
+@media (pointer: coarse) {
+  .scroller-thumb {
+    display: none;
+  }
+}
+
 /* The gradient is set in JS and reads --ink, so the states are pure CSS. */
 .scroller-mark {
   --ink: color-mix(in srgb, var(--foreground) 48%, transparent);

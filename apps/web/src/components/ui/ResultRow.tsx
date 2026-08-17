@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 export function resultRowClass(active: boolean): string {
-  return `block w-full rounded px-2 py-1.5 text-left hover:bg-foreground/10 ${
+  return `block w-full rounded px-2 py-1.5 text-left hover:bg-foreground/10 coarse:py-2.5 ${
     active ? "bg-foreground/10" : ""
   }`;
 }

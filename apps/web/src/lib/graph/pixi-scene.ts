@@ -83,7 +83,8 @@ export class PixiScene {
       width,
       height,
       antialias: true,
-      resolution: window.devicePixelRatio || 1,
+      // Capped: a phone's DPR 3 triples the fill rate for a difference nobody can see.
+      resolution: Math.min(window.devicePixelRatio || 1, 2),
       autoDensity: true,
       background: palette.background,
       autoStart: false,

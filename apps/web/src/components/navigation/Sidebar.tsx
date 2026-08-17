@@ -94,7 +94,7 @@ export function Sidebar({
         <div
           aria-hidden
           onClick={closeDrawer}
-          className={`fixed inset-0 z-30 bg-background/70 transition-opacity duration-300 ${
+          className={`fixed inset-0 z-30 bg-foreground/25 transition-opacity duration-300 ${
             drawerOpen ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
         />
@@ -144,6 +144,7 @@ export function Sidebar({
           ) : (
             <NoteTree
               tree={tree}
+              folders={folders}
               collapsed={collapsed}
               onToggleFolder={toggleFolder}
               pathname={pathname}
