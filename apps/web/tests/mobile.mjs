@@ -72,7 +72,7 @@ check(
   (await drawer.evaluate((node) => node.getBoundingClientRect().right)) <= 1,
   "the drawer starts off screen",
 );
-await page.click("[aria-label='Vault menu']");
+await page.click("nav[aria-label='Main'] [aria-label='Vault menu']");
 await page.waitForTimeout(500);
 check(
   (await drawer.evaluate((node) => node.getBoundingClientRect().right)) > 100,
@@ -87,7 +87,7 @@ check(
 );
 
 console.log("search");
-await page.click("[aria-label='Jump to note']");
+await page.click("nav[aria-label='Main'] [aria-label='Jump to note']");
 await page.waitForTimeout(400);
 check(
   await page.isVisible("input[aria-label='Jump to note']"),
@@ -96,14 +96,18 @@ check(
 await page.keyboard.press("Escape");
 
 console.log("autosave");
-await page.click("[aria-label='Vault menu']");
-await page.waitForTimeout(500);
-const firstNote = page.locator("nav[aria-label='Vault'] a[href^='/notes/']");
-const href = await firstNote.first().getAttribute("href");
-await page.goto(`${BASE}${href}`, { waitUntil: "networkidle" });
-await page.waitForTimeout(1200);
-await page.click("[aria-label='Edit note']");
+// Its own note, made and removed here: the suite never writes into a real one.
+const scratch = `mobile-check-${Date.now()}`;
+await page.click("nav[aria-label='Main'] [aria-label='New note']");
+await page.waitForSelector("input[aria-label='New note name']", {
+  timeout: 15000,
+});
+await page.fill("input[aria-label='New note name']", scratch);
+await page.press("input[aria-label='New note name']", "Enter");
+await page.waitForURL(new RegExp(`/notes/${scratch}$`), { timeout: 30000 });
+const href = `/notes/${scratch}`;
 await page.waitForSelector(".cm-content", { timeout: 20000 });
+check(true, "the bottom bar's new note lands in the editor");
 await page.click(".cm-content");
 
 const marker = `mobile-test-${Date.now()}`;
@@ -137,6 +141,26 @@ await fresh.waitForTimeout(1200);
 check(
   (await fresh.textContent("main")).includes(marker),
   "what was typed before backgrounding is on the server",
+);
+await fresh.close();
+
+console.log("clean up");
+await page.evaluate(() => {
+  for (const [key, value] of [
+    ["visibilityState", "visible"],
+    ["hidden", false],
+  ]) {
+    Object.defineProperty(document, key, { value, configurable: true });
+  }
+  document.dispatchEvent(new Event("visibilitychange"));
+});
+await page.click("[aria-label='Note actions']");
+await page.click("text=Delete");
+await page.click("div[role='dialog'] button:text-is('Delete')");
+await page.waitForTimeout(1500);
+check(
+  !page.url().endsWith(href),
+  "the scratch note is not left behind",
 );
 
 check(consoleErrors.length === 0, `no page errors (${consoleErrors.join("; ")})`);
