@@ -49,6 +49,7 @@ export const metadata: Metadata = {
   title: { default: "Zenote", template: "%s — Zenote" },
   description: "Read your notes online",
   appleWebApp: { capable: true, title: "Zenote", statusBarStyle: "default" },
+  icons: { apple: "/apple-touch-icon.png" },
 };
 
 // No maximumScale/userScalable: pinch-zoom is an accessibility feature.
