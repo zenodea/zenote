@@ -7,7 +7,6 @@ export function PageHeader({
 }: {
   title: ReactNode;
   meta?: ReactNode;
-  /** Pinned to the header's right edge. */
   actions?: ReactNode;
 }) {
   return (

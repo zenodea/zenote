@@ -21,7 +21,6 @@ const LABEL_SCALE = 2.0;
 const LABEL_HUB_SCALE = 0.8;
 const LABEL_FADE = 0.2;
 const NODE_TEXTURE_RADIUS = 32;
-// Region names are for the wide view: they give way as node labels come in.
 const REGION_FADE_OUT = 1.4;
 
 export type SceneFrame = {
@@ -83,7 +82,6 @@ export class PixiScene {
       width,
       height,
       antialias: true,
-      // Capped: a phone's DPR 3 triples the fill rate for a difference nobody can see.
       resolution: Math.min(window.devicePixelRatio || 1, 2),
       autoDensity: true,
       background: palette.background,
@@ -93,7 +91,6 @@ export class PixiScene {
     return new PixiScene(app, palette);
   }
 
-  // A canvas holds one WebGL context, so swaps rebuild content rather than re-initialising the Application.
   setGraph(
     nodes: GraphNode[],
     edgePairs: ReadonlyArray<readonly [number, number]>,
@@ -146,7 +143,6 @@ export class PixiScene {
     }
   }
 
-  /** Named clusters, drawn at the centre of wherever the layout has put their members. */
   setRegions(regions: { name: string; nodes: number[] }[]) {
     for (const region of this.regions) region.label.destroy();
     this.regions = regions.map(({ name, nodes }) => {
@@ -214,7 +210,6 @@ export class PixiScene {
     }
     this.edges.alpha = EDGE_ALPHA - EDGE_FOCUS_DROP * focusAmount;
 
-    // Only edges touching the focus highlight; the rest is carried by the base layer's uniform dim.
     this.focusEdges.clear();
     if (focusAmount > 0.01 && near !== null) {
       for (const [a, b] of this.edgePairs) {
@@ -273,7 +268,6 @@ export class PixiScene {
       }
     }
 
-    // Fades as the view closes in, and out of the way entirely under a focus.
     const regionAlpha =
       Math.max(0, 1 - relativeScale / REGION_FADE_OUT) * (1 - focusAmount);
     for (const { label, nodes: members } of this.regions) {

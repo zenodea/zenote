@@ -11,7 +11,6 @@ export function nodeRadius(degree: number, baseRadius: number) {
   return baseRadius * (1 + Math.min(degree, 8) * 0.12);
 }
 
-/** The node under `point` (screen space), or null. Padded for small nodes. */
 export function hitTest(
   point: { x: number; y: number },
   view: View,

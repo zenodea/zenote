@@ -7,7 +7,6 @@ import { WIKILINK_TARGET } from "@/lib/wikilinks";
 const OPEN_TARGET = new RegExp(String.raw`\[\[(${WIKILINK_TARGET}*)$`);
 const TARGET_TEXT = new RegExp(String.raw`^${WIKILINK_TARGET}*$`);
 
-/** Completes `[[` with the vault's note titles, closing the link on pick. */
 export function wikilinkCompletions(targets: string[]) {
   return (context: CompletionContext): CompletionResult | null => {
     const match = context.matchBefore(OPEN_TARGET);

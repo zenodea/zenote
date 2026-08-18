@@ -9,7 +9,6 @@ const LABELS = {
   conflict: "Changed in another tab",
 } as const;
 
-/** Frame, not content: a diamond and a word, so it cannot be taken for one more tag. */
 export function SaveStatus() {
   const status = useSaveStatus();
   if (status === "idle") return null;

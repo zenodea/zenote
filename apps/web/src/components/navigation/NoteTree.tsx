@@ -212,9 +212,6 @@ function NodeList({
 
   return (
     <ul className="relative space-y-0.5">
-      {/* One hairline per level, on the centre of the chevron that opened it.
-          Inset by a row's own padding, so it runs between the first and last
-          child's text rather than edge to edge. */}
       {depth > 0 && (
         <span
           aria-hidden
@@ -230,7 +227,6 @@ function NodeList({
           const path = node.path;
           const isCollapsed = collapsed.has(path);
 
-          // A new child has to be somewhere the reader can see it.
           const startNaming = (kind: "note" | "folder") => {
             if (isCollapsed) onToggle(path);
             onNamingChange({ kind, into: path });
@@ -238,7 +234,7 @@ function NodeList({
 
           return (
             <li key={node.path}>
-              <div className="group/row flex items-center">
+              <div className="group/row flex items-center pr-1.5">
                 <Button
                   variant="row"
                   onClick={() => onToggle(node.path)}
@@ -338,7 +334,7 @@ function NodeList({
         return (
           <li
             key={node.slug}
-            className={`group/row flex items-center rounded hover:bg-foreground/10 ${
+            className={`group/row flex items-center rounded pr-1.5 hover:bg-foreground/10 ${
               isActive ? "bg-foreground/10" : ""
             }`}
           >

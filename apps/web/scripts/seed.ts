@@ -12,7 +12,6 @@ const CONTENT_DIR = path.join(process.cwd(), "content");
 const BATCH = 200;
 
 const DEV = { email: "dev@local.test", password: "devpassword" };
-// Exists only to prove RLS isolation: dev@ must never see this note.
 const CANARY = { email: "other@local.test", password: "otherpassword" };
 
 type SeedNote = {
@@ -93,15 +92,33 @@ async function readNote(file: string): Promise<SeedNote> {
   };
 }
 
-async function upsert(ownerId: string, notes: SeedNote[]) {
+async function ensureVault(ownerId: string, name: string): Promise<string> {
+  const { data } = await supabase
+    .from("vaults")
+    .select("id")
+    .eq("owner_id", ownerId)
+    .limit(1)
+    .maybeSingle<{ id: string }>();
+  if (data) return data.id;
+
+  const { data: created, error } = await supabase
+    .from("vaults")
+    .insert({ owner_id: ownerId, name })
+    .select("id")
+    .single<{ id: string }>();
+  if (error) throw error;
+  return created.id;
+}
+
+async function upsert(ownerId: string, vaultId: string, notes: SeedNote[]) {
   for (let from = 0; from < notes.length; from += BATCH) {
     const chunk = notes
       .slice(from, from + BATCH)
-      .map((note) => ({ ...note, owner_id: ownerId }));
+      .map((note) => ({ ...note, owner_id: ownerId, vault_id: vaultId }));
 
     const { error } = await supabase
       .from("notes")
-      .upsert(chunk, { onConflict: "owner_id,slug" });
+      .upsert(chunk, { onConflict: "vault_id,slug" });
 
     if (error) throw error;
   }
@@ -116,8 +133,13 @@ async function main() {
   const files = await walk(CONTENT_DIR);
   const notes = await Promise.all(files.map(readNote));
 
-  await upsert(devId, notes);
-  await upsert(canaryId, [
+  const [devVault, canaryVault] = await Promise.all([
+    ensureVault(devId, "Initial Vault"),
+    ensureVault(canaryId, "Initial Vault"),
+  ]);
+
+  await upsert(devId, devVault, notes);
+  await upsert(canaryId, canaryVault, [
     {
       slug: "canary",
       title: "canary",

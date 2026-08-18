@@ -1,10 +1,8 @@
 export const SEARCH_MODES = ["titles", "content"] as const;
 export type SearchMode = (typeof SEARCH_MODES)[number];
 
-/** Enough to link to a note and show its name — no body. */
 export type NoteRef = { slug: string; title: string };
 
-/** Everything but the body, which the client caches and fetches by delta. */
 export type SearchDocMeta = NoteRef & {
   tags: string[];
   updated: string;
@@ -20,7 +18,6 @@ export type PreparedDoc = SearchDoc & {
   bodyLower: string;
 };
 
-/** Precomputes the lowercase haystacks so typing doesn't re-lower every body. */
 export function prepareDocs(docs: SearchDoc[]): PreparedDoc[] {
   return docs.map((doc) => ({
     ...doc,
@@ -32,7 +29,6 @@ export function prepareDocs(docs: SearchDoc[]): PreparedDoc[] {
 
 export type ParsedQuery = { terms: string[]; tags: string[] };
 
-/** Splits a query into free-text terms and #tag filters. */
 export function parseQuery(raw: string): ParsedQuery {
   const terms: string[] = [];
   const tags: string[] = [];
@@ -48,7 +44,6 @@ export function parseQuery(raw: string): ParsedQuery {
 
 export type FuzzyMatch = { score: number; indices: number[] };
 
-/** Greedy subsequence match; consecutive runs and word starts score higher. */
 export function fuzzyMatch(
   query: string,
   textLower: string,
@@ -100,7 +95,6 @@ export type SearchResult = {
   score: number;
 };
 
-/** Titles match fuzzily; content by substring, since a subsequence scattered over a document matches anything. */
 export function searchDocs(
   docs: PreparedDoc[],
   { terms, tags }: ParsedQuery,
@@ -110,7 +104,6 @@ export function searchDocs(
   const fuzzyQuery = terms.join("");
 
   for (const doc of docs) {
-    // Every #tag must prefix-match one of the note's tags.
     if (!tags.every((tag) => doc.tags.some((t) => t.startsWith(tag)))) continue;
 
     const title = fuzzyQuery ? fuzzyMatch(fuzzyQuery, doc.titleLower) : null;
@@ -136,7 +129,6 @@ export function searchDocs(
       title: doc.title,
       folder: doc.folder,
       titleIndices: title?.indices ?? null,
-      // Title hits rank above content-only hits.
       score: title ? 1000 + title.score : 0,
       snippet,
     });

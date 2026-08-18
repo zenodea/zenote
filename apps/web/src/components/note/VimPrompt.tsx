@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { useFooterClaim, useFooterHost } from "@/lib/stores/footer";
 
-// The engine focuses its prompt while the bar is still down, so the browser scrolls to reach it.
 function unscroll(from: HTMLElement) {
   for (let node = from.parentElement; node; node = node.parentElement) {
     node.scrollTop = 0;
@@ -12,7 +11,6 @@ function unscroll(from: HTMLElement) {
   }
 }
 
-/** Vim's : and / prompts: the engine writes into this element, so the DOM decides. */
 export function VimPrompt({
   hostRef,
 }: {
@@ -26,7 +24,6 @@ export function VimPrompt({
     const element = own.current;
     if (!element) return;
 
-    // A prompt is a dialog div; the mode indicators the engine also appends are spans.
     const check = () => {
       const prompt = element.querySelector(":scope > div") !== null;
       if (prompt) unscroll(element);

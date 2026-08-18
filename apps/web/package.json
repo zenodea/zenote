@@ -12,7 +12,11 @@
     "db:start": "supabase --workdir ../.. start",
     "db:stop": "supabase --workdir ../.. stop",
     "db:reset": "supabase --workdir ../.. db reset",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "test:vault": "tsx tests/vault.test.ts",
+    "test:offline": "node tests/offline.mjs",
+    "test:conflict": "node tests/conflict.mjs",
+    "test:vaults": "node tests/vaults.mjs"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.44",

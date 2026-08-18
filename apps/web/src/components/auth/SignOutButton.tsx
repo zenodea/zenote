@@ -18,7 +18,6 @@ export function SignOutButton() {
 
     startLeaving();
     const submit = setTimeout(() => form.current?.requestSubmit(), LEAVE_MS);
-    // A successful sign-out unmounts this and cancels both; still here means the action failed.
     const recover = setTimeout(() => {
       setLeaving(false);
       endLeaving();

@@ -1,9 +1,3 @@
-/**
- * Colour themes, as dark/light pairs. Each id matches a
- * `[data-theme="..."]` block in globals.css that defines the full token
- * set (--background, --foreground, --accent); everything else derives from
- * those, so a new theme is one CSS block there and one family entry here.
- */
 export const THEME_FAMILIES = [
   { name: "Default", dark: "default-dark", light: "default-light" },
   { name: "Dracula", dark: "dracula-dark", light: "dracula-light" },
@@ -30,7 +24,6 @@ export function isThemeId(value: string): value is ThemeId {
   return (THEME_IDS as readonly string[]).includes(value);
 }
 
-// Doubles as a useSyncExternalStore subscribe. Client-side only.
 export function subscribeToTheme(onChange: () => void): () => void {
   const observer = new MutationObserver(onChange);
   observer.observe(document.documentElement, {

@@ -33,7 +33,6 @@ export function createLayout(
     linkDistance = 100,
     charge = -500,
     velocityDecay = 0.5,
-    // Settles at one link length of spacing per node, independent of count.
     centering = (4 * -charge) / (linkDistance * linkDistance),
     distanceMax = Infinity,
   }: LayoutOptions = {},
@@ -56,7 +55,6 @@ export function createLayout(
   const vy = new Float64Array(count);
   const fixed = new Uint8Array(count);
 
-  // Seeded at the density the forces settle at, so the first frames relax rather than blast outward.
   const goldenAngle = Math.PI * (3 - Math.sqrt(5));
   for (let i = 0; i < count; i++) {
     const radius = spacing * Math.sqrt(0.5 + i);
@@ -83,7 +81,6 @@ export function createLayout(
     return ((i % 11) - 5) * 1e-6 || 1e-6;
   }
 
-  // Rescaled to MIN_DISTANCE: same direction, but a coincident pair cannot kick unboundedly.
   const scratch = new Float64Array(3);
   function softenOffset(i: number, dx: number, dy: number, squared: number) {
     if (squared > 0) {
@@ -98,7 +95,6 @@ export function createLayout(
     scratch[2] = MIN_DISTANCE_SQUARED;
   }
 
-  // Flat-array quadtree: a child slot is -1 (empty), -(point + 2), or a cell; coincident points chain.
   let cellCapacity = 512;
   let child = new Int32Array(cellCapacity * 4);
   let cellX = new Float64Array(cellCapacity);
@@ -177,7 +173,6 @@ export function createLayout(
     }
   }
 
-  // Children always index after their parent, so a reverse sweep aggregates bottom-up.
   function accumulate() {
     for (let c = cellCount - 1; c >= 0; c--) {
       let m = 0;
@@ -265,7 +260,6 @@ export function createLayout(
               let d2 = pdx * pdx + pdy * pdy;
               if (d2 > distanceMaxSquared) continue;
               if (d2 < MIN_DISTANCE_SQUARED) {
-                // Seeded on i, not the pair: coincident nodes must scatter in different directions.
                 softenOffset(i, pdx, pdy, d2);
                 pdx = scratch[0];
                 pdy = scratch[1];
@@ -297,7 +291,6 @@ export function createLayout(
         distance = Math.sqrt(dx * dx + dy * dy);
       }
 
-      // Rest length: without it a connected graph collapses into a knot.
       const push =
         ((distance - linkDistance) / distance) * alpha * strengths[e];
       dx *= push;
@@ -310,7 +303,6 @@ export function createLayout(
     }
   }
 
-  // A fixed origin, not the running centroid: a centroid drags the cloud along with the dragged node.
   function centre() {
     for (let i = 0; i < count; i++) {
       vx[i] += (originX - x[i]) * centering * alpha;
@@ -319,7 +311,6 @@ export function createLayout(
   }
 
   function step(): boolean {
-    // pin, unpin, reheat and setAlphaTarget all raise alpha, so nothing has to track un-settling.
     if (alpha <= ALPHA_MIN && alphaTarget <= 0) return false;
 
     alpha += (alphaTarget - alpha) * ALPHA_DECAY;
@@ -393,7 +384,6 @@ export function createLayout(
   return { x, y, step, pin, unpin, reheat, setAlphaTarget };
 }
 
-/** Runs a fresh simulation to rest and returns the settled positions. */
 export function solveLayout(
   graph: Graph,
   width: number,

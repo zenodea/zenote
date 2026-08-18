@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { createLayout } from "@/lib/graph/force-layout";
 import { baseRadiusFor, nodeRadius } from "@/lib/graph/geometry";
 import type { Graph } from "@/lib/graph/model";
+import { navigate } from "@/lib/navigation";
 
 export type ConceptGraphData = {
   nodes: { label: string; slug: string | null }[];
@@ -23,9 +23,7 @@ function clip(label: string): string {
   return label.length <= 22 ? label : `${label.slice(0, 21)}…`;
 }
 
-/** The assistant's concept map, drawn with the same simulation and palette as /graph. */
 export function ConceptGraph({ data }: { data: ConceptGraphData }) {
-  const router = useRouter();
   const svgRef = useRef<SVGSVGElement>(null);
   const worldEl = useRef<SVGGElement>(null);
   const nodeEls = useRef<(SVGGElement | null)[]>([]);
@@ -97,7 +95,6 @@ export function ConceptGraph({ data }: { data: ConceptGraphData }) {
     const base = Math.min(2.6, baseRadiusFor(data.nodes.length));
     const radii = degrees.map((degree) => nodeRadius(degree, base));
 
-    // Text holds its size when the fit squeezes a wide map, so spread survives.
     const counter = 1 / Math.min(1, scale);
     const labelFont = 6 * counter;
     const edgeFont = 5 * counter;
@@ -182,7 +179,6 @@ export function ConceptGraph({ data }: { data: ConceptGraphData }) {
     return { x: (point.x - tx) / scale, y: (point.y - ty) / scale };
   }
 
-  // Zoom about the cursor. Native and non-passive: React's onWheel cannot preventDefault.
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
@@ -303,7 +299,7 @@ export function ConceptGraph({ data }: { data: ConceptGraphData }) {
     run();
 
     const slug = data.nodes[index]?.slug;
-    if (moved.current <= CLICK_SLOP && slug) router.push(`/notes/${slug}`);
+    if (moved.current <= CLICK_SLOP && slug) navigate(`/notes/${slug}`);
   }
 
   return (

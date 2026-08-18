@@ -7,7 +7,6 @@ type MessageRow = {
   message: VaultUIMessage;
 };
 
-/** Turns kept when replaying a thread to the model — a cost ceiling, not a UI limit. */
 const REPLAY_LIMIT = 30;
 
 export type ChatRow = {
@@ -17,11 +16,15 @@ export type ChatRow = {
   note_ids: string[] | null;
 };
 
-export async function getNoteId(slug: string): Promise<string | null> {
+export async function getNoteId(
+  vaultId: string,
+  slug: string,
+): Promise<string | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("notes")
     .select("id")
+    .eq("vault_id", vaultId)
     .eq("slug", slug)
     .maybeSingle<{ id: string }>();
   return data?.id ?? null;
@@ -37,7 +40,6 @@ export async function getChat(chatId: string): Promise<ChatRow | null> {
   return data;
 }
 
-/** The newest thread wins: it is the one the panel resumes for a note. */
 export async function latestChatId(noteId: string): Promise<string | null> {
   const supabase = await createClient();
   const { data } = await supabase
@@ -50,11 +52,14 @@ export async function latestChatId(noteId: string): Promise<string | null> {
   return data?.id ?? null;
 }
 
-export async function latestFreeChatId(): Promise<string | null> {
+export async function latestFreeChatId(
+  vaultId: string,
+): Promise<string | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("chats")
     .select("id")
+    .eq("vault_id", vaultId)
     .is("note_id", null)
     .is("note_ids", null)
     .order("updated_at", { ascending: false })
@@ -63,21 +68,23 @@ export async function latestFreeChatId(): Promise<string | null> {
   return data?.id ?? null;
 }
 
-export async function insertChat(fields: {
-  note_id?: string;
-  note_ids?: string[];
-}): Promise<string | null> {
+export async function insertChat(
+  vaultId: string,
+  fields: {
+    note_id?: string;
+    note_ids?: string[];
+  },
+): Promise<string | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("chats")
-    .insert(fields)
+    .insert({ ...fields, vault_id: vaultId })
     .select("id")
     .maybeSingle<{ id: string }>();
   if (error) console.error("Could not open chat:", error.message);
   return data?.id ?? null;
 }
 
-/** Stamps recency; with a title, names the thread too. */
 export async function touchChat(chatId: string, title?: string): Promise<void> {
   const supabase = await createClient();
   const { error } = await supabase
@@ -98,7 +105,6 @@ export async function loadMessages(chatId: string): Promise<VaultUIMessage[]> {
 
   if (error) throw new Error(`Could not load chat: ${error.message}`);
 
-  // Threads predating agreed reply ids hold a turn twice; the later row is finished.
   const rows = data ?? [];
   const last = new Map<string, number>();
   rows.forEach((row, index) => last.set(row.message.id, index));
@@ -107,10 +113,23 @@ export async function loadMessages(chatId: string): Promise<VaultUIMessage[]> {
     .filter((row, index) => last.get(row.message.id) === index)
     .map(({ status, message }) =>
       status === "complete" ? message : { ...message, metadata: { status } },
-    );
+    )
+    .map(retire)
+    .filter((message) => message.parts.length > 0);
 }
 
-/** Update-by-id first so a continued turn overwrites its earlier half. */
+const RETIRED_TOOLS = new Set(["tool-focus_graph"]);
+
+function retire(message: VaultUIMessage): VaultUIMessage {
+  if (!message.parts.some((part) => RETIRED_TOOLS.has(part.type))) {
+    return message;
+  }
+  return {
+    ...message,
+    parts: message.parts.filter((part) => !RETIRED_TOOLS.has(part.type)),
+  };
+}
+
 export async function saveMessage(
   chatId: string,
   message: VaultUIMessage,
@@ -118,7 +137,6 @@ export async function saveMessage(
 ): Promise<void> {
   if (message.role !== "user" && message.role !== "assistant") return;
   const supabase = await createClient();
-  // The status column is authoritative; a stored copy of it would go stale.
   const stored = { ...message, metadata: undefined };
 
   const { data: updated, error: updateError } = await supabase
@@ -150,11 +168,9 @@ export async function saveMessage(
     message: stored,
   });
 
-  // A unique violation is two tabs racing; the other tab's turn stands.
   if (error) console.error("Could not save chat message:", error.message);
 }
 
-/** Everything stored is what happened; everything sent is what is valid. */
 export function replayable(messages: VaultUIMessage[]): VaultUIMessage[] {
   return messages
     .filter(

@@ -5,17 +5,14 @@ import { Scroller } from "@/components/ui/Scroller";
 import { Text } from "@/components/ui/Text";
 
 type TagFilterProps = {
-  /** [tag, note count] pairs, already sorted for display. */
   tagCounts: ReadonlyArray<readonly [string, number]>;
   activeTags: string[];
   onChange: (tags: string[]) => void;
-  /** How many nodes survive the filter; null when no filter is active. */
   visibleCount: number | null;
   total: number;
   buttonClass: string;
 };
 
-// Filter button + checkbox panel, anchored to the control row's bottom-right.
 export function TagFilter({
   tagCounts,
   activeTags,

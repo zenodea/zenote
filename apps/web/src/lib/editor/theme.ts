@@ -16,7 +16,6 @@ export const editorTheme = EditorView.theme({
       "color-mix(in srgb, var(--foreground) 6%, var(--background))",
   },
   ".cm-cursor": { borderLeftColor: "var(--accent)" },
-  // Never display:none: a zero panel rect becomes a viewport-sized scroll margin (vim j/k stranding).
   ".cm-panels": { border: "none", backgroundColor: "transparent" },
   ".cm-tooltip": {
     backgroundColor: "var(--background)",

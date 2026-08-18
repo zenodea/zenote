@@ -22,7 +22,6 @@ export function useGraphCamera({
   overscan,
 }: {
   layout: Positions;
-  /** The settled layout to frame on, or null while it is still being solved. */
   target: () => Positions | null;
   sizeRef: RefObject<Size>;
   overscan: number;
@@ -103,7 +102,6 @@ export function useGraphCamera({
         maxY = Math.max(maxY, layout.y[i]);
       }
 
-      // Capped so a tiny neighbourhood doesn't fill the screen.
       const next = frameBounds(minX, maxX, minY, maxY, {
         maxScale: Math.min(fitScale.current * 4, MAX_SCALE),
       });
@@ -116,7 +114,6 @@ export function useGraphCamera({
   const zoomAt = useCallback((anchor: Point, factor: number) => {
     adjusted.current = true;
 
-    // Anchored on the target so fast scrolls accumulate, not fight the ease.
     const current = viewTarget.current;
     const scale = Math.min(
       MAX_SCALE,
@@ -174,7 +171,6 @@ export function useGraphCamera({
     pan.current = null;
   }, []);
 
-  /** The canvas moved under the view: hold the picture still on screen. */
   const holdStill = useCallback((byX: number, byY: number) => {
     view.current.x += byX;
     view.current.y += byY;
@@ -182,7 +178,6 @@ export function useGraphCamera({
     viewTarget.current.y += byY;
   }, []);
 
-  // The camera stops auto-fitting for good once the user has moved it.
   const fitIfUntouched = useCallback(() => {
     if (!adjusted.current) fit(true);
   }, [fit]);
@@ -222,7 +217,6 @@ export function useGraphCamera({
       current.y = goal.y;
     }
 
-    // Geometric: zoom is perceived multiplicatively; linear reads fast-then-crawling.
     const ratio = goal.scale / current.scale;
     if (Math.abs(Math.log(ratio)) > 0.0008) {
       current.scale *= Math.pow(ratio, VIEW_EASE);

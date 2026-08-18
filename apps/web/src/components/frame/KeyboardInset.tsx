@@ -2,27 +2,35 @@
 
 import { useEffect } from "react";
 
-// iOS shrinks only the visual viewport for the soft keyboard; the difference is 0 on Android.
 export function KeyboardInset() {
   useEffect(() => {
     const viewport = window.visualViewport;
     if (!viewport) return;
 
     const root = document.documentElement;
+    let frame = 0;
+    let written = -1;
 
-    function update() {
-      const inset = Math.max(
-        0,
-        window.innerHeight - viewport!.height - viewport!.offsetTop,
+    function measure() {
+      const inset = Math.round(
+        Math.max(0, window.innerHeight - viewport!.height - viewport!.offsetTop),
       );
-      root.style.setProperty("--keyboard", `${Math.round(inset)}px`);
+      if (Math.abs(inset - written) < 2) return;
+      written = inset;
+      root.style.setProperty("--keyboard", `${inset}px`);
     }
 
-    update();
+    function update() {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    }
+
+    measure();
     viewport.addEventListener("resize", update);
     viewport.addEventListener("scroll", update);
 
     return () => {
+      cancelAnimationFrame(frame);
       viewport.removeEventListener("resize", update);
       viewport.removeEventListener("scroll", update);
       root.style.removeProperty("--keyboard");

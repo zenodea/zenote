@@ -19,7 +19,6 @@ const HIDDEN_MARKS = new Set([
 
 const codeLine = Decoration.line({ class: "cm-codeblock" });
 
-// Whole doc on purpose: these change line heights, so viewport-scoped ones shift layout on scroll.
 function buildDecorations(view: EditorView): DecorationSet {
   const decorations: Range<Decoration>[] = [];
   const { selection } = view.state;
@@ -60,17 +59,22 @@ function buildDecorations(view: EditorView): DecorationSet {
   return Decoration.set(decorations, true);
 }
 
-/** Hides markdown syntax marks unless the cursor is inside their construct. */
 export const livePreview = ViewPlugin.fromClass(
   class {
     decorations: DecorationSet;
+    parsed: number;
 
     constructor(view: EditorView) {
       this.decorations = buildDecorations(view);
+      this.parsed = syntaxTree(view.state).length;
     }
 
     update(update: ViewUpdate) {
-      if (update.docChanged || update.selectionSet || update.viewportChanged) {
+      const parsed = syntaxTree(update.state).length;
+      const grew = parsed > this.parsed;
+      this.parsed = parsed;
+
+      if (update.docChanged || update.selectionSet || grew) {
         this.decorations = buildDecorations(update.view);
       }
     }

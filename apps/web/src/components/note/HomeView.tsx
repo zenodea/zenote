@@ -1,10 +1,14 @@
+"use client";
+
 import { PageHeader } from "@/components/frame/PageHeader";
 import { NoteList } from "@/components/note/NoteList";
 import { PageBody, noteCount } from "@/components/ui/PageBody";
-import { getAllNotes } from "@/lib/server/vault-data";
+import { useTitle } from "@/hooks/use-title";
+import { useVault } from "@/lib/vault/store";
 
-export default async function Home() {
-  const notes = await getAllNotes();
+export function HomeView() {
+  const { notes } = useVault();
+  useTitle(null);
 
   return (
     <>

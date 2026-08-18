@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { navigate } from "@/lib/navigation";
+import type { NoteRef } from "@/lib/search";
+import { filename, joinSlug, sanitizeName } from "@/lib/slug";
 import {
   createFolder,
   createNote,
@@ -9,11 +12,8 @@ import {
   moveFolder,
   moveNote,
   renameFolder,
-} from "@/app/actions/notes";
-import type { NoteRef } from "@/lib/search";
-import { filename, joinSlug, sanitizeName } from "@/lib/slug";
+} from "@/lib/vault/mutations";
 
-/** What is being named, and which folder it lands in ("" is the root). */
 export type Naming = {
   kind: "note" | "folder";
   into: string;
@@ -23,7 +23,6 @@ export type Naming = {
 export function useVaultActions(docs: NoteRef[]) {
   const [naming, setNaming] = useState<Naming>(null);
   const pathname = usePathname();
-  const router = useRouter();
 
   async function submitName(raw: string) {
     const name = sanitizeName(raw);
@@ -52,7 +51,7 @@ export function useVaultActions(docs: NoteRef[]) {
         return;
       }
     }
-    router.push(`/notes/${path}`);
+    navigate(`/notes/${path}`);
   }
 
   async function handleMoveFolder(path: string, into: string) {
@@ -76,7 +75,7 @@ export function useVaultActions(docs: NoteRef[]) {
       alert(error);
       return;
     }
-    if (pathname === `/notes/${slug}`) router.push(`/notes/${next}`);
+    if (pathname === `/notes/${slug}`) navigate(`/notes/${next}`);
   }
 
   return {

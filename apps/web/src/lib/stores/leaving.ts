@@ -11,7 +11,6 @@ export type Leaving = {
 
 const IDLE: Leaving = { active: false, geometry: null, viewportHeight: 0 };
 
-// Deliberately not persisted: module state surviving the soft navigation to /login is the mechanism.
 const store = createStore(IDLE);
 
 export const useLeaving = store.use;

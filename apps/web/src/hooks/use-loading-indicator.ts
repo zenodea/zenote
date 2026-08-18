@@ -2,13 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 
-/** Work that finishes inside this window never shows a loader at all. */
 export const LOADER_GRACE_MS = 130;
 
-/** Once shown a loader stays this long: not long enough to feel a stall, long enough not to read as a glitch. */
 const MIN_VISIBLE_MS = 400;
 
-/** Long enough to deserve an indicator, shown long enough to take away; a fixed delay would tax every load. */
 export function useLoadingIndicator(loading: boolean): boolean {
   const [visible, setVisible] = useState(false);
   const shownAt = useRef(0);

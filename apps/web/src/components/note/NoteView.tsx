@@ -1,11 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { deleteNote, renameNote } from "@/app/actions/notes";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Backlink } from "@/lib/backlinks";
 import type { Graph } from "@/lib/graph/model";
-import type { Note } from "@/lib/server/notes";
 import { stripTitleHeading } from "@/lib/note-body";
 import { useSettings } from "@/lib/stores/settings";
 import { Scroller } from "@/components/ui/Scroller";
@@ -19,7 +16,11 @@ import { NoteToolbar } from "@/components/note/NoteToolbar";
 import { RenameNoteModal } from "@/components/note/RenameNoteModal";
 import { useAutosave } from "@/components/note/use-autosave";
 import { VimPrompt } from "@/components/note/VimPrompt";
-import { beginPageFade } from "@/lib/page-fade";
+import { navigate } from "@/lib/navigation";
+import { setEditingNote } from "@/lib/vault/editing";
+import { deleteNote, renameNote } from "@/lib/vault/mutations";
+import type { LocalNote } from "@/lib/vault/types";
+import type { WikilinkResolver } from "@/lib/wikilinks";
 
 export function NoteView({
   note,
@@ -29,19 +30,16 @@ export function NoteView({
   backlinks,
   neighbourhood,
 }: {
-  note: Note | null;
+  note: LocalNote | null;
   slug: string;
-  resolver: Record<string, string>;
-  /** Titles of all vault notes, for the editor's `[[` autocomplete. */
+  resolver: WikilinkResolver;
   linkTitles: string[];
   backlinks: Backlink[];
   neighbourhood: Graph;
 }) {
-  const router = useRouter();
   const settings = useSettings();
-  const autosave = useAutosave(slug, note?.updated ?? "");
+  const autosave = useAutosave(slug);
 
-  // Empty notes open in the editor; else the setting decides, pencil overrides.
   const [startedEmpty] = useState(note?.body === "");
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -50,20 +48,21 @@ export function NoteView({
   const reading =
     readingOverride ?? (startedEmpty ? false : !settings.openInEditMode);
 
-  // The prop is only as fresh as the last server render, and the editor never remounts between modes.
   const typed = useRef<{ revision: string; body: string } | null>(null);
-  const revision = `${slug}\u0000${note?.updated ?? ""}`;
+  const revision = `${slug}\u0000${note?.updated ?? ""}\u0000${note?.localRev ?? 0}`;
   const [held, setHeld] = useState({ revision, body: note?.body ?? "" });
   if (held.revision !== revision) setHeld({ revision, body: note?.body ?? "" });
   const body = held.body;
-  const resolverMap = useMemo(
-    () => new Map(Object.entries(resolver)),
-    [resolver],
-  );
   const linkTargets = useMemo(
     () => [...new Set(linkTitles)].sort((a, b) => a.localeCompare(b)),
     [linkTitles],
   );
+
+  const noteId = note?.id ?? null;
+  useEffect(() => {
+    setEditingNote(reading ? null : noteId);
+    return () => setEditingNote(null);
+  }, [reading, noteId]);
 
   if (!note) return <NoteMissing slug={slug} />;
 
@@ -75,7 +74,6 @@ export function NoteView({
     const draft = typed.current;
     if (draft?.revision === revision) setHeld({ revision, body: draft.body });
 
-    // Land the save, then pick the note up again so its tags and backlinks match the new body.
     void autosave.publish();
   }
 
@@ -89,8 +87,7 @@ export function NoteView({
       alert(error);
       return;
     }
-    beginPageFade();
-    router.push(`/notes/${next}`);
+    navigate(`/notes/${next}`);
   }
 
   async function submitDelete() {
@@ -102,8 +99,7 @@ export function NoteView({
       alert(error);
       return;
     }
-    beginPageFade();
-    router.push("/");
+    navigate("/");
   }
 
   return (
@@ -122,7 +118,7 @@ export function NoteView({
             <div className="prose max-w-none">
               <NoteMarkdown
                 source={stripTitleHeading({ ...note, body })}
-                resolver={resolverMap}
+                resolver={resolver}
               />
             </div>
           ) : (

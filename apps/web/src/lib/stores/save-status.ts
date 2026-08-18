@@ -4,7 +4,6 @@ import { createStore } from "../store";
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error" | "conflict";
 
-/** A save lands faster than it reads, so saving is held long enough to see and the outcome queues behind. */
 const MIN_SAVING_MS = 500;
 
 const store = createStore<SaveStatus>("idle");

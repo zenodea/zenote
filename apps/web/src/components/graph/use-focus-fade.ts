@@ -6,7 +6,6 @@ import { neighbourhood } from "@/lib/graph/model";
 
 const FADE = 0.18;
 
-/** Refitted to a rebuilt graph, keeping the overlap so a fade in flight carries. */
 function refit(values: Float32Array, count: number, rest: number) {
   const next = new Float32Array(count).fill(rest);
   next.set(values.subarray(0, Math.min(values.length, count)));
@@ -27,12 +26,10 @@ export function useFocusFade({
   const hovered = useRef<number | null>(null);
   const highlight = useRef<Float32Array>(new Float32Array(nodeCount).fill(1));
   const focusAmount = useRef(0);
-  // Rests at 0 (highlight rests at 1); multiplying them makes labels flash.
   const labelFocus = useRef<Float32Array>(new Float32Array(nodeCount));
   const hoverSet = useRef<{ node: number; set: Set<number> } | null>(null);
   const focusRef = useLatestRef(focus);
 
-  // Indexed by node: a length left behind gives new nodes no highlight, which the scene paints as NaN.
   useEffect(() => {
     if (highlight.current.length === nodeCount) return;
     highlight.current = refit(highlight.current, nodeCount, 1);
@@ -47,7 +44,6 @@ export function useFocusFade({
     const hoverIndex = hovered.current;
     if (hoverIndex === null) return null;
 
-    // Cached: runs every frame during a fade.
     if (hoverSet.current?.node !== hoverIndex) {
       hoverSet.current = {
         node: hoverIndex,

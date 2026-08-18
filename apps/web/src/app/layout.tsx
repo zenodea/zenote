@@ -12,7 +12,6 @@ import {
 } from "@/lib/theme";
 import "./globals.css";
 
-// Before paint: localStorage is unreadable on the server, so without this the first paint is the default.
 const boot = `(function () {
   try {
     var themes = ${JSON.stringify(THEME_IDS)};
@@ -52,7 +51,6 @@ export const metadata: Metadata = {
   icons: { apple: "/apple-touch-icon.png" },
 };
 
-// No maximumScale/userScalable: pinch-zoom is an accessibility feature.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -64,7 +62,6 @@ export const viewport: Viewport = {
   ],
 };
 
-// Shared with /login, so anything here survives the sign-in navigation untouched.
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html

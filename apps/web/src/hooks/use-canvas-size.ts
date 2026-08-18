@@ -5,7 +5,6 @@ import { useLatestRef } from "./use-latest-ref";
 
 export type Size = { width: number; height: number };
 
-/** Tracks the pixel size of a canvas's parent element. */
 export function useCanvasSize({
   canvasRef,
   sizeRef,

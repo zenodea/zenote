@@ -2,13 +2,13 @@ import "server-only";
 import { cache } from "react";
 import { createClient } from "./supabase";
 
-// Only empty folders live here; the rest are implied by note slugs.
-export const getFolders = cache(async (): Promise<string[]> => {
+export const getFolders = cache(async (vaultId: string): Promise<string[]> => {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("folders")
     .select("path")
+    .eq("vault_id", vaultId)
     .order("path")
     .returns<{ path: string }[]>();
 

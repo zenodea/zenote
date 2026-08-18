@@ -1,4 +1,3 @@
-// Every inline SVG icon in the app, one consistent 16-grid stroke style.
 
 export function ChevronIcon({ className }: { className?: string }) {
   return (
@@ -55,7 +54,6 @@ export function PlusIcon() {
   );
 }
 
-/** A list whose bullets are the frame's diamonds: the vault's conversations. */
 export function HistoryIcon() {
   return (
     <svg
@@ -270,7 +268,6 @@ export function SparkleIcon() {
   );
 }
 
-/** Three text lines with the accent slash through them; the drawing fills the middle 60% of `size`. */
 export function LogoIcon({ size = 28 }: { size?: number }) {
   return (
     <svg
@@ -297,7 +294,6 @@ export function LogoIcon({ size = 28 }: { size?: number }) {
   );
 }
 
-/** The monogram is the Z, unchanged; the rest is drawn around it on the same rules, 32 wide on a 48 advance. */
 export function LogoWordmark({ height = 28 }: { height?: number }) {
   return (
     <svg
@@ -320,7 +316,6 @@ export function LogoWordmark({ height = 28 }: { height?: number }) {
         strokeWidth="6.5"
         strokeLinecap="round"
       />
-      {/* O as the frame's diamond: the one letter no arrangement of rules makes. */}
       <path
         d="M176 16 192 32 176 48 160 32Z"
         stroke="var(--foreground)"

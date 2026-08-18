@@ -1,4 +1,4 @@
-import type { Note } from "./server/notes";
+import type { Note } from "./note";
 import {
   extractOccurrences,
   resolveWikilink,
@@ -19,7 +19,6 @@ export function buildBacklinks(
   const backlinks = new Map<string, Backlink[]>();
 
   for (const source of notes) {
-    // One entry per target, so a note linking twice shares one Backlink.
     const entries = new Map<string, Backlink>();
 
     for (const occurrence of extractOccurrences(source.body)) {

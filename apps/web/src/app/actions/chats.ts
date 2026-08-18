@@ -21,18 +21,18 @@ export type ChatListing = {
 
 export type OpenedChat = {
   chatId: string;
-  /** Null for a free-standing conversation about the vault at large. */
   subject: ChatSubject | null;
   messages: VaultUIMessage[];
 };
 
-export async function listChats(): Promise<ChatListing[]> {
+export async function listChats(vaultId: string): Promise<ChatListing[]> {
   if (!(await getUser())) return [];
 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("chats")
     .select("id,title,updated_at,note_ids,notes(title)")
+    .eq("vault_id", vaultId)
     .order("updated_at", { ascending: false })
     .returns<
       {
@@ -55,10 +55,13 @@ export async function listChats(): Promise<ChatListing[]> {
   }));
 }
 
-export async function openNoteChat(slug: string): Promise<OpenedChat | null> {
+export async function openNoteChat(
+  vaultId: string,
+  slug: string,
+): Promise<OpenedChat | null> {
   if (!(await getUser())) return null;
 
-  const noteId = await getNoteId(slug);
+  const noteId = await getNoteId(vaultId, slug);
   const chatId = noteId ? await latestChatId(noteId) : null;
   if (!chatId) return null;
 
@@ -69,10 +72,12 @@ export async function openNoteChat(slug: string): Promise<OpenedChat | null> {
   };
 }
 
-export async function openFreeChat(): Promise<OpenedChat | null> {
+export async function openFreeChat(
+  vaultId: string,
+): Promise<OpenedChat | null> {
   if (!(await getUser())) return null;
 
-  const chatId = await latestFreeChatId();
+  const chatId = await latestFreeChatId(vaultId);
   if (!chatId) return null;
 
   return { chatId, subject: null, messages: await loadMessages(chatId) };
@@ -109,27 +114,28 @@ export async function openChat(chatId: string): Promise<OpenedChat | null> {
   return { chatId, subject, messages: await loadMessages(chatId) };
 }
 
-/** Called on the first send of a fresh thread, so empty chats never exist. */
 export async function createChat(
+  vaultId: string,
   subject: ChatSubject | null,
 ): Promise<string | null> {
   if (!(await getUser())) return null;
 
-  if (subject === null) return insertChat({});
+  if (subject === null) return insertChat(vaultId, {});
 
   if (subject.kind === "note") {
-    const noteId = await getNoteId(subject.slug);
-    return noteId ? insertChat({ note_id: noteId }) : null;
+    const noteId = await getNoteId(vaultId, subject.slug);
+    return noteId ? insertChat(vaultId, { note_id: noteId }) : null;
   }
 
   const supabase = await createClient();
   const { data } = await supabase
     .from("notes")
     .select("id")
+    .eq("vault_id", vaultId)
     .in("slug", subject.slugs)
     .returns<{ id: string }[]>();
   const ids = (data ?? []).map((row) => row.id);
-  return ids.length > 0 ? insertChat({ note_ids: ids }) : null;
+  return ids.length > 0 ? insertChat(vaultId, { note_ids: ids }) : null;
 }
 
 export async function deleteChat(chatId: string): Promise<{ error?: string }> {

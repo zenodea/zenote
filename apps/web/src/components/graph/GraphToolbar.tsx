@@ -5,7 +5,6 @@ import { GraphSearch } from "@/components/graph/GraphSearch";
 import { TagFilter } from "@/components/graph/TagFilter";
 import { TOOLBAR_CONTROL } from "@/components/graph/toolbar-chrome";
 
-// The graph's top-right control row: search, tag filter, zoom and reset.
 export function GraphToolbar({
   nodes,
   onSelectNode,

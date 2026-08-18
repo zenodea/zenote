@@ -1,6 +1,5 @@
-import type { Note } from "./server/notes";
+import type { Note } from "./note";
 
-/** Drops a leading `# Title` heading that only repeats the note's own title. */
 export function stripTitleHeading(note: Note): string {
   const match = note.body.match(/^#\s+(.+?)\s*(?:\r?\n+|$)/);
   if (match && match[1].toLowerCase() === note.title.trim().toLowerCase()) {

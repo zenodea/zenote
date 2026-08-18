@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import {
   closeSwitcher,
   toggleSwitcher,
@@ -19,12 +18,18 @@ import {
   resultRowClass,
 } from "@/components/ui/ResultRow";
 import { Scroller } from "@/components/ui/Scroller";
-import { beginPageFade } from "@/lib/page-fade";
+import { navigate } from "@/lib/navigation";
+import { useVault } from "@/lib/vault/store";
 
 const MAX_RESULTS = 8;
 
-export function QuickSwitcher({ docs }: { docs: NoteRef[] }) {
+export function QuickSwitcher() {
   const open = useSwitcherOpen();
+  const { notes } = useVault();
+  const docs = useMemo(
+    () => notes.map(({ slug, title }) => ({ slug, title })),
+    [notes],
+  );
 
   useHotkey("mod+k", (event) => {
     event.preventDefault();
@@ -43,7 +48,6 @@ function SwitcherPanel({
   onClose: () => void;
 }) {
   const [query, setQuery] = useState("");
-  const router = useRouter();
 
   const needle = query.trim().toLowerCase().replace(/\s+/g, "");
   const matches = needle
@@ -63,8 +67,7 @@ function SwitcherPanel({
 
   function select(slug: string) {
     onClose();
-    beginPageFade();
-    router.push(`/notes/${slug}`);
+    navigate(`/notes/${slug}`);
   }
 
   const { highlighted, setActive, onKeyDown } = useListNavigation(
@@ -99,7 +102,6 @@ function SwitcherPanel({
               >
                 <button
                   type="button"
-                  // Mousedown, not click: click fires after blur re-renders.
                   onMouseDown={(event) => {
                     event.preventDefault();
                     select(doc.slug);

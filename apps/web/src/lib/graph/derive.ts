@@ -1,6 +1,5 @@
 import type { Graph } from "./model";
 
-/** [tag, note count] pairs, sorted by count then name. */
 export function tagCounts(graph: Graph): [string, number][] {
   const counts = new Map<string, number>();
   for (const node of graph.nodes) {
@@ -11,7 +10,6 @@ export function tagCounts(graph: Graph): [string, number][] {
   );
 }
 
-/** Node indices carrying any of `tags`; null when nothing is filtered. */
 export function nodesWithTags(
   graph: Graph,
   tags: string[],

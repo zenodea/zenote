@@ -36,7 +36,6 @@ const WARM_TIMEOUT_MS = 8000;
 const ENTER_FAILSAFE_MS = 8000;
 const EASE = "cubic-bezier(0.7, 0, 0.2, 1)";
 
-// in: idle→working→closing→framing→app   out: app→(leaving)→unframing→opening→idle
 type Phase =
   "app" | "unframing" | "opening" | "idle" | "working" | "closing" | "framing";
 
@@ -44,7 +43,6 @@ type Env = { width: number; height: number; reduce: boolean };
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Read off the URL, not useSearchParams, which would force a Suspense boundary in the root layout.
 function returnTo(): string {
   const param = new URLSearchParams(window.location.search).get(RETURN_PARAM);
   return safeReturnTo(param) ?? "/";
@@ -55,14 +53,12 @@ export function Frame() {
   const settings = useSettings();
   const leaving = useLeaving();
   const phone = useLayoutMode() === "phone";
-  // From the URL, not a prop: the root layout is shared with /login and isn't re-rendered by sign-in.
   const authed = usePathname() !== LOGIN;
   const [env, setEnv] = useState<Env | null>(null);
   const [rawPhase, setPhase] = useState<Phase>(authed ? "app" : "idle");
   const [error, setError] = useState<string | null>(null);
   const [entering, setEntering] = useState(false);
 
-  // An unchoreographed logged-out arrival would otherwise strand "app" and deaden the form.
   const phase: Phase =
     !authed && !leaving.active && rawPhase === "app" ? "idle" : rawPhase;
 
@@ -94,7 +90,6 @@ export function Frame() {
     return () => cancelAnimationFrame(id);
   }, [authed]);
 
-  // Hold the fade until the chrome mounts (`authed` flips); the failsafe covers a navigation that never lands.
   useEffect(() => {
     if (!entering) return;
 
@@ -108,7 +103,6 @@ export function Frame() {
     return () => clearTimeout(id);
   }, [entering, authed]);
 
-  // Arrived logged-out with the frame still drawn: retract it, then open.
   useEffect(() => {
     if (authed || !leaving.active) return;
 
@@ -123,7 +117,6 @@ export function Frame() {
     return () => cancelAnimationFrame(id);
   }, [authed, leaving.active]);
 
-  // A resize since the measurement pins `foot` to the old viewport height.
   const geometry: Geometry = useMemo(() => {
     const measured =
       leaving.geometry && leaving.viewportHeight === env?.height
@@ -167,7 +160,6 @@ export function Frame() {
 
     const destination = returnTo();
 
-    // Body must be read, not just awaited: an abandoned response leaves the render stream unconsumed.
     await Promise.all([
       Promise.race([
         fetch(destination, { cache: "no-store" })
@@ -192,7 +184,6 @@ export function Frame() {
   }
 
   function enter(destination: string) {
-    // Set before navigating so the chrome is transparent on its first paint.
     if (!reduce) {
       document.body.dataset.entering = "true";
       setEntering(true);
@@ -226,7 +217,6 @@ export function Frame() {
   };
   const draw = reduce ? "none" : `transform ${LINES_MS}ms ${EASE}`;
 
-  // The measurement outlives the sign-out and would frame a panel that has closed.
   const panel =
     leaving.active || phase === "unframing" || phase === "opening"
       ? geometry.panel
@@ -243,7 +233,6 @@ export function Frame() {
     />
   );
 
-  // Before measurement, ship the form alone so /login is never an empty document.
   if (!env) return authed ? null : <Centered>{form}</Centered>;
 
   const box = Math.min(MAX_BOX, env.width - 40, env.height - 40);
@@ -286,7 +275,6 @@ export function Frame() {
         />
       )}
 
-      {/* The assistant panel, when it was open, leaves with the same grace. */}
       {panel && (
         <Seam
           className="top-0 h-dvh w-px"
@@ -313,9 +301,6 @@ export function Frame() {
         />
       )}
 
-      {/* Every point where the seams cross, matching what Junctions draws.
-          Retracting, they travel with the lines into the main junction — the
-          point the login diamond opens from. */}
       {[
         ...(rails
           ? [
@@ -341,7 +326,6 @@ export function Frame() {
             opacity: (lines.opacity as number) * (drawn ? 1 : 0),
             transitionProperty: "left, top, opacity",
             transitionTimingFunction: EASE,
-            // Hands off to the real junction marks, so it fades on the seams' clock.
             transitionDuration: crossfade
               ? `${crossfade}ms`
               : reduce

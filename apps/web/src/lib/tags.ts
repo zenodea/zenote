@@ -1,5 +1,5 @@
 import { stripCode } from "./markdown";
-import type { Note } from "./server/notes";
+import type { Note } from "./note";
 
 const TAG_SOURCE = String.raw`(?<=^|[\s([{])#([A-Za-z0-9_-]*[A-Za-z][A-Za-z0-9_-]*)`;
 

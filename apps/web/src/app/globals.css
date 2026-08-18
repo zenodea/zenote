@@ -51,3 +51,25 @@ body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   overscroll-behavior: none;
 }
+
+/* A <details> that slides both ways instead of snapping. interpolate-size is
+   what lets the closed 0 animate to the open auto; browsers without it just
+   keep the native snap. */
+.disclosure {
+  interpolate-size: allow-keywords;
+}
+.disclosure::details-content {
+  block-size: 0;
+  overflow: hidden;
+  transition:
+    block-size 260ms ease,
+    content-visibility 260ms allow-discrete;
+}
+.disclosure[open]::details-content {
+  block-size: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .disclosure::details-content {
+    transition: none;
+  }
+}

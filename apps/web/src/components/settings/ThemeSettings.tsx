@@ -27,8 +27,6 @@ export function ThemeSettings() {
                 <button
                   key={option.id}
                   type="button"
-                  // Setting data-theme scopes the theme's tokens to this half,
-                  // so the preview uses the real values from globals.css.
                   data-theme={option.id}
                   onClick={() => applyTheme(option.id)}
                   aria-label={`${family.name} ${option.variant}`}

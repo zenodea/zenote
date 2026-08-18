@@ -52,7 +52,6 @@ export function HighlightedCode({
         setNodes(result);
       })
       .catch(() => {
-        // Unknown or failed language pack: keep the plain text fallback.
       });
 
     return () => {

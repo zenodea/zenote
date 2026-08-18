@@ -1,27 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { revalidateVault, saveNote } from "@/app/actions/notes";
 import { setSaveStatus } from "@/lib/stores/save-status";
+import { markEditingDirty } from "@/lib/vault/editing";
+import { saveBody } from "@/lib/vault/mutations";
+import { syncNow } from "@/lib/vault/sync";
 
-const DEBOUNCE_MS = 1000;
-const RETRY_MS = 4000;
-const STALE_MS = 30000;
+const DEBOUNCE_MS = 300;
 
-export function useAutosave(slug: string, updated: string) {
-  const router = useRouter();
-  const base = useRef(updated);
+export function useAutosave(slug: string) {
   const pending = useRef<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dirty = useRef(false);
 
   const stop = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
   }, []);
-
-  const flushRef = useRef<() => Promise<void>>(async () => {});
 
   const flush = useCallback(async () => {
     stop();
@@ -31,31 +25,20 @@ export function useAutosave(slug: string, updated: string) {
 
     setSaveStatus("saving");
     try {
-      const result = await saveNote(slug, body, base.current);
-      if (result.status === "conflict") {
-        setSaveStatus("conflict");
-        return;
-      }
-      base.current = result.updated;
+      await saveBody(slug, body);
       setSaveStatus("saved");
     } catch {
       if (pending.current === null) pending.current = body;
       setSaveStatus("error");
-      stop();
-      timer.current = setTimeout(() => void flushRef.current(), RETRY_MS);
     }
   }, [slug, stop]);
-
-  useEffect(() => {
-    flushRef.current = flush;
-  }, [flush]);
 
   const change = useCallback(
     (body: string) => {
       pending.current = body;
-      dirty.current = true;
+      markEditingDirty();
       stop();
-      timer.current = setTimeout(flush, DEBOUNCE_MS);
+      timer.current = setTimeout(() => void flush(), DEBOUNCE_MS);
     },
     [flush, stop],
   );
@@ -65,52 +48,30 @@ export function useAutosave(slug: string, updated: string) {
     pending.current = null;
   }, [stop]);
 
-  /** Lands the note, then revalidates: refreshing this route never reaches the graph a wikilink belongs in. */
-  const publish = useCallback(async () => {
-    await flush();
-    if (!dirty.current) return;
-    dirty.current = false;
-
-    await revalidateVault();
-    router.refresh();
-  }, [flush, router]);
-
   useEffect(() => {
     setSaveStatus("idle");
-    let hiddenAt = 0;
 
     function warn(event: BeforeUnloadEvent) {
       if (pending.current !== null) event.preventDefault();
     }
 
-    // beforeunload never fires on a backgrounded mobile tab; pagehide is the last chance to save.
     function onHide() {
-      hiddenAt = performance.now();
-      void flush();
-    }
-
-    function onVisibility() {
-      if (document.hidden) {
-        onHide();
-        return;
-      }
-      if (pending.current !== null) return;
-      if (hiddenAt && performance.now() - hiddenAt > STALE_MS) router.refresh();
-      hiddenAt = 0;
+      void flush().then(() => {
+        if (document.hidden) void syncNow();
+      });
     }
 
     window.addEventListener("beforeunload", warn);
     window.addEventListener("pagehide", onHide);
-    document.addEventListener("visibilitychange", onVisibility);
+    document.addEventListener("visibilitychange", onHide);
 
     return () => {
       window.removeEventListener("beforeunload", warn);
       window.removeEventListener("pagehide", onHide);
-      document.removeEventListener("visibilitychange", onVisibility);
-      // Sidebar, search and backlinks catch up when the note is left, not on every pause in typing.
-      void publish();
+      document.removeEventListener("visibilitychange", onHide);
+      void flush();
     };
-  }, [publish, flush, router]);
+  }, [flush]);
 
-  return { change, flush, publish, discard };
+  return { change, flush, publish: flush, discard };
 }

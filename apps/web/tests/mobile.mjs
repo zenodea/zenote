@@ -1,4 +1,3 @@
-// Phone-viewport checks against a running app; set BASE_URL for anything but the dev server.
 import { chromium, devices } from "playwright";
 
 const BASE = process.env.BASE_URL ?? "http://localhost:3000";

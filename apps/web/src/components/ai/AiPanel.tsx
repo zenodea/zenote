@@ -29,20 +29,17 @@ import {
   type VaultUIMessage,
 } from "@/lib/chat";
 import { setGraphFocus, useGraphFocusState } from "@/lib/stores/graph-focus";
+import { getResolver, useVault, vaultStore } from "@/lib/vault/store";
 import type { WikilinkResolver } from "@/lib/wikilinks";
 
-export function AiPanel({
-  titles,
-  resolver,
-}: {
-  titles: Record<string, string>;
-  resolver: Record<string, string>;
-}) {
+export function AiPanel() {
   const { open, setOpen } = useAiAssistant();
-  const resolverMap = useMemo(
-    () => new Map(Object.entries(resolver)),
-    [resolver],
+  const { notes } = useVault();
+  const titles = useMemo(
+    () => Object.fromEntries(notes.map((note) => [note.slug, note.title])),
+    [notes],
   );
+  const resolverMap = getResolver();
   const slug = useNoteSlug();
   const focus = useGraphFocusState();
 
@@ -52,7 +49,6 @@ export function AiPanel({
       ? { kind: "selection", slugs: focus.slugs }
       : null;
 
-  // `wanted` loads behind the current view and swaps in whole, so nothing flickers.
   const [thread, setThread] = useState<OpenThread | null>(null);
   const [wanted, setWanted] = useState<{ subject: ChatSubject | null } | null>(
     { subject: live },
@@ -63,10 +59,8 @@ export function AiPanel({
 
   const historyOpen = view === "history";
 
-  // A resumed thread's stored history is display, not engagement, so it stays untouched.
   const untouched = !touched;
 
-  // Reopening starts the follow-the-reader cycle over, aimed at wherever they are now.
   const [wasOpen, setWasOpen] = useState(open);
   if (open !== wasOpen) {
     setWasOpen(open);
@@ -90,23 +84,23 @@ export function AiPanel({
       setTouched(false);
       setView("chat");
     } else if (untouched && live?.kind === "note") {
-      // Only a note re-aims an untouched thread; subjectless pages change nothing.
       setWanted({ subject: live });
       setView("chat");
     }
   }
 
-  // Only a selection starts fresh: its identity changes with every pick.
   useEffect(() => {
     if (wanted === null) return;
     let alive = true;
     (async () => {
       const target = wanted.subject;
-      const opened =
-        target?.kind === "note"
-          ? await openNoteChat(target.slug).catch(() => null)
+      const vaultId = vaultStore.get().vault?.id;
+      const opened = !vaultId
+        ? null
+        : target?.kind === "note"
+          ? await openNoteChat(vaultId, target.slug).catch(() => null)
           : target === null
-            ? await openFreeChat().catch(() => null)
+            ? await openFreeChat(vaultId).catch(() => null)
             : null;
       if (!alive) return;
       setThread({
@@ -127,7 +121,6 @@ export function AiPanel({
   const phone = useLayoutMode() === "phone";
   const slowLoad = useLoadingIndicator(thread === null);
 
-  // About what the reader is looking at now — not the held thread's subject.
   function startNewChat() {
     setThread({ chatId: null, subject: live, messages: [] });
     setWanted(null);
@@ -215,7 +208,6 @@ export function AiPanel({
         </div>
 
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-          {/* Closed, this edge sits on the header's seam, so it can claim one mid-slide. */}
           <div
             data-seam={show && !phone ? "bottom" : undefined}
             className={`absolute inset-x-0 top-0 z-20 border-b border-foreground/15 bg-background transition-transform duration-300 ease-in-out ${
@@ -280,7 +272,7 @@ function ChatArea({
     error,
     scrollRef,
     respondToApproval,
-  } = useNoteChat(thread, resolver, onActivity);
+  } = useNoteChat(thread, onActivity);
   const phone = useLayoutMode() === "phone";
 
   return (
@@ -311,7 +303,6 @@ function ChatArea({
             active={busy && index === messages.length - 1}
           />
         ))}
-        {/* Before the stream opens there is no assistant message to render yet. */}
         {busy && messages[messages.length - 1]?.role === "user" && (
           <div className="flex gap-2.5">
             <AiDiamond size={14} busy className="mt-1 shrink-0" />
@@ -424,7 +415,6 @@ function Turn({
 
   return (
     <div className={`flex gap-2.5 ${stopped ? "opacity-50" : ""}`}>
-      {/* The reply's mark: alive while this answer is still being written. */}
       <AiDiamond
         size={14}
         busy={active}
@@ -534,9 +524,6 @@ function ToolLine({
       label = input.note
         ? `Followed the links around “${input.note}”`
         : "Following links…";
-      break;
-    case "tool-focus_graph":
-      label = "Pointed the graph at the notes cited";
       break;
     default:
       label = "Working…";

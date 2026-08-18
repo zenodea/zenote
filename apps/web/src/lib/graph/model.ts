@@ -1,4 +1,4 @@
-import type { Note } from "../server/notes";
+import type { Note } from "../note";
 import { noteTags } from "../tags";
 import { resolvedTargets, type WikilinkResolver } from "../wikilinks";
 
@@ -11,7 +11,6 @@ export type GraphNode = {
 export type GraphLink = { source: string; target: string };
 export type Graph = { nodes: GraphNode[]; links: GraphLink[] };
 
-// NUL can never appear in a slug, so the key cannot collide.
 function edgeKey(a: string, b: string): string {
   return a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`;
 }
@@ -42,7 +41,6 @@ export function buildGraph(notes: Note[], resolver: WikilinkResolver): Graph {
   };
 }
 
-/** Index-based view of a graph: links as index pairs, undirected adjacency. */
 export type IndexedGraph = {
   edges: ReadonlyArray<readonly [number, number]>;
   neighbours: number[][];
@@ -63,8 +61,6 @@ export function indexGraph(graph: Graph): IndexedGraph {
   return { edges, neighbours };
 }
 
-/** The subgraph within `depth` hops of `id`: those nodes and the links
- * between them. Node degrees stay as in the full graph. */
 export function localGraph(graph: Graph, id: string, depth = 1): Graph {
   const centre = graph.nodes.findIndex((node) => node.id === id);
   if (centre < 0) return { nodes: [], links: [] };
@@ -80,7 +76,6 @@ export function localGraph(graph: Graph, id: string, depth = 1): Graph {
   };
 }
 
-/** Every node within `depth` hops of the seeds, seeds included. */
 export function neighbourhood(
   neighbours: number[][],
   seeds: number[],

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useAiAssistant } from "@/components/ai/AiAssistant";
 import { useCanvasSize, type Size } from "@/hooks/use-canvas-size";
 import { useEscape } from "@/hooks/use-hotkey";
@@ -21,7 +20,8 @@ import { indexGraph, neighbourhood, type Graph } from "@/lib/graph/model";
 import { nodesWithTags, tagCounts } from "@/lib/graph/derive";
 import { baseRadiusFor, hitTest } from "@/lib/graph/geometry";
 import type { PixiScene } from "@/lib/graph/pixi-scene";
-import { beginPageFade } from "@/lib/page-fade";
+import { navigate } from "@/lib/navigation";
+import { vaultStore } from "@/lib/vault/store";
 import { setGraphFocus, useGraphFocus } from "@/lib/stores/graph-focus";
 import { setGraphReady } from "@/lib/stores/graph-ready";
 import {
@@ -43,7 +43,6 @@ const DRAG_ALPHA = 0.1;
 const CLICK_SLOP = 4;
 const LONG_PRESS_MS = 450;
 
-// Tokens resolve lazily, so the first frame never paints fallbacks in a themed session.
 function resolvePalette() {
   const style = getComputedStyle(document.documentElement);
   return {
@@ -64,7 +63,6 @@ export function GraphView({
   controls?: boolean;
   standalone?: boolean;
 }) {
-  const router = useRouter();
   const { open: assisting } = useAiAssistant();
   const phone = useLayoutMode() === "phone";
   const sceneRef = useRef<PixiScene | null>(null);
@@ -74,14 +72,12 @@ export function GraphView({
 
   const layout = useMemo(() => createLayout(graph, 1000, 700), [graph]);
 
-  // Solved once to place the camera — live-fitting reads as drift — and off the main thread.
   const solver = useMemo(() => createSolver(graph, 1000, 700), [graph]);
   const target = useCallback(() => solver.get(), [solver]);
 
   const { edges, neighbours } = useMemo(() => indexGraph(graph), [graph]);
   const baseRadius = baseRadiusFor(graph.nodes.length);
 
-  // Held by id: a rebuilt graph renumbers nodes, so a positional focus would drift.
   const shared = useGraphFocus();
   const [own, setOwn] = useState<string[]>(focusId ? [focusId] : []);
   const seedIds = standalone ? shared : own;
@@ -159,13 +155,11 @@ export function GraphView({
   const layoutMovingRef = useRef(true);
   const [booted, setBooted] = useState(false);
 
-  // Standalone the wait is the route's, already running from the fallback; inset it stays local to the box.
   useRouteWait(standalone && !booted);
   const routeShowing = useRouteLoaderShowing();
   const localLoader = useLoadingIndicator(!standalone && !booted);
   const covered = !booted || (standalone ? routeShowing : localLoader);
 
-  // Counts and controls describe a graph nobody can see yet, so they wait for the cover, not the data.
   useEffect(() => {
     if (standalone) setGraphReady(!covered);
   }, [standalone, covered]);
@@ -232,7 +226,6 @@ export function GraphView({
     onResize: (size, rect) => {
       sceneRef.current?.resize(size.width, size.height);
 
-      // Only the first measurement frames it; later ones are just panes sliding open.
       const previous = placed.current;
       placed.current = rect;
       if (!previous) fitIfUntouched();
@@ -286,14 +279,12 @@ export function GraphView({
     );
   });
 
-  // One Application per canvas: a canvas cannot host a second WebGL context, so swaps go through setGraph.
   useEffect(() => {
     if (!ready) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     let disposed = false;
 
-    // Started before anything is awaited, so the worker solves through the download and WebGL init.
     const settled = solver.prime();
 
     (async () => {
@@ -337,7 +328,6 @@ export function GraphView({
     layoutMovingRef.current = true;
     start();
 
-    // A swapped graph has its own solve to wait on; the sim runs meanwhile.
     let stale = false;
     solver.prime().then(() => {
       if (stale) return;
@@ -349,7 +339,6 @@ export function GraphView({
     };
   }, [graph, edges, baseRadius, fitIfUntouched, start, solver]);
 
-  // Read through refs by draw(), so a change has to wake the parked loop by hand.
   useEffect(() => {
     start();
   }, [start, focus, seeds, visible]);
@@ -364,7 +353,6 @@ export function GraphView({
     return subscribeToTheme(sync);
   }, [draw]);
 
-  // Regions: the layout has already grouped these notes, the model says what they are.
   useEffect(() => {
     if (!standalone || !booted) return;
     const scene = sceneRef.current;
@@ -382,7 +370,10 @@ export function GraphView({
           const response = await fetch("/api/clusters", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ clusters: groups }),
+            body: JSON.stringify({
+              vaultId: vaultStore.get().vault?.id,
+              clusters: groups,
+            }),
           });
           names = ((await response.json()) as { names?: string[] }).names ?? [];
           if (names.length > 0) storeClusterNames(groups, names);
@@ -399,7 +390,6 @@ export function GraphView({
         );
         start();
       } catch {
-        // No names is simply a graph without regions.
       }
     })();
 
@@ -408,7 +398,6 @@ export function GraphView({
     };
   }, [standalone, booted, graph, start]);
 
-  // Not while the assistant is open: the focus is its subject.
   useEscape(clearFocus, controls && !assisting);
 
   const focusNode = useCallback(
@@ -425,7 +414,6 @@ export function GraphView({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Native listeners: React's onWheel is passive; its contextmenu delegation is unreliable.
     function onWheel(event: WheelEvent) {
       event.preventDefault();
       zoomAt(toLocal(event), Math.exp(-event.deltaY * 0.0015));
@@ -527,7 +515,6 @@ export function GraphView({
     }
 
     if (drag.current) {
-      // Not event.movement*: Safari leaves both at 0 for touch pointers.
       drag.current.moved += previous
         ? Math.hypot(point.x - previous.x, point.y - previous.y)
         : 0;
@@ -585,8 +572,7 @@ export function GraphView({
         layout.unpin(node);
         layout.setAlphaTarget(0);
       } else {
-        beginPageFade();
-        router.push(`/notes/${graph.nodes[node].id}`);
+        navigate(`/notes/${graph.nodes[node].id}`);
       }
       start();
     }
@@ -653,7 +639,6 @@ export function GraphView({
         onPointerLeave={onPointerLeave}
       />
 
-      {/* Lifts with the loader, not before it, so the mark never stands over a graph that is already up. */}
       <div
         className="pointer-events-none absolute inset-0 z-20 grid place-items-center bg-background transition-opacity duration-200"
         style={{ opacity: covered ? 1 : 0 }}
@@ -662,7 +647,6 @@ export function GraphView({
         {!standalone && localLoader && <DiamondLoader size={20} />}
       </div>
 
-      {/* Canvas is opaque to keyboards and screen readers; mirror nodes as links. */}
       <ul className="sr-only">
         {graph.nodes.map((node) => (
           <li key={node.id}>

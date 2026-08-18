@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { setGraphFocus } from "@/lib/stores/graph-focus";
 
-/** Leaving the graph puts the selection down. */
 export function FocusReset() {
   const pathname = usePathname();
   const lastRef = useRef(pathname);

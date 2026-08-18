@@ -19,7 +19,6 @@ export function useAiAssistant(): AiAssistantState {
   return state;
 }
 
-// The panel stays open across navigation; the thread it shows follows the subject.
 export function AiAssistantProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);

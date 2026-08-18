@@ -4,7 +4,6 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useThemeId } from "@/lib/use-theme";
 import { Scroller } from "@/components/ui/Scroller";
 
-// Mermaid needs concrete colours, so approximate CSS color-mix in JS.
 function mix(top: string, bottom: string, weight: number): string {
   const pair = [top, bottom].map((hex) =>
     /^#[0-9a-f]{6}$/i.test(hex)
@@ -23,10 +22,8 @@ function mix(top: string, bottom: string, weight: number): string {
 
 export function MermaidDiagram({ chart }: { chart: string }) {
   const id = useId();
-  // Diagrams re-render when the active theme changes.
   const theme = useThemeId();
   const [svg, setSvg] = useState<string | null>(null);
-  // Given nowhere, mermaid measures in <body> — the flex row — taking a column until it is removed.
   const measure = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -70,7 +67,6 @@ export function MermaidDiagram({ chart }: { chart: string }) {
         );
         if (!cancelled) setSvg(rendered.svg);
       } catch {
-        // Invalid diagram source: keep showing the raw code block.
       }
     })();
 
@@ -79,7 +75,6 @@ export function MermaidDiagram({ chart }: { chart: string }) {
     };
   }, [chart, id, theme]);
 
-  // In the document so mermaid can measure against it, out of flow so it takes space from nothing.
   const bench = (
     <div
       ref={measure}

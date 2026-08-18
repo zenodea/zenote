@@ -1,4 +1,3 @@
-/** The assistant's mark: the frame's diamond, tracing its own edge while it thinks. */
 export function AiDiamond({
   size = 16,
   busy = false,
@@ -29,20 +28,20 @@ export function AiDiamond({
         strokeOpacity={busy ? 0.25 : 0.8}
       />
       <path d={edge(0.35)} fill="currentColor" fillOpacity={busy ? 0.4 : 0.8} />
-      {busy && (
-        <path
-          d={edge(1)}
-          pathLength={100}
-          fill="none"
-          stroke="var(--accent)"
-          strokeWidth={1.5}
-          strokeDasharray="26 74"
-          style={{
-            ["--trace" as string]: "100px",
-            animation: "diamond-trace 700ms linear infinite",
-          }}
-        />
-      )}
+      <path
+        d={edge(1)}
+        pathLength={100}
+        fill="none"
+        stroke="var(--accent)"
+        strokeWidth={1.5}
+        strokeDasharray="26 74"
+        style={{
+          ["--trace" as string]: "100px",
+          animation: "diamond-trace 700ms linear infinite",
+          animationPlayState: busy ? "running" : "paused",
+          opacity: busy ? 1 : 0,
+        }}
+      />
     </svg>
   );
 }

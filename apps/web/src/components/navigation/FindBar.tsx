@@ -47,7 +47,6 @@ function collectRanges(root: Node, needle: string, skip: Node | null): Range[] {
 }
 
 export function FindBar() {
-  // Remounting per route closes the bar and drops highlights, like a browser's.
   return <FindBarInner key={usePathname()} />;
 }
 
@@ -109,7 +108,6 @@ function FindBarInner() {
 
   useEffect(() => {
     if (open) {
-      // The bar sits below the fold, so a plain focus would scroll the whole page.
       inputRef.current?.focus({ preventScroll: true });
       inputRef.current?.select();
     }

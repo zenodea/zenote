@@ -3,14 +3,11 @@ import type { Graph } from "./model";
 import type { Positions } from "./geometry";
 
 export type Solver = {
-  /** The settled positions, or null until the solve has landed. */
   get: () => Positions | null;
-  /** Starts the solve. Idempotent, and the same promise every time. */
   prime: () => Promise<void>;
   dispose: () => void;
 };
 
-/** The layout the camera frames on: the longest arithmetic on the wait, so it runs off the main thread. */
 export function createSolver(
   graph: Graph,
   width: number,
@@ -29,7 +26,6 @@ export function createSolver(
       try {
         worker = new Worker(new URL("./solve.worker.js", import.meta.url));
       } catch {
-        // No worker to be had: better a held frame than no layout.
         solveHere();
         resolve();
         return;
@@ -51,7 +47,6 @@ export function createSolver(
   return {
     get: () => solved,
     prime: () => (solved ? Promise.resolve() : (pending ??= run())),
-    // A disposed run never resolves; clearing it lets a remount start a new one.
     dispose: () => {
       worker?.terminate();
       worker = null;

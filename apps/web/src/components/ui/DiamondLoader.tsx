@@ -1,7 +1,6 @@
 const TRACE_MS = 700;
 const APPEAR_MS = 140;
 
-/** A stroke on the diamond's own path, so the arc turns the corners instead of cutting them. */
 export function DiamondLoader({
   size = 20,
   className,
@@ -25,7 +24,6 @@ export function DiamondLoader({
           stroke="var(--foreground)"
           strokeOpacity={0.2}
         />
-        {/* pathLength normalises the perimeter, so one dash pattern holds at any size. */}
         <path
           d={diamond}
           pathLength={100}

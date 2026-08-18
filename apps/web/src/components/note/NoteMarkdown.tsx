@@ -34,7 +34,6 @@ function Pre({ children }: ComponentProps<"pre">) {
   );
 }
 
-// A raw anchor reloads the document, which puts the chrome — assistant panel included — back to its defaults.
 function Anchor(props: ComponentProps<"a"> & ExtraProps) {
   const { href, children, ...rest } = props;
   delete rest.node;

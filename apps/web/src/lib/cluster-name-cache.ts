@@ -2,7 +2,6 @@
 
 const KEY = "zenote:cluster-names";
 
-/** Same notes in the same groups → same names; order never matters. */
 function fingerprint(clusters: string[][]): string {
   const text = clusters
     .map((slugs) => [...slugs].sort().join(","))

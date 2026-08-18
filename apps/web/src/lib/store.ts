@@ -40,7 +40,6 @@ export function createPersistentStore<T extends object>(
   const base = createStore(defaults);
   let loaded = false;
 
-  // Node ships an experimental localStorage, so touching it on the server warns rather than throwing.
   const stored = typeof window !== "undefined";
 
   function readStored(): T {

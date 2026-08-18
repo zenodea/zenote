@@ -6,6 +6,7 @@ import {
   listChats,
   type ChatListing,
 } from "@/app/actions/chats";
+import { vaultStore } from "@/lib/vault/store";
 import { AiDiamond } from "@/components/ai/AiDiamond";
 import { Button } from "@/components/ui/Button";
 import { CloseIcon } from "@/components/ui/Icons";
@@ -34,8 +35,10 @@ export function ChatHistory({
 
   useEffect(() => {
     if (!open) return;
+    const vaultId = vaultStore.get().vault?.id;
+    if (!vaultId) return;
     let alive = true;
-    listChats()
+    listChats(vaultId)
       .then((rows) => alive && setChats(rows))
       .catch(() => alive && setChats([]));
     return () => {
@@ -47,7 +50,6 @@ export function ChatHistory({
     const before = chats;
     setChats((current) => current?.filter((chat) => chat.id !== id) ?? null);
 
-    // Only let go of a conversation the server actually deleted.
     const { error } = await deleteChat(id).catch(() => ({
       error: "Could not reach the server.",
     }));

@@ -7,14 +7,12 @@ const ROUNDS = 12;
 const MIN_SIZE = 3;
 const MOST = 12;
 
-/** Label propagation: every note takes the label most of its neighbours hold. */
 export function findClusters(graph: Graph): Cluster[] {
   const { neighbours } = indexGraph(graph);
   const count = graph.nodes.length;
   const labels = new Int32Array(count);
   for (let i = 0; i < count; i++) labels[i] = i;
 
-  // Fixed visiting order, so the same vault always yields the same regions.
   const order = Array.from({ length: count }, (_, i) => i);
 
   for (let round = 0; round < ROUNDS; round++) {
@@ -30,7 +28,6 @@ export function findClusters(graph: Graph): Cluster[] {
       let best = labels[node];
       let bestCount = -1;
       for (const [label, seen] of tally) {
-        // Ties go to the lower label, again for stability across runs.
         if (seen > bestCount || (seen === bestCount && label < best)) {
           best = label;
           bestCount = seen;

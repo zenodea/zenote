@@ -4,7 +4,6 @@ import { useSyncExternalStore } from "react";
 
 export type LayoutMode = "phone" | "tablet" | "desktop";
 
-// Keep in step with the `md:`/`lg:` breakpoints the shell branches on.
 export const PHONE_QUERY = "(max-width: 767px)";
 export const TABLET_QUERY = "(min-width: 768px) and (max-width: 1023px)";
 export const COARSE_QUERY = "(pointer: coarse)";

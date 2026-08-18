@@ -1,10 +1,13 @@
+"use client";
+
 import Link from "next/link";
 import { PageHeader } from "@/components/frame/PageHeader";
 import { Text } from "@/components/ui/Text";
+import { useTitle } from "@/hooks/use-title";
 
-export const metadata = { title: "Not found" };
+export function NotFoundView() {
+  useTitle("Not found");
 
-export default function NotFound() {
   return (
     <>
       <PageHeader title="Not found" />

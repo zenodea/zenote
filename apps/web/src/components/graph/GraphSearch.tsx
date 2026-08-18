@@ -10,13 +10,11 @@ import { Text } from "@/components/ui/Text";
 
 const MAX_RESULTS = 8;
 
-// Title search over the graph's nodes; the result list anchors below the input.
 export function GraphSearch({
   nodes,
   onSelect,
 }: {
   nodes: GraphNode[];
-  /** Called with the node's index in `nodes`. */
   onSelect: (index: number) => void;
 }) {
   const [query, setQuery] = useState("");
@@ -63,7 +61,6 @@ export function GraphSearch({
       onKeyDown(event);
       return;
     }
-    // Bubble when empty so the graph's Escape (clear focus) still works.
     if (query === "") return;
     event.stopPropagation();
     reset();
@@ -99,7 +96,6 @@ export function GraphSearch({
             >
               <button
                 type="button"
-                // Mousedown, not click: click fires after blur unmounts this list.
                 onMouseDown={(event) => {
                   event.preventDefault();
                   select(index);

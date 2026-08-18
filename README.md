@@ -19,7 +19,8 @@ and an assistant that can read them.
 ## The idea
 
 Write in markdown. Link notes with `[[double brackets]]` and group them with `#tags`.
-Everything saves as you type and is there from any browser you sign in on.
+Everything saves as you type and is there from any browser you sign in on. It keeps
+working when the internet does not.
 
 The picture above is the whole vault. Every dot is a note, every line a link between two of
 them.
@@ -41,8 +42,8 @@ in the vault that mentions this one, quoted in context.
 The editor keeps your markdown as you wrote it and formats it as you go. Type `[[` and it
 suggests notes to link to. There is a Vim mode if you want one.
 
-Saving happens on its own. If the same note is open in another tab, you get told rather than
-losing what you typed.
+Saving happens on its own. If the same note changed somewhere else while you typed, nothing
+is lost: your version stays put and the other one appears next to it as a conflict copy.
 
 ## Asking
 
@@ -59,6 +60,21 @@ note.
 `⌘K` jumps to any note by name. `⌘F` searches inside the one you are reading. The sidebar
 searches titles or full text and filters by tag. Search runs in the browser, so results come
 up as you type.
+
+## Offline
+
+The vault lives on the device you read it from. Next time you are online it syncs
+up on its own.
+
+Notes are grouped into vaults, and you can keep more than one. A vault can stay on the
+device it was made on, or sync to your account; any vault on your account can be opened
+from settings on another device. Two edits to the same note never fight: one wins the
+name, the other stays next to it as a conflict copy.
+
+After one signed-in visit the app itself opens without internet too, and you can
+install it from the browser to get it in its own window. There is also a small Electron
+shell in `apps/desktop`, and it skips the login entirely: you start in a local vault and
+sign in only when you want to sync.
 
 ## Mobile mode
 
@@ -86,9 +102,9 @@ Six themes, each with a dark and a light version.
 
 ## Built with
 
-Next.js and React, CodeMirror for the editor, PixiJS for the graph, Supabase for the database
-and the login, Gemini for the assistant. It runs on Vercel, and every push is checked and
-shipped by GitHub Actions.
+Next.js and React, CodeMirror for the editor, PixiJS for the graph, IndexedDB for the copy
+of the vault your device keeps, Supabase for the database and the login, Gemini for the
+assistant. It runs on Vercel, and every push is checked and shipped by GitHub Actions.
 
 ## License
 

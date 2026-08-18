@@ -17,7 +17,6 @@ export type NeighbourNote = {
   relation: string;
 };
 
-/** Characters of a subject's own text sent up front; the tools fetch the rest. */
 const SUBJECT_LIMIT = 10_000;
 const SELECTION_LIMIT = 1_500;
 const SELECTION_CAP = 12;
@@ -26,16 +25,18 @@ export function clip(body: string, limit: number): string {
   return body.length <= limit ? body : `${body.slice(0, limit)}\n…[truncated]`;
 }
 
-/** What the reader is looking at, plus the names of everything one link away. */
-export async function gatherContext(subject: ChatSubject): Promise<{
+export async function gatherContext(
+  vaultId: string,
+  subject: ChatSubject,
+): Promise<{
   title: string;
   notes: ContextNote[];
   neighbours: NeighbourNote[];
 }> {
   const [resolver, backlinks, titles] = await Promise.all([
-    getResolver(),
-    getBacklinks(),
-    getNoteTitles(),
+    getResolver(vaultId),
+    getBacklinks(vaultId),
+    getNoteTitles(vaultId),
   ]);
 
   const subjects =
@@ -49,7 +50,7 @@ export async function gatherContext(subject: ChatSubject): Promise<{
   const neighbours: NeighbourNote[] = [];
 
   for (const slug of subjects) {
-    const note = await getNote(slug);
+    const note = await getNote(vaultId, slug);
     if (!note || seen.has(slug)) continue;
     seen.add(slug);
     notes.push({ slug, title: note.title, body: clip(note.body, limit), relation });
@@ -62,7 +63,7 @@ export async function gatherContext(subject: ChatSubject): Promise<{
   };
 
   for (const { slug } of [...notes]) {
-    const note = await getNote(slug);
+    const note = await getNote(vaultId, slug);
     if (!note) continue;
     for (const target of resolvedTargets(note, resolver)) {
       addNeighbour(target, "linked from it");

@@ -1,25 +1,20 @@
 import { stripCode } from "./markdown";
 import { filename } from "./slug";
-import type { Note } from "./server/notes";
+import type { Note } from "./note";
 
 export type WikilinkResolver = Map<string, string>;
 
-// `#` ends the target and starts a heading; the editor's completion source shares this class.
 export const WIKILINK_TARGET = String.raw`[^\[\]|#]`;
 
 const WIKILINK_SOURCE = String.raw`\[\[(${WIKILINK_TARGET}+)(?:#([^\[\]|]+))?(?:\|([^\[\]]+))?\]\]`;
 
-// Fresh instance per call: a shared /g regex carries lastIndex between uses.
 export function wikilinkRegex(): RegExp {
   return new RegExp(WIKILINK_SOURCE, "g");
 }
 
 export type WikilinkOccurrence = {
-  /** The raw link target, unresolved. */
   target: string;
-  /** The link's display text (alias if given, else the target). */
   text: string;
-  /** The surrounding line, split around the link, other wikilinks flattened. */
   before: string;
   after: string;
 };
@@ -32,7 +27,6 @@ function renderInline(markdown: string): string {
   );
 }
 
-/** Every wikilink in the body, each with the line of prose around it. */
 export function extractOccurrences(body: string): WikilinkOccurrence[] {
   const occurrences: WikilinkOccurrence[] = [];
 
@@ -65,7 +59,6 @@ export function extractTargets(body: string): string[] {
   return extractOccurrences(body).map((occurrence) => occurrence.target);
 }
 
-/** Rewrites wikilink targets outside code, keeping headings and aliases. */
 export function replaceWikilinkTargets(
   body: string,
   rename: (target: string) => string | null,
@@ -89,7 +82,6 @@ function normalise(value: string): string {
   return value.trim().toLowerCase();
 }
 
-// Registered least- to most-specific, so an exact slug beats title/filename.
 export function buildResolver(notes: Note[]): WikilinkResolver {
   const resolver: WikilinkResolver = new Map();
 
@@ -115,7 +107,6 @@ export function resolveWikilink(
   return resolver.get(normalise(target)) ?? null;
 }
 
-/** A note's wikilink targets as resolved slugs: deduped, self-links dropped. */
 export function resolvedTargets(
   note: Note,
   resolver: WikilinkResolver,

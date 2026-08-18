@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Text } from "@/components/ui/Text";
-import type { Note } from "@/lib/server/notes";
+import type { Note } from "@/lib/note";
 
 export function NoteList({
   notes,

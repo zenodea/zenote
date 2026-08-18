@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { Note } from "@/lib/server/notes";
+import type { Note } from "@/lib/note";
 import { noteTags } from "@/lib/tags";
 import { Button, iconClass } from "@/components/ui/Button";
 import { Dropdown } from "@/components/ui/Dropdown";

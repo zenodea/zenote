@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { AiButton } from "@/components/ai/AiButton";
+import { SyncStatus } from "@/components/frame/SyncStatus";
 import { iconClass } from "@/components/ui/Button";
 import { GraphIcon, SlidersIcon } from "@/components/ui/Icons";
 
-// WebGL is the bulk of the graph route's chunk; hover buys it a head start.
 function warmRenderer() {
   import("@/lib/graph/pixi-scene").catch(() => {});
 }
@@ -24,15 +24,18 @@ export function SidebarFooter({
       data-seam="top"
       className="flex shrink-0 items-center justify-between border-t border-foreground/15 p-2"
     >
-      <Link
-        href="/settings"
-        aria-label="Settings"
-        title="Settings"
-        aria-current={pathname === "/settings" ? "page" : undefined}
-        className={`block ${iconClass(pathname === "/settings")}`}
-      >
-        <SlidersIcon />
-      </Link>
+      <div className="flex min-w-0 items-center gap-2">
+        <Link
+          href="/settings"
+          aria-label="Settings"
+          title="Settings"
+          aria-current={pathname === "/settings" ? "page" : undefined}
+          className={`block shrink-0 ${iconClass(pathname === "/settings")}`}
+        >
+          <SlidersIcon />
+        </Link>
+        <SyncStatus className={reveal} />
+      </div>
       <div
         inert={minimised}
         className={`flex shrink-0 items-center gap-1 transition-opacity ${reveal}`}

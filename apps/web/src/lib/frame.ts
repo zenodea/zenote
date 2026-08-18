@@ -1,4 +1,3 @@
-// Keep in step with the body[data-leaving]/[data-entering] rules in app/styles/frame.css.
 export const LEAVE_MS = 260;
 export const ENTER_MS = 260;
 
@@ -6,25 +5,18 @@ export const HEADER_HEIGHT = 56;
 export const SIDEBAR_WIDTH = 256;
 export const SIDEBAR_COLLAPSED_WIDTH = 60;
 
-// 1px border-t + p-2 around a 28px row. Cold login only.
 export const FOOTER_HEIGHT = 45;
 
 export type PanelGeometry = {
-  /** The assistant panel's left border. */
   x: number;
-  /** Its input bar's top border; null while the panel has no input row. */
   foot: number | null;
 };
 
 export type Geometry = {
-  /** Sidebar's right border. */
   x: number;
-  /** Header's bottom border. */
   head: number;
-  /** Sidebar footer's top border. */
   foot: number;
   sidebar: number;
-  /** The assistant panel's edges, when it was open. */
   panel: PanelGeometry | null;
 };
 
@@ -58,7 +50,6 @@ export function fallbackGeometry(
   };
 }
 
-// Scoped to the sidebar so other top/bottom seams can't match.
 export function measureGeometry(): Geometry | null {
   const nav = document.querySelector<HTMLElement>('nav[data-seam="right"]');
   const head = nav?.querySelector<HTMLElement>('[data-seam="bottom"]');

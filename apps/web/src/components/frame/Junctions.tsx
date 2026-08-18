@@ -3,10 +3,6 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import { Diamond } from "@/components/frame/Diamond";
 
-// The marks have to be on screen in the same frame as the seams they sit on.
-// Measuring in a requestAnimationFrame lands them a few frames later, and
-// during the sign-in cross-fade that gap reads as the diamonds blinking out
-// and back while Frame's mark is already fading away.
 const useMeasureEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect;
 
@@ -59,9 +55,6 @@ export function Junctions() {
 
   useMeasureEffect(() => {
     let frame = 0;
-    // Elements, not a counter: an element removed mid-transition never
-    // delivers transitionend/cancel to document, so a counter sticks > 0
-    // and the tick loop runs forever. Pruning on isConnected self-heals.
     const transitioning = new Set<Element>();
 
     function measure() {
@@ -97,8 +90,6 @@ export function Junctions() {
       schedule();
     }
 
-    // Synchronous, not scheduled: this is the first measurement, and it has to
-    // land before the browser paints the chrome for the first time.
     measure();
 
     const observer = new MutationObserver((records) => {

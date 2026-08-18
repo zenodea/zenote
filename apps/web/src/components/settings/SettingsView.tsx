@@ -1,5 +1,7 @@
-import type { Metadata } from "next";
-import { getUser } from "@/lib/server/supabase";
+"use client";
+
+import Link from "next/link";
+import { useTitle } from "@/hooks/use-title";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { ChevronIcon } from "@/components/ui/Icons";
 import { Scroller } from "@/components/ui/Scroller";
@@ -7,11 +9,12 @@ import { PageHeader } from "@/components/frame/PageHeader";
 import { AssistantSettings } from "@/components/settings/AssistantSettings";
 import { SettingsForm } from "@/components/settings/SettingsForm";
 import { ThemeSettings } from "@/components/settings/ThemeSettings";
+import { VaultSettings } from "@/components/settings/VaultSettings";
+import { useVault } from "@/lib/vault/store";
 
-export const metadata: Metadata = { title: "Settings" };
-
-export default async function SettingsPage() {
-  const user = await getUser();
+export function SettingsView() {
+  const { email } = useVault();
+  useTitle("Settings");
 
   return (
     <>
@@ -20,6 +23,13 @@ export default async function SettingsPage() {
       <Scroller className="min-h-0 flex-1">
         <div className="mx-auto w-full max-w-3xl px-6 py-6">
           <section>
+            <h2 className="text-sm font-semibold uppercase tracking-wide opacity-60">
+              Vault
+            </h2>
+            <VaultSettings />
+          </section>
+
+          <section className="mt-10">
             <h2 className="text-sm font-semibold uppercase tracking-wide opacity-60">
               Document
             </h2>
@@ -33,7 +43,7 @@ export default async function SettingsPage() {
             <AssistantSettings />
           </section>
 
-          <details className="group mt-10">
+          <details className="disclosure group mt-10">
             <summary className="flex cursor-pointer list-none items-center gap-1 text-sm font-semibold uppercase tracking-wide opacity-60 hover:opacity-100 [&::-webkit-details-marker]:hidden">
               <ChevronIcon className="w-3 shrink-0 transition-transform group-open:rotate-90" />
               Colour theme
@@ -47,15 +57,32 @@ export default async function SettingsPage() {
             <h2 className="text-sm font-semibold uppercase tracking-wide opacity-60">
               Account
             </h2>
-            <div className="flex items-center justify-between gap-6 py-4">
-              <div>
-                <p className="font-medium">{user?.email}</p>
-                <p className="mt-1 text-sm opacity-60">
-                  Signed in on this device.
-                </p>
+            {email ? (
+              <div className="flex items-center justify-between gap-6 py-4">
+                <div>
+                  <p className="font-medium">{email}</p>
+                  <p className="mt-1 text-sm opacity-60">
+                    Signed in on this device.
+                  </p>
+                </div>
+                <SignOutButton />
               </div>
-              <SignOutButton />
-            </div>
+            ) : (
+              <div className="flex items-center justify-between gap-6 py-4">
+                <div>
+                  <p className="font-medium">Not signed in.</p>
+                  <p className="mt-1 text-sm opacity-60">
+                    Sign in to sync your vaults and use the assistant.
+                  </p>
+                </div>
+                <Link
+                  href="/login"
+                  className="rounded bg-accent px-3 py-1.5 font-medium text-background hover:opacity-85"
+                >
+                  Sign in
+                </Link>
+              </div>
+            )}
           </section>
         </div>
       </Scroller>

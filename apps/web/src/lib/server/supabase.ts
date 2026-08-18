@@ -11,7 +11,6 @@ export const createClient = cache(async () => {
     cookies: {
       getAll: () => store.getAll(),
       setAll: (written) => {
-        // Server Components can't set cookies; middleware refreshes them instead.
         try {
           for (const { name, value, options } of written) {
             store.set(name, value, options);
@@ -20,6 +19,13 @@ export const createClient = cache(async () => {
       },
     },
   });
+});
+
+export const getUserId = cache(async (): Promise<string | null> => {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const sub = data?.claims?.sub;
+  return typeof sub === "string" ? sub : null;
 });
 
 export const getUser = cache(async () => {

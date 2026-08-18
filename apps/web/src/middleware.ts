@@ -29,16 +29,16 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const onLogin = pathname === LOGIN;
+  const desktop = request.headers.get("x-zenote-desktop") === "1";
 
   if (!user) {
-    // A redirect here is a method-preserving 307, so fetch would POST to /login and stream its HTML back.
     if (pathname.startsWith("/api/")) {
       return carry(
         NextResponse.json({ error: "Not authenticated." }, { status: 401 }),
         response,
       );
     }
-    if (!onLogin) return redirect(request, LOGIN, response);
+    if (!onLogin && !desktop) return redirect(request, LOGIN, response);
   }
 
   if (user && onLogin) return redirect(request, "/", response);
@@ -63,9 +63,7 @@ function carry(response: NextResponse, carrying: NextResponse) {
 }
 
 export const config = {
-  // An open-ended `.*\.svg$` would exempt any route ending in .svg, not just static assets.
-  // The manifest and its icons are fetched without credentials: guarded, they never install.
   matcher: [
-    "/((?!_next/static|_next/image|favicon\\.ico$|icon\\.svg$|manifest\\.webmanifest$|apple-touch-icon\\.png$|icon-192\\.png$|icon-512\\.png$|icon-maskable-512\\.png$).*)",
+    "/((?!_next/static|_next/image|favicon\\.ico$|icon\\.svg$|sw\\.js$|manifest\\.webmanifest$|apple-touch-icon\\.png$|icon-192\\.png$|icon-512\\.png$|icon-maskable-512\\.png$).*)",
   ],
 };

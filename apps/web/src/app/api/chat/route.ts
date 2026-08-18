@@ -25,10 +25,8 @@ import { getUser } from "@/lib/server/supabase";
 
 const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.5-flash-lite";
 
-/** Model calls per user turn; each tool round trip is one more. */
 const STEP_LIMIT = 6;
 
-// The form the model is asked to copy; a slug that is already the title needs no alias.
 function wikilink(slug: string, title: string): string {
   return title === slug ? `[[${slug}]]` : `[[${slug}|${title}]]`;
 }
@@ -47,7 +45,7 @@ function systemPrompt(
     writes
       ? "You can also change the vault — create_note, append_to_note, replace_in_note, move_note — and each such call is shown to the user to approve or refuse before it runs. Propose them when asked to capture, correct or reorganise something, and never claim one happened until its result confirms it."
       : "You cannot change the vault; the user has switched writing off. If asked to, say so and offer the content in your reply instead.",
-    "Name every note you draw on as a wikilink in the form [[slug|Title]]: its exact slug, then its title as the display text, as in [[security-concepts|Security Concepts]]. The slug is the half the app resolves and the half that survives a rename; the title is only what the reader sees. A bare [[Security Concepts]] is a link waiting to break, and a slug you invented from a title is one that never worked. Every note in this prompt is given with its slug, and search_notes, read_note, neighbours, list_notes, recent_changes and vault_health all return one — take the slug from there. After an answer drawn from the notes, call focus_graph with the slugs you cited.",
+    "Name every note you draw on as a wikilink in the form [[slug|Title]]: its exact slug, then its title as the display text, as in [[security-concepts|Security Concepts]]. The slug is the half the app resolves and the half that survives a rename; the title is only what the reader sees. A bare [[Security Concepts]] is a link waiting to break, and a slug you invented from a title is one that never worked. Every note in this prompt is given with its slug, and search_notes, read_note, neighbours, list_notes, recent_changes and vault_health all return one — take the slug from there.",
     notesOnly
       ? "Answer only from the notes. If they do not cover something, say so plainly and leave it there — do not answer from general knowledge."
       : "If the notes do not cover something, say so plainly before answering from general knowledge.",
@@ -79,7 +77,6 @@ function systemPrompt(
   ].join("\n");
 }
 
-/** A fresh thread earns its name from its first exchange. */
 async function nameThread(
   google: GoogleProvider,
   chatId: string,
@@ -106,7 +103,6 @@ async function nameThread(
 }
 
 export async function POST(request: Request) {
-  // Repeated after the middleware so note contents never depend on the matcher.
   const user = await getUser();
   if (!user) {
     return Response.json({ error: "Not authenticated." }, { status: 401 });
@@ -126,6 +122,12 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => null);
   const subject = body?.subject ?? null;
+  const vaultId: unknown = body?.vaultId;
+  if (typeof vaultId !== "string" || vaultId.length > 40) {
+    return new Response("Expected { vaultId, subject, messages }.", {
+      status: 400,
+    });
+  }
 
   let messages: VaultUIMessage[];
   try {
@@ -137,15 +139,13 @@ export async function POST(request: Request) {
     return new Response("Expected { subject, messages }.", { status: 400 });
   }
 
-  // No subject is a conversation about the vault at large, all through tools.
   const { title, notes, neighbours } = subject
-    ? await gatherContext(subject)
+    ? await gatherContext(vaultId, subject)
     : { title: null, notes: [], neighbours: [] };
   if (subject && notes.length === 0) {
     return new Response("Nothing to talk about.", { status: 404 });
   }
 
-  // Persistence follows the thread the client opened; selections stay ephemeral.
   const chat =
     typeof body?.chatId === "string" ? await getChat(body.chatId) : null;
   const chatId = chat?.id ?? null;
@@ -160,7 +160,7 @@ export async function POST(request: Request) {
   const notesOnly = body?.notesOnly === true;
 
   const google = createGoogle({ apiKey });
-  const tools = vaultTools();
+  const tools = vaultTools(vaultId);
   const result = streamText({
     model: google(MODEL),
     system: systemPrompt(title, notes, neighbours, allowWrites, notesOnly),
@@ -169,7 +169,6 @@ export async function POST(request: Request) {
       ignoreIncompleteToolCalls: true,
     }),
     tools,
-    // The full set stays declared so stored turns still convert; only calls narrow.
     activeTools: allowWrites
       ? undefined
       : [
@@ -181,23 +180,23 @@ export async function POST(request: Request) {
           "list_tags",
           "vault_health",
           "draw_graph",
-          "focus_graph",
         ],
     stopWhen: stepCountIs(STEP_LIMIT),
-    // A hung upstream should not hold the connection open forever.
     abortSignal: AbortSignal.any([request.signal, AbortSignal.timeout(90_000)]),
   });
 
-  // Finish generating (and saving) even if the reader navigates away mid-answer.
   void result.consumeStream({ onError: () => {} });
 
   return result.toUIMessageStreamResponse({
     originalMessages: history,
-    // Both sides must store the reply under one id, or the tool-loop upsert splits it.
     generateMessageId: generateId,
     onEnd: async ({ responseMessage, isAborted }) => {
       if (!chatId) return;
-      await saveMessage(chatId, responseMessage, isAborted ? "aborted" : "complete");
+      await saveMessage(
+        chatId,
+        responseMessage,
+        isAborted ? "aborted" : "complete",
+      );
       const question = history.findLast((message) => message.role === "user");
       if (chat?.title === "" && question) {
         await nameThread(

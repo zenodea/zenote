@@ -1,4 +1,4 @@
-import "server-only";
+import type { Note } from "../note";
 import { filename } from "../slug";
 import {
   buildResolver,
@@ -6,20 +6,18 @@ import {
   resolveWikilink,
   type WikilinkResolver,
 } from "../wikilinks";
-import { loadAllNotes } from "./notes";
-import { createClient } from "./supabase";
 
 export type SlugRename = { from: string; to: string };
 
-/** Best-effort: a failure here leaves a broken link, never a broken action. */
-export async function rewriteWikilinks(renames: SlugRename[]): Promise<void> {
+export function planLinkRewrites(
+  notes: Note[],
+  renames: SlugRename[],
+): { id: string; body: string }[] {
   const moved = renames.filter((rename) => rename.from !== rename.to);
-  if (moved.length === 0) return;
+  if (moved.length === 0) return [];
 
-  const notes = await loadAllNotes();
   const resolver = buildResolver(notes);
 
-  // The names a link could have reached the note by before it moved.
   const oldNames: WikilinkResolver = new Map();
   for (const { from, to } of moved) {
     oldNames.set(from.toLowerCase(), to);
@@ -38,17 +36,10 @@ export async function rewriteWikilinks(renames: SlugRename[]): Promise<void> {
       : to;
   };
 
-  const supabase = await createClient();
+  const rewrites: { id: string; body: string }[] = [];
   for (const note of notes) {
     const next = replaceWikilinkTargets(note.body, rename);
-    if (next === note.body) continue;
-
-    const { error } = await supabase
-      .from("notes")
-      .update({ body: next })
-      .eq("slug", note.slug);
-    if (error) {
-      console.error(`Could not rewrite links in “${note.slug}”:`, error.message);
-    }
+    if (next !== note.body) rewrites.push({ id: note.id, body: next });
   }
+  return rewrites;
 }

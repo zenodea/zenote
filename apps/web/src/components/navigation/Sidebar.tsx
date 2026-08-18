@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import type { SearchDocMeta } from "@/lib/search";
 import { closeDrawer, openDrawer, useDrawer } from "@/lib/stores/drawer";
 import { updateSettings, useSettings } from "@/lib/stores/settings";
 import { buildTree } from "@/lib/tree";
@@ -13,18 +12,12 @@ import { NoteTree } from "@/components/navigation/NoteTree";
 import { SidebarFooter } from "@/components/navigation/SidebarFooter";
 import { SidebarHeader } from "@/components/navigation/SidebarHeader";
 import { SidebarSearch } from "@/components/navigation/SidebarSearch";
-import { useSearchDocs } from "@/components/navigation/use-search-docs";
 import { useSidebarSearch } from "@/components/navigation/use-sidebar-search";
 import { useVaultActions } from "@/components/navigation/use-vault-actions";
 import { Scroller } from "@/components/ui/Scroller";
+import { folderPaths, getSearchDocs, useVault } from "@/lib/vault/store";
 
-export function Sidebar({
-  docs,
-  folders,
-}: {
-  docs: SearchDocMeta[];
-  folders: string[];
-}) {
+export function Sidebar() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const pathname = usePathname();
   const settings = useSettings();
@@ -32,9 +25,11 @@ export function Sidebar({
   const { open: drawerOpen, newNote } = useDrawer();
   const minimised = !drawer && settings.sidebarCollapsed;
 
-  const hydrated = useSearchDocs(docs);
+  const vault = useVault();
+  const docs = getSearchDocs();
+  const folders = useMemo(() => folderPaths(vault.folders), [vault.folders]);
   const tree = useMemo(() => buildTree(docs, folders), [docs, folders]);
-  const search = useSidebarSearch(hydrated);
+  const search = useSidebarSearch(docs);
   const {
     naming,
     setNaming,
@@ -62,7 +57,6 @@ export function Sidebar({
     updateSettings({ sidebarCollapsed: next });
   }
 
-  // The boot script sizes the rail before paint; left up, the attribute would outrank the classes below.
   useEffect(() => {
     delete document.documentElement.dataset.sidebar;
   }, []);

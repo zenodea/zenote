@@ -1,14 +1,16 @@
+"use client";
+
+import { useTitle } from "@/hooks/use-title";
 import { GraphMeta } from "@/components/graph/GraphMeta";
 import { GraphView } from "@/components/graph/GraphView";
 import { PageHeader } from "@/components/frame/PageHeader";
-import { getGraph } from "@/lib/server/vault-data";
+import { getGraph, useVault } from "@/lib/vault/store";
 
-export const metadata = { title: "Graph" };
+export function GraphRoute() {
+  useVault();
+  const graph = getGraph();
+  useTitle("Graph");
 
-export default async function GraphPage() {
-  const graph = await getGraph();
-
-  // A fragment, not a wrapper: the header must stay a direct child of PageFade for its seam.
   return (
     <>
       <PageHeader

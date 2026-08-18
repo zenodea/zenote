@@ -1,8 +1,6 @@
 import "server-only";
-import { revalidatePath } from "next/cache";
 import { tool } from "ai";
 import { z } from "zod";
-import { createNote, moveNote } from "@/app/actions/notes";
 import { buildBacklinks } from "../backlinks";
 import { parseQuery, prepareDocs, searchDocs, type SearchDoc } from "../search";
 import { filename, folder as parentOf, joinSlug, sanitizeName } from "../slug";
@@ -14,10 +12,30 @@ import {
   resolvedTargets,
   type WikilinkResolver,
 } from "../wikilinks";
+import { planLinkRewrites, type SlugRename } from "../vault/rewrite-links";
 import { clip } from "./chat-context";
 import { getFolders } from "./folders";
 import { loadAllNotes, type Note } from "./notes";
 import { createClient } from "./supabase";
+
+const DUPLICATE = "23505";
+
+async function rewriteLinks(
+  vaultId: string,
+  renames: SlugRename[],
+): Promise<void> {
+  const supabase = await createClient();
+  const notes = await loadAllNotes(vaultId);
+  for (const rewrite of planLinkRewrites(notes, renames)) {
+    const { error } = await supabase
+      .from("notes")
+      .update({ body: rewrite.body })
+      .eq("id", rewrite.id);
+    if (error) {
+      console.error(`Could not rewrite links in “${rewrite.id}”:`, error.message);
+    }
+  }
+}
 
 const RESULTS = 8;
 const BODY_LIMIT = 20_000;
@@ -25,12 +43,11 @@ const LISTING = 100;
 
 type Vault = { notes: Note[]; resolver: WikilinkResolver };
 
-// A turn's own writes must be visible to the steps after them, so this drops on write.
-function vaultView() {
+function vaultView(vaultId: string) {
   let held: Promise<Vault> | null = null;
 
   const read = () =>
-    (held ??= loadAllNotes().then((notes) => ({
+    (held ??= loadAllNotes(vaultId).then((notes) => ({
       notes,
       resolver: buildResolver(notes),
     })));
@@ -60,8 +77,8 @@ function toSearchDocs(notes: Note[]): SearchDoc[] {
   }));
 }
 
-export function vaultTools() {
-  const vault = vaultView();
+export function vaultTools(vaultId: string) {
+  const vault = vaultView(vaultId);
 
   return {
     search_notes: tool({
@@ -177,7 +194,7 @@ export function vaultTools() {
         const notes = (await vault.read()).notes.filter((note) =>
           inside(note.slug),
         );
-        const folders = new Set((await getFolders()).filter(inside));
+        const folders = new Set((await getFolders(vaultId)).filter(inside));
         for (const note of notes) {
           const parent = parentOf(note.slug);
           if (parent && inside(parent)) folders.add(parent);
@@ -291,16 +308,6 @@ export function vaultTools() {
       },
     }),
 
-    // No execute: the reader's browser aims the graph and reports back.
-    focus_graph: tool({
-      description:
-        "Point the app's graph at the named notes. Call it after an answer drawn from the notes, with the exact slugs you cited.",
-      inputSchema: z.object({
-        notes: z.array(z.string()).min(1).describe("Exact note slugs"),
-      }),
-    }),
-
-    // The writes: each one waits for the reader's approval before it runs.
     create_note: tool({
       description:
         "Create a new note. The user is shown the note and approves it first.",
@@ -315,19 +322,24 @@ export function vaultTools() {
         const name = sanitizeName(slug);
         if (!name) return { error: `“${slug}” is not a usable name.` };
 
-        const created = await createNote(name);
-        if (created.error) return { error: created.error };
-        vault.changed();
-
-        if (body) {
-          const supabase = await createClient();
-          const { error } = await supabase
-            .from("notes")
-            .update({ body })
-            .eq("slug", name);
-          if (error) return { created: name, error: error.message };
-          revalidatePath("/", "layout");
+        const supabase = await createClient();
+        const { error } = await supabase
+          .from("notes")
+          .insert({
+            vault_id: vaultId,
+            slug: name,
+            title: filename(name),
+            body: body ?? "",
+          });
+        if (error) {
+          return {
+            error:
+              error.code === DUPLICATE
+                ? `“${name}” already exists.`
+                : error.message,
+          };
         }
+        vault.changed();
         return { created: name };
       },
     }),
@@ -348,6 +360,7 @@ export function vaultTools() {
         const { data, error } = await supabase
           .from("notes")
           .update({ body: note.body ? `${note.body}\n\n${text}` : text })
+          .eq("vault_id", vaultId)
           .eq("slug", note.slug)
           .eq("updated_at", note.updated)
           .select("updated_at")
@@ -358,7 +371,6 @@ export function vaultTools() {
           return { error: "The note changed while writing — try again." };
         }
         vault.changed();
-        revalidatePath("/", "layout");
         return { appended: note.slug };
       },
     }),
@@ -390,6 +402,7 @@ export function vaultTools() {
         const { data, error } = await supabase
           .from("notes")
           .update({ body: note.body.replace(find, replace) })
+          .eq("vault_id", vaultId)
           .eq("slug", note.slug)
           .eq("updated_at", note.updated)
           .select("updated_at")
@@ -400,7 +413,6 @@ export function vaultTools() {
           return { error: "The note changed while writing — try again." };
         }
         vault.changed();
-        revalidatePath("/", "layout");
         return { replaced: note.slug };
       },
     }),
@@ -424,10 +436,24 @@ export function vaultTools() {
           return { error: `“${folder}” is not a usable folder.` };
         }
 
-        const moved = await moveNote(note.slug, into);
-        if (moved.error) return { error: moved.error };
+        const next = joinSlug(into, filename(note.slug));
+        const supabase = await createClient();
+        const { error } = await supabase
+          .from("notes")
+          .update({ slug: next })
+          .eq("vault_id", vaultId)
+          .eq("slug", note.slug);
+        if (error) {
+          return {
+            error:
+              error.code === DUPLICATE
+                ? `“${next}” already exists.`
+                : error.message,
+          };
+        }
+        await rewriteLinks(vaultId, [{ from: note.slug, to: next }]);
         vault.changed();
-        return { moved: joinSlug(into, filename(note.slug)) };
+        return { moved: next };
       },
     }),
   };

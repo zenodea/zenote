@@ -21,7 +21,6 @@ function prompt(groups: string[][]): string {
   ].join("\n");
 }
 
-/** Names for clusters of notes: the layout puts them together, the model says what they are. */
 export async function POST(request: Request) {
   if (!(await getUser())) {
     return Response.json({ error: "Not authenticated." }, { status: 401 });
@@ -32,6 +31,10 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => null);
   const clusters: unknown = body?.clusters;
+  const vaultId: unknown = body?.vaultId;
+  if (typeof vaultId !== "string" || vaultId.length > 40) {
+    return new Response("Expected { vaultId, clusters }.", { status: 400 });
+  }
 
   if (
     !Array.isArray(clusters) ||
@@ -43,7 +46,7 @@ export async function POST(request: Request) {
     return new Response("Expected { clusters: string[][] }.", { status: 400 });
   }
 
-  const titles = await getNoteTitles();
+  const titles = await getNoteTitles(vaultId);
   const groups = (clusters as string[][]).map((slugs) =>
     slugs.slice(0, SAMPLE).map((slug) => titles[slug] ?? slug),
   );
