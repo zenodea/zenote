@@ -25,7 +25,7 @@ export function Footer() {
         if (open && event.target === event.currentTarget) setLanded(true);
       }}
       style={{ height: TOTAL }}
-      className="app-footer absolute inset-x-0 bottom-0 z-20 border-t border-foreground/15 bg-background"
+      className="app-footer absolute inset-x-0 z-20 border-t border-foreground/15 bg-background"
     >
       <div ref={setFooterHost} style={{ height: ROW }} className="relative" />
     </div>

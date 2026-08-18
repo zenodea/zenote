@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/frame/PageHeader";
 import { NoteList } from "@/components/note/NoteList";
 import { PageBody, noteCount } from "@/components/ui/PageBody";
-import { getAllNotes } from "@/lib/server/notes";
+import { getAllNotes } from "@/lib/server/vault-data";
 
 export default async function Home() {
   const notes = await getAllNotes();

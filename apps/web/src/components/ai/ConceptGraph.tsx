@@ -110,6 +110,8 @@ export function ConceptGraph({ data }: { data: ConceptGraphData }) {
   const active = useRef(-1);
   const moved = useRef(0);
   const panning = useRef<{ x: number; y: number } | null>(null);
+  const touches = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<number | null>(null);
 
   useEffect(() => {
     view.current = { ...model.fit };
@@ -206,9 +208,34 @@ export function ConceptGraph({ data }: { data: ConceptGraphData }) {
     return () => svg.removeEventListener("wheel", onWheel);
   }, [model]);
 
+  function zoomAbout(px: number, py: number, factor: number) {
+    const current = view.current;
+    const next = Math.min(
+      MAX_ZOOM,
+      Math.max(MIN_ZOOM, current.scale * factor),
+    );
+    current.tx = px - ((px - current.tx) / current.scale) * next;
+    current.ty = py - ((py - current.ty) / current.scale) * next;
+    current.scale = next;
+    applyCamera();
+  }
+
+  function trackTouch(event: React.PointerEvent) {
+    if (event.pointerType === "mouse") return false;
+    touches.current.set(event.pointerId, toBox(event));
+    if (touches.current.size !== 2) return touches.current.size > 2;
+
+    const [a, b] = [...touches.current.values()];
+    pinch.current = Math.hypot(a.x - b.x, a.y - b.y);
+    panning.current = null;
+    active.current = -1;
+    return true;
+  }
+
   function onNodeDown(index: number, event: React.PointerEvent) {
     event.preventDefault();
     event.stopPropagation();
+    if (trackTouch(event)) return;
     svgRef.current?.setPointerCapture(event.pointerId);
     active.current = index;
     moved.current = 0;
@@ -218,11 +245,30 @@ export function ConceptGraph({ data }: { data: ConceptGraphData }) {
 
   function onBackgroundDown(event: React.PointerEvent) {
     event.preventDefault();
+    if (trackTouch(event)) return;
     svgRef.current?.setPointerCapture(event.pointerId);
     panning.current = toBox(event);
   }
 
   function onPointerMove(event: React.PointerEvent) {
+    if (touches.current.has(event.pointerId)) {
+      touches.current.set(event.pointerId, toBox(event));
+    }
+
+    if (pinch.current !== null && touches.current.size >= 2) {
+      const [a, b] = [...touches.current.values()];
+      const distance = Math.hypot(a.x - b.x, a.y - b.y);
+      if (pinch.current > 0) {
+        zoomAbout(
+          (a.x + b.x) / 2,
+          (a.y + b.y) / 2,
+          distance / pinch.current,
+        );
+      }
+      pinch.current = distance;
+      return;
+    }
+
     if (active.current >= 0) {
       const point = toWorld(event);
       moved.current = Math.max(
@@ -245,7 +291,9 @@ export function ConceptGraph({ data }: { data: ConceptGraphData }) {
     }
   }
 
-  function onPointerUp() {
+  function onPointerUp(event?: React.PointerEvent) {
+    if (event) touches.current.delete(event.pointerId);
+    if (touches.current.size < 2) pinch.current = null;
     panning.current = null;
     if (active.current < 0) return;
     const index = active.current;

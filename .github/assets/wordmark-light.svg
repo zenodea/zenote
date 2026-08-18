@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 304 64" width="304" height="64" fill="none" role="img" aria-label="Zenote">
+  <path d="M16 16h32M16 32h22M16 48h32M64 16V48M64 16h32M64 32h22M64 48h32M112 16V48M112 16 144 48M144 16V48M208 16h32M224 16V48M256 16V48M256 16h32M256 32h22M256 48h32" stroke="#171717" stroke-width="6.5" stroke-linecap="round"/>
+  <path d="M176 16 192 32 176 48 160 32Z" stroke="#171717" stroke-width="6.5" stroke-linejoin="round"/>
+  <path d="M51 13 13 51" stroke="#7c3aed" stroke-width="6.5" stroke-linecap="round"/>
+</svg>

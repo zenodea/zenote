@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes } from "react";
 
 const VARIANTS = {
   icon: {
-    base: "rounded p-1.5",
+    base: "rounded p-1.5 coarse:flex coarse:min-h-11 coarse:min-w-11 coarse:items-center coarse:justify-center",
     idle: "opacity-60 hover:bg-foreground/10 hover:opacity-100 disabled:opacity-25 disabled:hover:bg-transparent",
   },
   solid: {
@@ -14,7 +14,7 @@ const VARIANTS = {
     idle: "bg-accent text-background hover:opacity-85 disabled:opacity-50 disabled:hover:opacity-50",
   },
   row: {
-    base: "flex w-full items-center gap-1 rounded py-1.5 pr-2 text-left",
+    base: "flex w-full items-center gap-1 rounded py-1.5 pr-2 text-left coarse:py-2.5",
     idle: "opacity-70 hover:bg-foreground/10",
   },
 } as const;

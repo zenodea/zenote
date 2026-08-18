@@ -1,27 +1,44 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, type RefObject } from "react";
+import { useLatestRef } from "./use-latest-ref";
 
 export type Size = { width: number; height: number };
 
 /** Tracks the pixel size of a canvas's parent element. */
-export function useCanvasSize() {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [size, setSize] = useState<Size>({ width: 0, height: 0 });
+export function useCanvasSize({
+  canvasRef,
+  sizeRef,
+  onResize,
+}: {
+  canvasRef: RefObject<HTMLCanvasElement | null>;
+  sizeRef: RefObject<Size>;
+  onResize: (size: Size, rect: DOMRect) => void;
+}) {
+  const [ready, setReady] = useState(false);
+  const latest = useLatestRef(onResize);
 
   useEffect(() => {
-    const parent = canvasRef.current?.parentElement;
-    if (!parent) return;
+    const canvas = canvasRef.current;
+    const parent = canvas?.parentElement;
+    if (!canvas || !parent) return;
 
-    const resize = () => {
-      setSize({ width: parent.clientWidth, height: parent.clientHeight });
+    const measure = () => {
+      const width = parent.clientWidth;
+      const height = parent.clientHeight;
+      const previous = sizeRef.current;
+      if (width === previous.width && height === previous.height) return;
+
+      sizeRef.current = { width, height };
+      if (width > 0 && height > 0) setReady(true);
+      latest.current(sizeRef.current, canvas.getBoundingClientRect());
     };
 
-    resize();
-    const observer = new ResizeObserver(resize);
+    measure();
+    const observer = new ResizeObserver(measure);
     observer.observe(parent);
     return () => observer.disconnect();
-  }, []);
+  }, [canvasRef, sizeRef, latest]);
 
-  return { canvasRef, size };
+  return ready;
 }

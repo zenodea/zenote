@@ -1,17 +1,20 @@
 "use client";
 
-import { Button } from "@/components/ui/Button";
+import Link from "next/link";
+import { Button, iconClass } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import {
   FilePlusIcon,
   FolderPlusIcon,
   LogoIcon,
   SearchIcon,
+  SlidersIcon,
 } from "@/components/ui/Icons";
 import type { useSidebarSearch } from "@/components/navigation/use-sidebar-search";
 import type { Naming } from "@/components/navigation/use-vault-actions";
 
 export function SidebarHeader({
+  drawer = false,
   minimised,
   reveal,
   onToggleSidebar,
@@ -19,6 +22,7 @@ export function SidebarHeader({
   naming,
   onNamingChange,
 }: {
+  drawer?: boolean;
   minimised: boolean;
   reveal: string;
   onToggleSidebar: () => void;
@@ -26,7 +30,11 @@ export function SidebarHeader({
   naming: Naming;
   onNamingChange: (naming: Naming) => void;
 }) {
-  const expandLabel = minimised ? "Expand sidebar" : "Minimise sidebar";
+  const expandLabel = drawer
+    ? "Close menu"
+    : minimised
+      ? "Expand sidebar"
+      : "Minimise sidebar";
   const searchOpen = search.open;
 
   return (
@@ -52,7 +60,7 @@ export function SidebarHeader({
           type="button"
           onClick={onToggleSidebar}
           aria-label={expandLabel}
-          aria-pressed={minimised}
+          aria-pressed={drawer ? undefined : minimised}
           title={expandLabel}
           className="flex min-w-0 flex-1 items-center hover:opacity-70"
         >
@@ -108,6 +116,15 @@ export function SidebarHeader({
         >
           <SearchIcon />
         </Button>
+        {drawer && !searchOpen && (
+          <Link
+            href="/settings"
+            aria-label="Settings"
+            className={`block ${iconClass(false)}`}
+          >
+            <SlidersIcon />
+          </Link>
+        )}
       </div>
     </div>
   );

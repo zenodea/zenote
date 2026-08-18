@@ -19,6 +19,7 @@ export function Backlinks({ backlinks }: { backlinks: Backlink[] }) {
           <li key={backlink.slug}>
             <Link
               href={`/notes/${backlink.slug}`}
+              prefetch={false}
               className="text-sm font-medium hover:opacity-70"
             >
               {backlink.title}

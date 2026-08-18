@@ -6,9 +6,8 @@ export const HEADER_HEIGHT = 56;
 export const SIDEBAR_WIDTH = 256;
 export const SIDEBAR_COLLAPSED_WIDTH = 60;
 
-// 1px border-t + p-2 around a 28px row; collapsed stacks three with gap-1. Cold login only.
+// 1px border-t + p-2 around a 28px row. Cold login only.
 export const FOOTER_HEIGHT = 45;
-export const FOOTER_COLLAPSED_HEIGHT = 105;
 
 export type PanelGeometry = {
   /** The assistant panel's left border. */
@@ -36,14 +35,24 @@ export function sidebarWidth(collapsed: boolean) {
 export function fallbackGeometry(
   collapsed: boolean,
   viewportHeight: number,
+  rails = true,
 ): Geometry {
+  if (!rails) {
+    return {
+      x: 0,
+      head: HEADER_HEIGHT - 0.5,
+      foot: viewportHeight,
+      sidebar: 0,
+      panel: null,
+    };
+  }
+
   const width = sidebarWidth(collapsed);
-  const footer = collapsed ? FOOTER_COLLAPSED_HEIGHT : FOOTER_HEIGHT;
 
   return {
     x: width - 0.5,
     head: HEADER_HEIGHT - 0.5,
-    foot: viewportHeight - footer + 0.5,
+    foot: viewportHeight - FOOTER_HEIGHT + 0.5,
     sidebar: width,
     panel: null,
   };

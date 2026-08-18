@@ -12,10 +12,12 @@ import {
   FilePlusIcon,
   FolderPlusIcon,
 } from "@/components/ui/Icons";
+import { MoveModal, type Moving } from "@/components/navigation/MoveModal";
 import type { Naming } from "@/components/navigation/use-vault-actions";
 
 export function NoteTree({
   tree,
+  folders,
   collapsed,
   onToggleFolder,
   pathname,
@@ -28,6 +30,7 @@ export function NoteTree({
   onDeleteFolder,
 }: {
   tree: TreeNode[];
+  folders: string[];
   collapsed: Set<string>;
   onToggleFolder: (path: string) => void;
   pathname: string;
@@ -40,6 +43,12 @@ export function NoteTree({
   onDeleteFolder: (path: string) => void;
 }) {
   const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const [moving, setMoving] = useState<Moving | null>(null);
+
+  function move(target: Moving, into: string) {
+    if (target.kind === "note") onMove(target.path, into);
+    else onMoveFolder(target.path, into);
+  }
 
   function drop(event: React.DragEvent, folder: string) {
     setDropTarget(null);
@@ -87,7 +96,16 @@ export function NoteTree({
         onSubmitName={onSubmitName}
         onCancelName={onCancelName}
         onDeleteFolder={onDeleteFolder}
+        onRequestMove={setMoving}
       />
+      {moving && (
+        <MoveModal
+          moving={moving}
+          folders={folders}
+          onMove={move}
+          onClose={() => setMoving(null)}
+        />
+      )}
     </div>
   );
 }
@@ -157,6 +175,7 @@ type NodeListProps = {
   onSubmitName: (name: string) => void;
   onCancelName: () => void;
   onDeleteFolder: (path: string) => void;
+  onRequestMove: (moving: Moving) => void;
 };
 
 function NodeList({
@@ -173,6 +192,7 @@ function NodeList({
   onSubmitName,
   onCancelName,
   onDeleteFolder,
+  onRequestMove,
 }: NodeListProps) {
   const nested = {
     depth: depth + 1,
@@ -187,6 +207,7 @@ function NodeList({
     onSubmitName,
     onCancelName,
     onDeleteFolder,
+    onRequestMove,
   };
 
   return (
@@ -260,7 +281,7 @@ function NodeList({
                 <Dropdown
                   label={<EllipsisIcon />}
                   ariaLabel={`Actions for ${node.name}`}
-                  triggerClassName="shrink-0 rounded px-1 opacity-0 hover:bg-foreground/10 focus-visible:opacity-100 group-hover/row:opacity-100"
+                  triggerClassName="shrink-0 rounded px-1 opacity-0 hover:bg-foreground/10 focus-visible:opacity-100 group-hover/row:opacity-100 coarse:opacity-100"
                 >
                   <FolderAction onClick={() => startNaming("note")}>
                     New note
@@ -278,6 +299,11 @@ function NodeList({
                     }
                   >
                     Rename…
+                  </FolderAction>
+                  <FolderAction
+                    onClick={() => onRequestMove({ kind: "folder", path })}
+                  >
+                    Move to…
                   </FolderAction>
                   <FolderAction onClick={() => onDeleteFolder(path)}>
                     Delete
@@ -310,9 +336,15 @@ function NodeList({
         const isActive = pathname === href;
 
         return (
-          <li key={node.slug}>
+          <li
+            key={node.slug}
+            className={`group/row flex items-center rounded hover:bg-foreground/10 ${
+              isActive ? "bg-foreground/10" : ""
+            }`}
+          >
             <Link
               href={href}
+              prefetch={false}
               style={fileIndent}
               aria-current={isActive ? "page" : undefined}
               draggable
@@ -320,12 +352,23 @@ function NodeList({
                 event.stopPropagation();
                 event.dataTransfer.setData("application/x-note", node.slug);
               }}
-              className={`block truncate rounded py-1.5 pr-2 hover:bg-foreground/10 ${
-                isActive ? "bg-foreground/10" : ""
-              }`}
+              className="block min-w-0 flex-1 truncate py-1.5 pr-2 coarse:py-2.5"
             >
               {node.name}
             </Link>
+            <Dropdown
+              label={<EllipsisIcon />}
+              ariaLabel={`Actions for ${node.name}`}
+              triggerClassName={`shrink-0 rounded px-1 hover:bg-foreground/15 focus-visible:opacity-100 group-hover/row:opacity-100 coarse:opacity-100 ${
+                isActive ? "opacity-100" : "opacity-0"
+              }`}
+            >
+              <FolderAction
+                onClick={() => onRequestMove({ kind: "note", path: node.slug })}
+              >
+                Move to…
+              </FolderAction>
+            </Dropdown>
           </li>
         );
       })}

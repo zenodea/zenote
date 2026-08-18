@@ -58,8 +58,6 @@ export async function loadAllNotes(): Promise<Note[]> {
   return rows.map(toNote).sort((a, b) => a.slug.localeCompare(b.slug));
 }
 
-export const getAllNotes = cache(loadAllNotes);
-
 export const getNote = cache(async (slug: string): Promise<Note | null> => {
   const supabase = await createClient();
 

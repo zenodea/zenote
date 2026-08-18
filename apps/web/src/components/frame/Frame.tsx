@@ -17,6 +17,7 @@ import {
   fallbackGeometry,
   type Geometry,
 } from "@/lib/frame";
+import { useLayoutMode } from "@/hooks/use-media-query";
 import { prefersReducedMotion } from "@/lib/motion";
 import { RETURN_PARAM, safeReturnTo } from "@/lib/return-to";
 import { endLeaving, useLeaving } from "@/lib/stores/leaving";
@@ -53,6 +54,7 @@ export function Frame() {
   const router = useRouter();
   const settings = useSettings();
   const leaving = useLeaving();
+  const phone = useLayoutMode() === "phone";
   // From the URL, not a prop: the root layout is shared with /login and isn't re-rendered by sign-in.
   const authed = usePathname() !== LOGIN;
   const [env, setEnv] = useState<Env | null>(null);
@@ -129,13 +131,15 @@ export function Frame() {
         : null;
 
     return (
-      measured ?? fallbackGeometry(settings.sidebarCollapsed, env?.height ?? 0)
+      measured ??
+      fallbackGeometry(settings.sidebarCollapsed, env?.height ?? 0, !phone)
     );
   }, [
     leaving.geometry,
     leaving.viewportHeight,
     settings.sidebarCollapsed,
     env?.height,
+    phone,
   ]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -244,38 +248,48 @@ export function Frame() {
 
   const box = Math.min(MAX_BOX, env.width - 40, env.height - 40);
   const compact = box < MIN_BOX;
+  const rails = geometry.sidebar > 0;
+  const anchor = rails ? geometry.x : env.width / 2;
 
   return (
     <div data-frame aria-hidden={authed ? true : undefined}>
       <Seam
         className="left-0 h-px w-screen"
         style={{ ...lines, top: geometry.head - 0.5 }}
-        origin={`${geometry.x}px center`}
+        origin={`${anchor}px center`}
         axis="X"
         open={drawn}
         transition={draw}
       />
-      <Seam
-        className="top-0 h-screen w-px"
-        style={{ ...lines, left: geometry.x - 0.5 }}
-        origin={`center ${geometry.head}px`}
-        axis="Y"
-        open={drawn}
-        transition={draw}
-      />
-      <Seam
-        className="left-0 h-px"
-        style={{ ...lines, top: geometry.foot - 0.5, width: geometry.sidebar }}
-        origin={`${geometry.x}px center`}
-        axis="X"
-        open={drawn}
-        transition={draw}
-      />
+      {rails && (
+        <Seam
+          className="top-0 h-dvh w-px"
+          style={{ ...lines, left: geometry.x - 0.5 }}
+          origin={`center ${geometry.head}px`}
+          axis="Y"
+          open={drawn}
+          transition={draw}
+        />
+      )}
+      {rails && (
+        <Seam
+          className="left-0 h-px"
+          style={{
+            ...lines,
+            top: geometry.foot - 0.5,
+            width: geometry.sidebar,
+          }}
+          origin={`${geometry.x}px center`}
+          axis="X"
+          open={drawn}
+          transition={draw}
+        />
+      )}
 
       {/* The assistant panel, when it was open, leaves with the same grace. */}
       {panel && (
         <Seam
-          className="top-0 h-screen w-px"
+          className="top-0 h-dvh w-px"
           style={{ ...lines, left: panel.x - 0.5 }}
           origin={`center ${geometry.head}px`}
           axis="Y"
@@ -303,8 +317,12 @@ export function Frame() {
           Retracting, they travel with the lines into the main junction — the
           point the login diamond opens from. */}
       {[
-        { x: geometry.x, y: geometry.head },
-        { x: geometry.x, y: geometry.foot },
+        ...(rails
+          ? [
+              { x: geometry.x, y: geometry.head },
+              { x: geometry.x, y: geometry.foot },
+            ]
+          : []),
         ...(panel
           ? [
               { x: panel.x, y: geometry.head },
@@ -318,7 +336,7 @@ export function Frame() {
           key={`${x}:${y}`}
           style={{
             ...lines,
-            left: drawn ? x : geometry.x,
+            left: drawn ? x : anchor,
             top: drawn ? y : geometry.head,
             opacity: (lines.opacity as number) * (drawn ? 1 : 0),
             transitionProperty: "left, top, opacity",
@@ -340,7 +358,7 @@ export function Frame() {
         <div
           className="fixed z-10"
           style={{
-            left: shut ? geometry.x : env.width / 2,
+            left: shut ? anchor : env.width / 2,
             top: shut ? geometry.head : env.height / 2,
             opacity: lines.opacity,
             transition: reduce

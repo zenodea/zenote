@@ -160,6 +160,7 @@ function ResultList({
           <li key={result.slug}>
             <Link
               href={href}
+              prefetch={false}
               aria-current={pathname === href ? "page" : undefined}
               className={resultRowClass(pathname === href)}
             >

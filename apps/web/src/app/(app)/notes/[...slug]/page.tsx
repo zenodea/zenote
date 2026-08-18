@@ -1,7 +1,12 @@
 import { NoteView } from "@/components/note/NoteView";
 import { localGraph } from "@/lib/graph/model";
-import { getAllNotes, getNote } from "@/lib/server/notes";
-import { getBacklinks, getGraph, getResolver } from "@/lib/server/vault-data";
+import { getNote } from "@/lib/server/notes";
+import {
+  getAllNotes,
+  getBacklinks,
+  getGraph,
+  getResolver,
+} from "@/lib/server/vault-data";
 
 export async function generateMetadata({
   params,

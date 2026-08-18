@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { useHotkey } from "@/hooks/use-hotkey";
+import { useLatestRef } from "@/hooks/use-latest-ref";
+import { useFindRequest } from "@/lib/stores/commands";
 import { scrollBehavior } from "@/lib/motion";
 import { useFooterClaim, useFooterHost } from "@/lib/stores/footer";
 import { Button } from "@/components/ui/Button";
@@ -83,15 +85,27 @@ function FindBarInner() {
     setIndex(0);
   }
 
-  // Take over Cmd/Ctrl+F from the browser's own find dialog.
-  useHotkey("mod+f", (event) => {
-    event.preventDefault();
+  function reveal() {
     if (!open) {
       setOpen(true);
       runSearch(query);
     }
     inputRef.current?.select();
+  }
+
+  useHotkey("mod+f", (event) => {
+    event.preventDefault();
+    reveal();
   });
+
+  const request = useFindRequest();
+  const seen = useRef(request);
+  const latestReveal = useLatestRef(reveal);
+  useEffect(() => {
+    if (request === seen.current) return;
+    seen.current = request;
+    latestReveal.current();
+  }, [request, latestReveal]);
 
   useEffect(() => {
     if (open) {

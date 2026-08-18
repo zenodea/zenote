@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  closeSwitcher,
+  toggleSwitcher,
+  useSwitcherOpen,
+} from "@/lib/stores/commands";
 import { fuzzyMatch, type NoteRef } from "@/lib/search";
 import { folder as folderOf } from "@/lib/slug";
 import { useHotkey } from "@/hooks/use-hotkey";
@@ -19,15 +24,15 @@ import { beginPageFade } from "@/lib/page-fade";
 const MAX_RESULTS = 8;
 
 export function QuickSwitcher({ docs }: { docs: NoteRef[] }) {
-  const [open, setOpen] = useState(false);
+  const open = useSwitcherOpen();
 
   useHotkey("mod+k", (event) => {
     event.preventDefault();
-    setOpen((current) => !current);
+    toggleSwitcher();
   });
 
   if (!open) return null;
-  return <SwitcherPanel docs={docs} onClose={() => setOpen(false)} />;
+  return <SwitcherPanel docs={docs} onClose={closeSwitcher} />;
 }
 
 function SwitcherPanel({

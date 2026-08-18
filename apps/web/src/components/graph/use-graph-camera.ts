@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
-import { useLatestRef } from "@/hooks/use-latest-ref";
+import { useCallback, useRef, type RefObject } from "react";
 import type { Size } from "@/hooks/use-canvas-size";
 import type { Positions, View } from "@/lib/graph/geometry";
 
@@ -19,13 +18,13 @@ type Point = { x: number; y: number };
 export function useGraphCamera({
   layout,
   target,
-  size,
+  sizeRef,
   overscan,
 }: {
   layout: Positions;
   /** The settled layout to frame on, or null while it is still being solved. */
   target: () => Positions | null;
-  size: Size;
+  sizeRef: RefObject<Size>;
   overscan: number;
 }) {
   const view = useRef<View>({ x: 0, y: 0, scale: 1 });
@@ -34,7 +33,6 @@ export function useGraphCamera({
   const velocity = useRef({ x: 0, y: 0 });
   const pan = useRef<Point | null>(null);
   const adjusted = useRef(false);
-  const latestSize = useLatestRef(size);
 
   const frameBounds = useCallback(
     (
@@ -44,7 +42,7 @@ export function useGraphCamera({
       maxY: number,
       { overscan = 1, maxScale = MAX_SCALE } = {},
     ): View | null => {
-      const { width, height } = latestSize.current;
+      const { width, height } = sizeRef.current;
       if (!width || !height) return null;
 
       const scale = Math.max(
@@ -62,7 +60,7 @@ export function useGraphCamera({
         y: height / 2 - ((minY + maxY) / 2) * scale,
       };
     },
-    [latestSize],
+    [sizeRef],
   );
 
   const fit = useCallback(
@@ -134,10 +132,10 @@ export function useGraphCamera({
 
   const zoomBy = useCallback(
     (factor: number) => {
-      const { width, height } = latestSize.current;
+      const { width, height } = sizeRef.current;
       zoomAt({ x: width / 2, y: height / 2 }, factor);
     },
-    [zoomAt, latestSize],
+    [zoomAt, sizeRef],
   );
 
   const beginPan = useCallback((point: Point) => {

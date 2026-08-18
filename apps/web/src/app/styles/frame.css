@@ -1,10 +1,12 @@
 /* The width for the paint before React reads it; must keep agreeing with Sidebar's own classes. */
-html[data-sidebar="collapsed"] .sidebar {
-  width: 60px;
-}
+@media (min-width: 768px) {
+  html[data-sidebar="collapsed"] .sidebar {
+    width: 60px;
+  }
 
-html[data-sidebar="collapsed"] .sidebar-reveal {
-  opacity: 0;
+  html[data-sidebar="collapsed"] .sidebar-reveal {
+    opacity: 0;
+  }
 }
 
 /* A folder's children unfold on open rather than arriving all at once. */
@@ -33,7 +35,8 @@ html[data-sidebar="collapsed"] .sidebar-reveal {
 
 /* Translated rather than hidden, so its input can still take focus on the way in. */
 .app-footer {
-  transform: translateY(100%);
+  bottom: var(--mobile-bar);
+  transform: translateY(calc(100% + var(--mobile-bar)));
   transition: transform 110ms ease-out;
 }
 .app-footer[data-open] {

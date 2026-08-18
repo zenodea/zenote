@@ -12,19 +12,17 @@ function warmRenderer() {
 
 export function SidebarFooter({
   minimised,
+  reveal,
   pathname,
 }: {
   minimised: boolean;
+  reveal: string;
   pathname: string;
 }) {
   return (
     <div
       data-seam="top"
-      className={`flex shrink-0 border-t border-foreground/15 p-2 ${
-        minimised
-          ? "flex-col items-center gap-1"
-          : "items-center justify-between"
-      }`}
+      className="flex shrink-0 items-center justify-between border-t border-foreground/15 p-2"
     >
       <Link
         href="/settings"
@@ -35,7 +33,10 @@ export function SidebarFooter({
       >
         <SlidersIcon />
       </Link>
-      <div className={`flex items-center gap-1 ${minimised ? "flex-col" : ""}`}>
+      <div
+        inert={minimised}
+        className={`flex shrink-0 items-center gap-1 transition-opacity ${reveal}`}
+      >
         <Link
           href="/graph"
           aria-label="Graph"

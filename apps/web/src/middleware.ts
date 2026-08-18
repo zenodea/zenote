@@ -24,9 +24,8 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims ?? null;
 
   const { pathname } = request.nextUrl;
   const onLogin = pathname === LOGIN;
@@ -65,5 +64,8 @@ function carry(response: NextResponse, carrying: NextResponse) {
 
 export const config = {
   // An open-ended `.*\.svg$` would exempt any route ending in .svg, not just static assets.
-  matcher: ["/((?!_next/static|_next/image|favicon\\.ico$|icon\\.svg$).*)"],
+  // The manifest and its icons are fetched without credentials: guarded, they never install.
+  matcher: [
+    "/((?!_next/static|_next/image|favicon\\.ico$|icon\\.svg$|manifest\\.webmanifest$|apple-touch-icon\\.png$|icon-192\\.png$|icon-512\\.png$|icon-maskable-512\\.png$).*)",
+  ],
 };

@@ -39,8 +39,44 @@ jobs:
       - run: npm ci
       - run: npm run lint
 
+  # A phone viewport against the built app, on a throwaway Supabase and a
+  # fixture vault. Emulation cannot reach the soft keyboard, IME composition or
+  # WebGL throughput — a preview URL on a real device still owns those.
   test:
-    name: Test
+    name: Mobile
     runs-on: ubuntu-latest
     steps:
-      - run: echo "No tests yet"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: npm ci
+      - run: npm run db:start
+      - name: Point the app at the local stack
+        run: |
+          eval "$(supabase status --workdir ../.. -o env | sed 's/^/export /')"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+          } > .env.local
+      - name: Seed a fixture vault
+        run: |
+          mkdir -p content
+          cp -R tests/fixtures/notes/. content/
+          npm run seed
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Serve and check
+        run: |
+          npm run start &
+          for attempt in $(seq 1 60); do
+            curl -sf http://127.0.0.1:3000/login > /dev/null && break
+            sleep 2
+          done
+          npm run test:mobile

@@ -6,7 +6,7 @@ import {
   resolveWikilink,
   type WikilinkResolver,
 } from "../wikilinks";
-import { getAllNotes } from "./notes";
+import { loadAllNotes } from "./notes";
 import { createClient } from "./supabase";
 
 export type SlugRename = { from: string; to: string };
@@ -16,7 +16,7 @@ export async function rewriteWikilinks(renames: SlugRename[]): Promise<void> {
   const moved = renames.filter((rename) => rename.from !== rename.to);
   if (moved.length === 0) return;
 
-  const notes = await getAllNotes();
+  const notes = await loadAllNotes();
   const resolver = buildResolver(notes);
 
   // The names a link could have reached the note by before it moved.

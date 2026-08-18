@@ -18,6 +18,7 @@ export function NoteList({
           <li key={note.slug}>
             <Link
               href={`/notes/${note.slug}`}
+              prefetch={false}
               className="block py-4 hover:opacity-70"
             >
               <Text variant="strong">{note.title}</Text>

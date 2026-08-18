@@ -3,10 +3,14 @@
 import type { ReactNode } from "react";
 import { SEARCH_MODES } from "@/lib/search";
 import { updateSettings, useSettings } from "@/lib/stores/settings";
+import { useCoarsePointer, useLayoutMode } from "@/hooks/use-media-query";
 import { Segmented } from "@/components/ui/Segmented";
 
 export function SettingsForm() {
   const settings = useSettings();
+  const phone = useLayoutMode() === "phone";
+  const coarse = useCoarsePointer();
+  const touchPhone = phone && coarse;
 
   return (
     <ul className="divide-y divide-foreground/15">
@@ -40,16 +44,18 @@ export function SettingsForm() {
           onChange={(checked) => updateSettings({ openInEditMode: checked })}
         />
       </Row>
-      <Row
-        title="Vim keybindings"
-        description="Edit notes with Vim motions, operators and modes."
-      >
-        <Toggle
-          checked={settings.vimMode}
-          ariaLabel="Use Vim keybindings in the editor"
-          onChange={(checked) => updateSettings({ vimMode: checked })}
-        />
-      </Row>
+      {!touchPhone && (
+        <Row
+          title="Vim keybindings"
+          description="Edit notes with Vim motions, operators and modes."
+        >
+          <Toggle
+            checked={settings.vimMode}
+            ariaLabel="Use Vim keybindings in the editor"
+            onChange={(checked) => updateSettings({ vimMode: checked })}
+          />
+        </Row>
+      )}
       <Row
         title="Search in"
         description="What sidebar search matches by default: note titles only, or note content too."
@@ -103,14 +109,18 @@ export function Toggle({
       aria-checked={checked}
       aria-label={ariaLabel}
       onClick={() => onChange(!checked)}
-      className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
-        checked ? "bg-accent" : "bg-foreground/25"
+      className={`relative h-5 w-10 shrink-0 border transition-colors duration-200 ${
+        checked
+          ? "border-accent/50 bg-accent/10"
+          : "border-foreground/20 bg-foreground/5"
       }`}
     >
       <span
         aria-hidden
-        className={`absolute top-1 size-3 rounded-full bg-background transition-[left] ${
-          checked ? "left-5" : "left-1"
+        className={`absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 border transition-[left,background-color,border-color] duration-200 motion-reduce:transition-none ${
+          checked
+            ? "left-[calc(100%-0.5rem)] border-accent bg-accent"
+            : "left-2 border-foreground/40 bg-background"
         }`}
       />
     </button>

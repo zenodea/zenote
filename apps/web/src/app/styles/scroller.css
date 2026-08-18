@@ -33,6 +33,12 @@
   visibility: hidden;
 }
 
+@media (pointer: coarse) {
+  .scroller-thumb {
+    display: none;
+  }
+}
+
 /* The gradient is set in JS and reads --ink, so the states are pure CSS. */
 .scroller-mark {
   --ink: color-mix(in srgb, var(--foreground) 48%, transparent);

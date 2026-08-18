@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 948 96" width="948" height="96" role="img" aria-label="Theme palettes">
+<style>text{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:11px;letter-spacing:.02em}</style>
+<g transform="translate(0,0)">
+<rect x="0" y="0" width="148" height="48.0" fill="#0a0a0a"/>
+<rect x="0" y="48.0" width="148" height="48.0" fill="#ffffff"/>
+<rect x="0.5" y="0.5" width="147" height="95" fill="none" stroke="#8884" />
+<path d="M22 24 30 32 22 40 14 32Z" fill="#a78bfa"/>
+<path d="M22 72 30 80 22 88 14 80Z" fill="#7c3aed"/>
+<text x="40" y="28" fill="#ededed">Default</text>
+<text x="40" y="42" fill="#ededed" opacity="0.55">dark</text>
+<text x="40" y="76" fill="#171717">Default</text>
+<text x="40" y="90" fill="#171717" opacity="0.55">light</text>
+</g>
+<g transform="translate(160,0)">
+<rect x="0" y="0" width="148" height="48.0" fill="#282a36"/>
+<rect x="0" y="48.0" width="148" height="48.0" fill="#fffbeb"/>
+<rect x="0.5" y="0.5" width="147" height="95" fill="none" stroke="#8884" />
+<path d="M22 24 30 32 22 40 14 32Z" fill="#bd93f9"/>
+<path d="M22 72 30 80 22 88 14 80Z" fill="#644ac9"/>
+<text x="40" y="28" fill="#f8f8f2">Dracula</text>
+<text x="40" y="42" fill="#f8f8f2" opacity="0.55">dark</text>
+<text x="40" y="76" fill="#1f1f1f">Dracula</text>
+<text x="40" y="90" fill="#1f1f1f" opacity="0.55">light</text>
+</g>
+<g transform="translate(320,0)">
+<rect x="0" y="0" width="148" height="48.0" fill="#1a1b26"/>
+<rect x="0" y="48.0" width="148" height="48.0" fill="#e1e2e7"/>
+<rect x="0.5" y="0.5" width="147" height="95" fill="none" stroke="#8884" />
+<path d="M22 24 30 32 22 40 14 32Z" fill="#7aa2f7"/>
+<path d="M22 72 30 80 22 88 14 80Z" fill="#2e7de9"/>
+<text x="40" y="28" fill="#c0caf5">Tokyo Night</text>
+<text x="40" y="42" fill="#c0caf5" opacity="0.55">dark</text>
+<text x="40" y="76" fill="#3760bf">Tokyo Night</text>
+<text x="40" y="90" fill="#3760bf" opacity="0.55">light</text>
+</g>
+<g transform="translate(480,0)">
+<rect x="0" y="0" width="148" height="48.0" fill="#282828"/>
+<rect x="0" y="48.0" width="148" height="48.0" fill="#fbf1c7"/>
+<rect x="0.5" y="0.5" width="147" height="95" fill="none" stroke="#8884" />
+<path d="M22 24 30 32 22 40 14 32Z" fill="#d79921"/>
+<path d="M22 72 30 80 22 88 14 80Z" fill="#b57614"/>
+<text x="40" y="28" fill="#ebdbb2">Gruvbox</text>
+<text x="40" y="42" fill="#ebdbb2" opacity="0.55">dark</text>
+<text x="40" y="76" fill="#3c3836">Gruvbox</text>
+<text x="40" y="90" fill="#3c3836" opacity="0.55">light</text>
+</g>
+<g transform="translate(640,0)">
+<rect x="0" y="0" width="148" height="48.0" fill="#2d353b"/>
+<rect x="0" y="48.0" width="148" height="48.0" fill="#fdf6e3"/>
+<rect x="0.5" y="0.5" width="147" height="95" fill="none" stroke="#8884" />
+<path d="M22 24 30 32 22 40 14 32Z" fill="#a7c080"/>
+<path d="M22 72 30 80 22 88 14 80Z" fill="#8da101"/>
+<text x="40" y="28" fill="#d3c6aa">Everforest</text>
+<text x="40" y="42" fill="#d3c6aa" opacity="0.55">dark</text>
+<text x="40" y="76" fill="#5c6a72">Everforest</text>
+<text x="40" y="90" fill="#5c6a72" opacity="0.55">light</text>
+</g>
+<g transform="translate(800,0)">
+<rect x="0" y="0" width="148" height="48.0" fill="#1e1e2e"/>
+<rect x="0" y="48.0" width="148" height="48.0" fill="#eff1f5"/>
+<rect x="0.5" y="0.5" width="147" height="95" fill="none" stroke="#8884" />
+<path d="M22 24 30 32 22 40 14 32Z" fill="#cba6f7"/>
+<path d="M22 72 30 80 22 88 14 80Z" fill="#8839ef"/>
+<text x="40" y="28" fill="#cdd6f4">Catppuccin</text>
+<text x="40" y="42" fill="#cdd6f4" opacity="0.55">dark</text>
+<text x="40" y="76" fill="#4c4f69">Catppuccin</text>
+<text x="40" y="90" fill="#4c4f69" opacity="0.55">light</text>
+</g>
+</svg>

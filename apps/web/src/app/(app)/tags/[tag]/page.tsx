@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/frame/PageHeader";
 import { NoteList } from "@/components/note/NoteList";
 import { PageBody, noteCount } from "@/components/ui/PageBody";
-import { getAllNotes } from "@/lib/server/notes";
+import { getAllNotes } from "@/lib/server/vault-data";
 import { buildTagIndex, noteTags } from "@/lib/tags";
 
 export async function generateMetadata({ params }: PageProps<"/tags/[tag]">) {
