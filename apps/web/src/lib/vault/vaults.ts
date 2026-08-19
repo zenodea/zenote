@@ -1,6 +1,5 @@
 "use client";
 
-import { navigate } from "../navigation";
 import { createClient } from "../supabase/client";
 import { readVault, setActiveVaultDb, writeVault } from "./db";
 import {
@@ -18,9 +17,11 @@ function withEntry(vaults: VaultEntry[], entry: VaultEntry): VaultEntry[] {
   return [...rest, entry].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export async function openVault(entry: VaultEntry): Promise<void> {
+export async function openVault(opened: VaultEntry): Promise<void> {
+  const entry = { ...opened, lastOpened: new Date().toISOString() };
   setActiveVaultDb(entry.id);
   await writeAppMeta("activeVaultId", entry.id);
+  await saveVaultEntry(entry);
 
   const { notes, folders, tombstones } = await readVault();
   const state = vaultStore.get();
@@ -44,7 +45,6 @@ export async function switchVault(id: string): Promise<void> {
   if (!entry) return;
 
   await openVault(entry);
-  navigate("/");
 }
 
 export async function createVault(name: string): Promise<void> {
@@ -58,7 +58,6 @@ export async function createVault(name: string): Promise<void> {
 
   await saveVaultEntry(entry);
   await openVault(entry);
-  navigate("/");
 }
 
 export async function renameVault(name: string): Promise<void> {
@@ -114,7 +113,6 @@ export async function attachVault(remote: {
   };
   await saveVaultEntry(entry);
   await openVault(entry);
-  navigate("/");
 }
 
 export async function syncVaultUp(): Promise<void> {

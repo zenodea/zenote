@@ -5,6 +5,8 @@ export type VaultEntry = {
   name: string;
   ownerId: string | null;
   synced: boolean;
+  lastOpened?: string;
+  lastSyncedAt?: string;
 };
 
 const DB = "zenote-app";

@@ -11,7 +11,7 @@ export function interceptLinkClicks(): () => void {
   const onClick = (event: MouseEvent) => {
     if (!navigatesAway(event)) return;
     const anchor = (event.target as Element).closest("a");
-    if (!anchor) return;
+    if (!anchor || anchor.pathname === "/login") return;
     event.preventDefault();
     navigate(anchor.pathname + anchor.search);
   };

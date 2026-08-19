@@ -20,7 +20,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (!desktop && !(await getUser())) redirect("/login");
 
   return (
-    <VaultProvider>
+    <VaultProvider desktop={desktop}>
       <AiAssistantProvider>
         <Sidebar />
         <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">

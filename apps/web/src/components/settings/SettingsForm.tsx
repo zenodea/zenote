@@ -109,18 +109,28 @@ export function Toggle({
       aria-checked={checked}
       aria-label={ariaLabel}
       onClick={() => onChange(!checked)}
-      className={`relative h-5 w-10 shrink-0 border transition-colors duration-200 ${
-        checked
-          ? "border-accent/50 bg-accent/10"
-          : "border-foreground/20 bg-foreground/5"
-      }`}
+      className="relative h-5 w-10 shrink-0"
     >
+      <svg
+        aria-hidden
+        viewBox="0 0 40 20"
+        className="absolute inset-0 h-full w-full"
+      >
+        <path
+          d="M1 10 L10 1 H30 L39 10 L30 19 H10 Z"
+          className={`transition-colors duration-200 ${
+            checked
+              ? "fill-accent/10 stroke-accent/50"
+              : "fill-foreground/5 stroke-foreground/20"
+          }`}
+        />
+      </svg>
       <span
         aria-hidden
-        className={`absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 border transition-[left,background-color,border-color] duration-200 motion-reduce:transition-none ${
+        className={`absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border transition-[left,background-color,border-color] duration-200 motion-reduce:transition-none ${
           checked
-            ? "left-[calc(100%-0.5rem)] border-accent bg-accent"
-            : "left-2 border-foreground/40 bg-background"
+            ? "left-[calc(100%-0.875rem)] border-accent bg-accent"
+            : "left-3.5 border-foreground/40 bg-background"
         }`}
       />
     </button>

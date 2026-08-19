@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useTitle } from "@/hooks/use-title";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { ChevronIcon } from "@/components/ui/Icons";
@@ -9,7 +8,7 @@ import { PageHeader } from "@/components/frame/PageHeader";
 import { AssistantSettings } from "@/components/settings/AssistantSettings";
 import { SettingsForm } from "@/components/settings/SettingsForm";
 import { ThemeSettings } from "@/components/settings/ThemeSettings";
-import { VaultSettings } from "@/components/settings/VaultSettings";
+import { SignInButton } from "@/components/auth/SignInButton";
 import { useVault } from "@/lib/vault/store";
 
 export function SettingsView() {
@@ -23,13 +22,6 @@ export function SettingsView() {
       <Scroller className="min-h-0 flex-1">
         <div className="mx-auto w-full max-w-3xl px-6 py-6">
           <section>
-            <h2 className="text-sm font-semibold uppercase tracking-wide opacity-60">
-              Vault
-            </h2>
-            <VaultSettings />
-          </section>
-
-          <section className="mt-10">
             <h2 className="text-sm font-semibold uppercase tracking-wide opacity-60">
               Document
             </h2>
@@ -75,12 +67,7 @@ export function SettingsView() {
                     Sign in to sync your vaults and use the assistant.
                   </p>
                 </div>
-                <Link
-                  href="/login"
-                  className="rounded bg-accent px-3 py-1.5 font-medium text-background hover:opacity-85"
-                >
-                  Sign in
-                </Link>
+                <SignInButton className="shrink-0" />
               </div>
             )}
           </section>

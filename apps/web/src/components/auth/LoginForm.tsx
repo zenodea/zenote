@@ -3,7 +3,7 @@
 import type { FormEvent } from "react";
 import { Diamond } from "@/components/frame/Diamond";
 import { Button } from "@/components/ui/Button";
-import { LogoWordmark } from "@/components/ui/Icons";
+import { ChevronIcon, LogoWordmark } from "@/components/ui/Icons";
 
 export function LoginForm({
   busy,
@@ -12,6 +12,7 @@ export function LoginForm({
   delay,
   duration,
   onSubmit,
+  onBack,
 }: {
   busy: boolean;
   error: string | null;
@@ -19,6 +20,7 @@ export function LoginForm({
   delay: number;
   duration: number;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onBack?: () => void;
 }) {
   return (
     <form
@@ -47,9 +49,29 @@ export function LoginForm({
         <Field name="password" type="password" label="Password" />
       </div>
 
-      <Button variant="accent" type="submit" disabled={busy} className="w-full">
-        {busy ? "Opening your vault…" : "Sign in"}
-      </Button>
+      <div className="flex w-full items-stretch gap-2">
+        {onBack && (
+          <Button
+            variant="solid"
+            type="button"
+            onClick={onBack}
+            disabled={busy}
+            aria-label="Back to your vault"
+            title="Back to your vault"
+            className="flex shrink-0 items-center"
+          >
+            <ChevronIcon className="w-3 rotate-180" />
+          </Button>
+        )}
+        <Button
+          variant="accent"
+          type="submit"
+          disabled={busy}
+          className="min-w-0 flex-1"
+        >
+          {busy ? "Opening your vault…" : "Sign in"}
+        </Button>
+      </div>
 
       <p
         role="alert"

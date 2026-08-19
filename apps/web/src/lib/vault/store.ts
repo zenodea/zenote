@@ -11,6 +11,7 @@ import type { LocalFolder, LocalNote, Tombstone } from "./types";
 
 export type VaultState = {
   status: "loading" | "setup" | "ready";
+  desktop: boolean;
   vault: VaultEntry | null;
   vaults: VaultEntry[];
   ownerId: string | null;
@@ -22,6 +23,7 @@ export type VaultState = {
 
 export const vaultStore = createStore<VaultState>({
   status: "loading",
+  desktop: false,
   vault: null,
   vaults: [],
   ownerId: null,

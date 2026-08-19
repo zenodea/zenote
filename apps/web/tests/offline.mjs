@@ -27,8 +27,9 @@ function check(condition, description) {
 async function serverNote(slug) {
   const { data } = await admin
     .from("notes")
-    .select("slug,body,title")
+    .select("slug,body,title,vaults!inner(name)")
     .eq("slug", slug)
+    .eq("vaults.name", "Initial Vault")
     .maybeSingle();
   return data;
 }

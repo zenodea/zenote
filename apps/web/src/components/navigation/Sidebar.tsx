@@ -148,13 +148,12 @@ export function Sidebar() {
             />
           )}
         </Scroller>
-        {!drawer && (
-          <SidebarFooter
-            minimised={minimised}
-            reveal={reveal}
-            pathname={pathname}
-          />
-        )}
+        <SidebarFooter
+          minimised={minimised}
+          reveal={reveal}
+          pathname={pathname}
+          drawer={drawer}
+        />
       </nav>
     </>
   );

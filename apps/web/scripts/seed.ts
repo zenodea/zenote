@@ -97,6 +97,7 @@ async function ensureVault(ownerId: string, name: string): Promise<string> {
     .from("vaults")
     .select("id")
     .eq("owner_id", ownerId)
+    .eq("name", name)
     .limit(1)
     .maybeSingle<{ id: string }>();
   if (data) return data.id;
@@ -133,12 +134,29 @@ async function main() {
   const files = await walk(CONTENT_DIR);
   const notes = await Promise.all(files.map(readNote));
 
-  const [devVault, canaryVault] = await Promise.all([
+  const [devVault, workVault, canaryVault] = await Promise.all([
     ensureVault(devId, "Initial Vault"),
+    ensureVault(devId, "Work"),
     ensureVault(canaryId, "Initial Vault"),
   ]);
 
   await upsert(devId, devVault, notes);
+  await upsert(devId, workVault, [
+    {
+      slug: "welcome",
+      title: "Welcome",
+      tags: ["work"],
+      body: "# Welcome\n\nThe Work vault's own welcome, sharing a slug with the other vault's. See [[Plan]].",
+      created_at: new Date().toISOString(),
+    },
+    {
+      slug: "projects/plan",
+      title: "Plan",
+      tags: ["work"],
+      body: "# Plan\n\nQuarterly plan, linked from [[Welcome]].",
+      created_at: new Date().toISOString(),
+    },
+  ]);
   await upsert(canaryId, canaryVault, [
     {
       slug: "canary",
@@ -150,7 +168,7 @@ async function main() {
   ]);
 
   console.log(
-    `Seeded ${notes.length} notes for ${DEV.email} / ${DEV.password}`,
+    `Seeded ${notes.length} notes in Initial Vault and 2 in Work for ${DEV.email} / ${DEV.password}`,
   );
   console.log(`Seeded 1 canary note for ${CANARY.email} / ${CANARY.password}`);
 }

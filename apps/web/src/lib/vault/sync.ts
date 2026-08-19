@@ -3,6 +3,7 @@
 import { setSyncState } from "../stores/sync-status";
 import { pull } from "./pull";
 import { push } from "./push";
+import { saveVaultEntry } from "./registry";
 import { vaultStore } from "./store";
 
 const PUSH_DEBOUNCE_MS = 800;
@@ -48,9 +49,26 @@ async function run(): Promise<void> {
       await round();
     }
     setSyncState("synced");
+    await recordSync();
   } catch {
     setSyncState(navigator.onLine ? "error" : "offline");
   }
+}
+
+async function recordSync(): Promise<void> {
+  const state = vaultStore.get();
+  const vault = state.vault;
+  if (!vault) return;
+
+  const entry = { ...vault, lastSyncedAt: new Date().toISOString() };
+  await saveVaultEntry(entry);
+  vaultStore.set({
+    ...vaultStore.get(),
+    vault: entry,
+    vaults: vaultStore
+      .get()
+      .vaults.map((row) => (row.id === entry.id ? entry : row)),
+  });
 }
 
 export function syncNow(): Promise<void> {

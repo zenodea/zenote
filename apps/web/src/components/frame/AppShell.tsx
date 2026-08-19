@@ -8,6 +8,7 @@ import { NoteRoute } from "@/components/note/NoteRoute";
 import { TagView } from "@/components/note/TagView";
 import { SettingsView } from "@/components/settings/SettingsView";
 import { VaultSetup } from "@/components/frame/VaultSetup";
+import { VaultsView } from "@/components/vault/VaultsView";
 import { decodeSlug } from "@/lib/navigation";
 import { useVault } from "@/lib/vault/store";
 
@@ -28,5 +29,6 @@ export function AppShell() {
     return <TagView tag={decodeSlug(pathname.slice("/tags/".length))} />;
   }
   if (pathname === "/settings") return <SettingsView />;
+  if (pathname === "/vaults") return <VaultsView />;
   return <NotFoundView />;
 }

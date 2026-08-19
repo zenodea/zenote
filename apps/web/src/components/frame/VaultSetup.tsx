@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { SignInButton } from "@/components/auth/SignInButton";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Text } from "@/components/ui/Text";
 import { useTitle } from "@/hooks/use-title";
+import { navigate } from "@/lib/navigation";
 import { createVault } from "@/lib/vault/vaults";
 
 export function VaultSetup() {
@@ -17,6 +18,7 @@ export function VaultSetup() {
     if (busy) return;
     setBusy(true);
     await createVault(name);
+    navigate("/");
   }
 
   return (
@@ -37,13 +39,11 @@ export function VaultSetup() {
           aria-label="Vault name"
           className="mt-4 w-full"
         />
-        <div className="mt-4 flex items-center justify-between">
+        <div className="mt-4 flex items-center justify-between gap-3">
           <Button variant="accent" onClick={() => void submit()} disabled={busy}>
             Create vault
           </Button>
-          <Link href="/login" className="text-sm underline hover:opacity-70">
-            Sign in instead
-          </Link>
+          <SignInButton variant="solid">Sign in instead</SignInButton>
         </div>
       </div>
     </div>

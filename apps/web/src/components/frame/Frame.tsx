@@ -183,6 +183,20 @@ export function Frame() {
     }, FADE_MS + CLOSE_MS);
   }
 
+  function back() {
+    if (phase !== "idle") return;
+    router.prefetch("/");
+    if (env?.reduce) {
+      enter("/");
+      return;
+    }
+    setPhase("closing");
+    timer.current = setTimeout(() => {
+      setPhase("framing");
+      timer.current = setTimeout(() => enter("/"), LINES_MS);
+    }, FADE_MS + CLOSE_MS);
+  }
+
   function enter(destination: string) {
     if (!reduce) {
       document.body.dataset.entering = "true";
@@ -193,6 +207,11 @@ export function Frame() {
   }
 
   const reduce = env?.reduce ?? false;
+
+  const fromVault =
+    !authed &&
+    env !== null &&
+    new URLSearchParams(window.location.search).get("from") === "vault";
 
   const drawn = authed || leaving.active || phase === "framing";
   const shut =
@@ -230,6 +249,7 @@ export function Frame() {
       delay={phase === "opening" && !reduce ? CLOSE_MS : 0}
       duration={reduce ? 0 : FADE_MS}
       onSubmit={onSubmit}
+      onBack={fromVault ? back : undefined}
     />
   );
 
