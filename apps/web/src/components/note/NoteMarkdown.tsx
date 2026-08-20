@@ -2,15 +2,20 @@
 
 import { isValidElement, type ComponentProps } from "react";
 import Link from "next/link";
-import Markdown, { type ExtraProps } from "react-markdown";
+import Markdown, {
+  defaultUrlTransform,
+  type ExtraProps,
+} from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import "katex/dist/katex.min.css";
 import { remarkTag } from "@/lib/remark-tag";
-import { remarkWikilink } from "@/lib/remark-wikilink";
+import { ATTACHMENT_PROTOCOL, remarkWikilink } from "@/lib/remark-wikilink";
 import type { WikilinkResolver } from "@/lib/wikilinks";
+import { AttachmentImage } from "@/components/note/AttachmentImage";
 import { CodeBlock } from "@/components/note/CodeBlock";
+import { ExcalidrawBlock } from "@/components/note/ExcalidrawBlock";
 import { MermaidDiagram } from "@/components/note/MermaidDiagram";
 
 const LANGUAGE_PREFIX = "language-";
@@ -26,12 +31,33 @@ function Pre({ children }: ComponentProps<"pre">) {
     ?.slice(LANGUAGE_PREFIX.length);
 
   if (language === "mermaid") return <MermaidDiagram chart={text} />;
+  if (language === "excalidraw") return <ExcalidrawBlock scene={text} />;
 
   return (
     <CodeBlock text={text} language={language}>
       {children}
     </CodeBlock>
   );
+}
+
+function urlTransform(url: string): string {
+  return url.startsWith(ATTACHMENT_PROTOCOL) ? url : defaultUrlTransform(url);
+}
+
+function Img(props: ComponentProps<"img"> & ExtraProps) {
+  const { src, alt, ...rest } = props;
+  delete rest.node;
+
+  if (typeof src === "string" && src.startsWith(ATTACHMENT_PROTOCOL)) {
+    let name = src.slice(ATTACHMENT_PROTOCOL.length);
+    try {
+      name = decodeURIComponent(name);
+    } catch {}
+    return <AttachmentImage name={name} alt={alt} />;
+  }
+
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt={alt ?? ""} {...rest} />;
 }
 
 function Anchor(props: ComponentProps<"a"> & ExtraProps) {
@@ -68,7 +94,8 @@ export function NoteMarkdown({
         remarkTag,
       ]}
       rehypePlugins={[rehypeKatex]}
-      components={{ pre: Pre, a: Anchor }}
+      urlTransform={urlTransform}
+      components={{ pre: Pre, a: Anchor, img: Img }}
     >
       {source}
     </Markdown>

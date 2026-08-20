@@ -7,6 +7,7 @@ export type Store<T> = {
   set: (next: T) => void;
   patch: (part: Partial<T>) => void;
   use: () => T;
+  subscribe: (onChange: () => void) => () => void;
 };
 
 export function createStore<T>(initial: T, snapshot: T = initial): Store<T> {
@@ -28,6 +29,7 @@ export function createStore<T>(initial: T, snapshot: T = initial): Store<T> {
     },
     patch: (part) => store.set({ ...current, ...part }),
     use: () => useSyncExternalStore(subscribe, store.get, () => snapshot),
+    subscribe,
   };
 
   return store;
@@ -72,6 +74,7 @@ export function createPersistentStore<T extends object>(
       base.use();
       return store.get();
     },
+    subscribe: base.subscribe,
   };
 
   return store;

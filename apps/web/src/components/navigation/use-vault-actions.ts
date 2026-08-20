@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
+import { drawingBody, EMPTY_SCENE } from "@/lib/drawing";
 import { navigate } from "@/lib/navigation";
-import type { NoteRef } from "@/lib/search";
 import { filename, joinSlug, sanitizeName } from "@/lib/slug";
+import { markFreshNote } from "@/lib/stores/fresh-note";
 import {
   createFolder,
-  createNote,
+  createUnnamedNote,
   deleteFolder,
   moveFolder,
   moveNote,
@@ -15,12 +16,25 @@ import {
 } from "@/lib/vault/mutations";
 
 export type Naming = {
-  kind: "note" | "folder";
+  kind: "folder";
   into: string;
   rename?: string;
 } | null;
 
-export function useVaultActions(docs: NoteRef[]) {
+export async function startUnnamedNote(folder = "", body = ""): Promise<void> {
+  const { error, slug } = await createUnnamedNote(folder, body);
+  if (error || !slug) {
+    if (error) alert(error);
+    return;
+  }
+  markFreshNote(slug);
+  navigate(`/notes/${slug}`);
+}
+
+export const startUnnamedDrawing = (folder = "") =>
+  startUnnamedNote(folder, drawingBody(EMPTY_SCENE));
+
+export function useVaultActions() {
   const [naming, setNaming] = useState<Naming>(null);
   const pathname = usePathname();
 
@@ -36,22 +50,8 @@ export function useVaultActions(docs: NoteRef[]) {
       return;
     }
 
-    const path = joinSlug(target.into, name);
-
-    if (target.kind === "folder") {
-      const { error } = await createFolder(path);
-      if (error) alert(error);
-      return;
-    }
-
-    if (!docs.some((doc) => doc.slug === path)) {
-      const { error } = await createNote(path);
-      if (error) {
-        alert(error);
-        return;
-      }
-    }
-    navigate(`/notes/${path}`);
+    const { error } = await createFolder(joinSlug(target.into, name));
+    if (error) alert(error);
   }
 
   async function handleMoveFolder(path: string, into: string) {

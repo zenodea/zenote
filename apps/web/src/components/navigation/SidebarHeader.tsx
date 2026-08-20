@@ -8,10 +8,15 @@ import {
   FolderPlusIcon,
   LogoIcon,
   SearchIcon,
+  ShapesIcon,
   SlidersIcon,
 } from "@/components/ui/Icons";
 import type { useSidebarSearch } from "@/components/navigation/use-sidebar-search";
-import type { Naming } from "@/components/navigation/use-vault-actions";
+import {
+  startUnnamedDrawing,
+  startUnnamedNote,
+  type Naming,
+} from "@/components/navigation/use-vault-actions";
 
 export function SidebarHeader({
   drawer = false,
@@ -74,18 +79,20 @@ export function SidebarHeader({
         {!searchOpen && (
           <>
             <Button
-              onClick={() =>
-                onNamingChange(
-                  naming?.kind === "note" ? null : { kind: "note", into: "" },
-                )
-              }
+              onClick={() => void startUnnamedNote()}
               onMouseDown={(event) => event.preventDefault()}
-              active={naming?.kind === "note"}
-              aria-pressed={naming?.kind === "note"}
               aria-label="New note"
               title="New note"
             >
               <FilePlusIcon />
+            </Button>
+            <Button
+              onClick={() => void startUnnamedDrawing()}
+              onMouseDown={(event) => event.preventDefault()}
+              aria-label="New drawing"
+              title="New drawing"
+            >
+              <ShapesIcon />
             </Button>
             <Button
               onClick={() =>

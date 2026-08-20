@@ -1,3 +1,4 @@
+import { drawingScene } from "../drawing";
 import type { Note } from "../note";
 import { noteTags } from "../tags";
 import { resolvedTargets, type WikilinkResolver } from "../wikilinks";
@@ -7,6 +8,7 @@ export type GraphNode = {
   title: string;
   degree: number;
   tags: string[];
+  drawing?: boolean;
 };
 export type GraphLink = { source: string; target: string };
 export type Graph = { nodes: GraphNode[]; links: GraphLink[] };
@@ -36,6 +38,7 @@ export function buildGraph(notes: Note[], resolver: WikilinkResolver): Graph {
       title: note.title,
       degree: degree.get(note.slug) ?? 0,
       tags: noteTags(note),
+      drawing: drawingScene(note.body) !== null,
     })),
     links: [...edges.values()],
   };

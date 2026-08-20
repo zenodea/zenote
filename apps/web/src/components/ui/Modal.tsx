@@ -21,14 +21,14 @@ export function Modal({
     <div
       role="presentation"
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 p-4 backdrop-blur-sm"
+      className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-background/60 p-4 backdrop-blur-sm"
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
         onClick={(event) => event.stopPropagation()}
-        className={`relative w-full border border-foreground/15 bg-background p-4 text-sm ${className}`}
+        className={`modal-panel relative w-full border border-foreground/15 bg-background p-4 text-sm ${className}`}
       >
         <Diamond className="left-0 top-0" />
         <Diamond className="left-full top-0" />

@@ -94,6 +94,19 @@ export function useNoteChat(thread: OpenThread, onActivity?: () => void) {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages]);
 
+  // Opened threads settle their layout (markdown, graphs) after first paint.
+  useEffect(() => {
+    let raf = 0;
+    let tries = 0;
+    const settle = () => {
+      const area = scrollRef.current;
+      if (area) area.scrollTo({ top: area.scrollHeight });
+      if (tries++ < 8) raf = requestAnimationFrame(settle);
+    };
+    raf = requestAnimationFrame(settle);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
   async function send() {
     const text = input.trim();
     if (!text || streaming) return;

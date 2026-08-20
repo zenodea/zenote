@@ -1,8 +1,8 @@
-type TreeNote = { slug: string; title: string };
+type TreeNote = { slug: string; title: string; drawing?: boolean };
 
 export type TreeNode =
   | { kind: "folder"; name: string; path: string; children: TreeNode[] }
-  | { kind: "note"; name: string; slug: string };
+  | { kind: "note"; name: string; slug: string; drawing?: boolean };
 
 type FolderDraft = {
   children: Map<string, FolderDraft | TreeNote>;
@@ -51,7 +51,12 @@ function toNodes(folder: FolderDraft, prefix: string): TreeNode[] {
 
       return isFolder(value)
         ? { kind: "folder", name, path, children: toNodes(value, path) }
-        : { kind: "note", name: value.title, slug: value.slug };
+        : {
+            kind: "note",
+            name: value.title,
+            slug: value.slug,
+            drawing: value.drawing,
+          };
     },
   );
 

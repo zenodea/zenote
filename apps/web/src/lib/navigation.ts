@@ -1,10 +1,17 @@
 "use client";
 
-import { navigatesAway } from "./page-fade";
+import { beginPageFade, navigatesAway } from "./page-fade";
+
+const FADE_OUT_MS = 110;
 
 export function navigate(href: string): void {
   if (href === window.location.pathname + window.location.search) return;
-  window.history.pushState(null, "", href);
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    window.history.pushState(null, "", href);
+    return;
+  }
+  beginPageFade();
+  setTimeout(() => window.history.pushState(null, "", href), FADE_OUT_MS);
 }
 
 export function interceptLinkClicks(): () => void {

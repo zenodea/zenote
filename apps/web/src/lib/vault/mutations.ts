@@ -28,6 +28,7 @@ function bumpFolder(folder: LocalFolder, path: string): LocalFolder {
 
 export async function createNote(
   slug: string,
+  body = "",
 ): Promise<ActionResult & { id?: string }> {
   if (getBySlug().has(slug)) return { error: `“${slug}” already exists.` };
 
@@ -41,7 +42,7 @@ export async function createNote(
         tags: [],
         created: new Date().toISOString(),
         updated: "",
-        body: "",
+        body,
         pending: "create",
         localRev: 1,
       },
@@ -49,6 +50,21 @@ export async function createNote(
   });
   requestPush();
   return { id };
+}
+
+export async function createUnnamedNote(
+  folder = "",
+  body = "",
+): Promise<ActionResult & { slug?: string }> {
+  const existing = getBySlug();
+  let name = "Unnamed";
+  for (let count = 2; existing.has(joinSlug(folder, name)); count += 1) {
+    name = `Unnamed-${count}`;
+  }
+
+  const slug = joinSlug(folder, name);
+  const { error } = await createNote(slug, body);
+  return error ? { error } : { slug };
 }
 
 export async function saveBody(slug: string, body: string): Promise<void> {

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
+import { drawingScene } from "@/lib/drawing";
 import { closeDrawer, openDrawer, useDrawer } from "@/lib/stores/drawer";
 import { updateSettings, useSettings } from "@/lib/stores/settings";
 import { buildTree } from "@/lib/tree";
@@ -22,13 +23,24 @@ export function Sidebar() {
   const pathname = usePathname();
   const settings = useSettings();
   const drawer = useLayoutMode() === "phone";
-  const { open: drawerOpen, newNote } = useDrawer();
+  const { open: drawerOpen } = useDrawer();
   const minimised = !drawer && settings.sidebarCollapsed;
 
   const vault = useVault();
   const docs = getSearchDocs();
   const folders = useMemo(() => folderPaths(vault.folders), [vault.folders]);
-  const tree = useMemo(() => buildTree(docs, folders), [docs, folders]);
+  const tree = useMemo(
+    () =>
+      buildTree(
+        docs.map((doc) => ({
+          slug: doc.slug,
+          title: doc.title,
+          drawing: drawingScene(doc.body) !== null,
+        })),
+        folders,
+      ),
+    [docs, folders],
+  );
   const search = useSidebarSearch(docs);
   const {
     naming,
@@ -37,7 +49,7 @@ export function Sidebar() {
     handleMove,
     handleMoveFolder,
     handleDeleteFolder,
-  } = useVaultActions(docs);
+  } = useVaultActions();
 
   function toggleFolder(path: string) {
     setCollapsed((previous) => {
@@ -64,13 +76,6 @@ export function Sidebar() {
   useEffect(() => {
     closeDrawer();
   }, [pathname]);
-
-  const seenNewNote = useRef(newNote);
-  useEffect(() => {
-    if (newNote === seenNewNote.current) return;
-    seenNewNote.current = newNote;
-    setNaming({ kind: "note", into: "" });
-  }, [newNote, setNaming]);
 
   useEscape(closeDrawer, drawer && drawerOpen);
   useEdgeSwipe(drawer, drawerOpen, openDrawer, closeDrawer);

@@ -9,6 +9,7 @@ import { languages } from "@codemirror/language-data";
 import { Compartment, EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { classHighlighter } from "@lezer/highlight";
+import { attachmentPaste } from "@/lib/editor/attachment-paste";
 import { markdownHighlight } from "@/lib/editor/highlight";
 import { livePreview } from "@/lib/editor/live-preview";
 import { editorTheme } from "@/lib/editor/theme";
@@ -23,16 +24,19 @@ export function MarkdownEditor({
   onChange,
   linkTargets = [],
   vimMode = false,
+  autoFocus = true,
   vimStatusBar,
 }: {
   initialBody: string;
   onChange: (body: string) => void;
   linkTargets?: string[];
   vimMode?: boolean;
+  autoFocus?: boolean;
   vimStatusBar?: () => HTMLElement | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const initialRef = useRef(initialBody);
+  const autoFocusRef = useRef(autoFocus);
   const targetsRef = useRef(linkTargets);
   const initialVimRef = useRef(vimMode);
   const onChangeRef = useLatestRef(onChange);
@@ -121,6 +125,7 @@ export function MarkdownEditor({
             override: [wikilinkCompletions(targetsRef.current)],
           }),
           EditorView.lineWrapping,
+          attachmentPaste,
           syntaxHighlighting(markdownHighlight),
           syntaxHighlighting(classHighlighter),
           livePreview,
@@ -135,7 +140,7 @@ export function MarkdownEditor({
       parent: containerRef.current!,
     });
     viewRef.current = view;
-    view.focus();
+    if (autoFocusRef.current) view.focus();
     if (initialVimRef.current) adoptWhenHosted(view);
 
     return () => {

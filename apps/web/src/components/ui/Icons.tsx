@@ -331,3 +331,24 @@ export function LogoWordmark({ height = 28 }: { height?: number }) {
     </svg>
   );
 }
+
+export function ShapesIcon({ className = "block" }: { className?: string }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className={className}
+    >
+      <path d="M8 1.5 11 6H5l3-4.5Z" />
+      <rect x="1.5" y="9" width="5.5" height="5.5" rx="0.5" />
+      <circle cx="12" cy="11.75" r="2.75" />
+    </svg>
+  );
+}

@@ -31,7 +31,8 @@ export function CodeBlock({
     <div className="group relative my-6">
       <Scroller
         axis="x"
-        contentClassName="[&>pre]:my-0 [&>pre]:w-max [&>pre]:min-w-full"
+        className="overflow-hidden rounded-md border border-foreground/15"
+        contentClassName="[&>pre]:my-0 [&>pre]:w-max [&>pre]:min-w-full [&>pre]:rounded-none"
       >
         <pre>
           {language ? (

@@ -9,11 +9,15 @@ import { Dropdown } from "@/components/ui/Dropdown";
 import {
   ChevronIcon,
   EllipsisIcon,
-  FilePlusIcon,
   FolderPlusIcon,
+  ShapesIcon,
 } from "@/components/ui/Icons";
 import { MoveModal, type Moving } from "@/components/navigation/MoveModal";
-import type { Naming } from "@/components/navigation/use-vault-actions";
+import {
+  startUnnamedDrawing,
+  startUnnamedNote,
+  type Naming,
+} from "@/components/navigation/use-vault-actions";
 
 export function NoteTree({
   tree,
@@ -76,11 +80,7 @@ export function NoteTree({
       }}
     >
       {naming && naming.into === "" && naming.rename === undefined && (
-        <NamingRow
-          kind={naming.kind}
-          onSubmit={onSubmitName}
-          onCancel={onCancelName}
-        />
+        <NamingRow onSubmit={onSubmitName} onCancel={onCancelName} />
       )}
       <NodeList
         nodes={tree}
@@ -121,7 +121,7 @@ function FolderAction({
     <button
       type="button"
       onClick={onClick}
-      className="block w-full rounded px-2 py-1 text-left hover:bg-foreground/10"
+      className="block w-full rounded px-2.5 py-1.5 text-left hover:bg-foreground/10"
     >
       {children}
     </button>
@@ -129,11 +129,9 @@ function FolderAction({
 }
 
 function NamingRow({
-  kind,
   onSubmit,
   onCancel,
 }: {
-  kind: "note" | "folder";
   onSubmit: (name: string) => void;
   onCancel: () => void;
 }) {
@@ -142,7 +140,7 @@ function NamingRow({
   return (
     <div className="mb-2 flex items-center gap-1.5">
       <span className="shrink-0 opacity-60">
-        {kind === "note" ? <FilePlusIcon /> : <FolderPlusIcon />}
+        <FolderPlusIcon />
       </span>
       <Input
         autoFocus
@@ -153,8 +151,8 @@ function NamingRow({
           if (event.key === "Escape") onCancel();
         }}
         onBlur={onCancel}
-        placeholder={kind === "note" ? "Note name…" : "Folder name…"}
-        aria-label={kind === "note" ? "New note name" : "New folder name"}
+        placeholder="Folder name…"
+        aria-label="New folder name"
         className="min-w-0 flex-1"
       />
     </div>
@@ -227,7 +225,7 @@ function NodeList({
           const path = node.path;
           const isCollapsed = collapsed.has(path);
 
-          const startNaming = (kind: "note" | "folder") => {
+          const startNaming = (kind: "folder") => {
             if (isCollapsed) onToggle(path);
             onNamingChange({ kind, into: path });
           };
@@ -277,10 +275,14 @@ function NodeList({
                 <Dropdown
                   label={<EllipsisIcon />}
                   ariaLabel={`Actions for ${node.name}`}
-                  triggerClassName="shrink-0 rounded px-1 opacity-0 hover:bg-foreground/10 focus-visible:opacity-100 group-hover/row:opacity-100 coarse:opacity-100"
+                  align="center"
+                  triggerClassName="shrink-0 rounded px-1 py-1.5 opacity-0 hover:bg-foreground/10 focus-visible:opacity-100 group-hover/row:opacity-100 coarse:opacity-100"
                 >
-                  <FolderAction onClick={() => startNaming("note")}>
+                  <FolderAction onClick={() => void startUnnamedNote(path)}>
                     New note
+                  </FolderAction>
+                  <FolderAction onClick={() => void startUnnamedDrawing(path)}>
+                    New drawing
                   </FolderAction>
                   <FolderAction onClick={() => startNaming("folder")}>
                     New folder
@@ -309,11 +311,7 @@ function NodeList({
 
               {naming && naming.into === path && (
                 <div style={{ paddingLeft: `${(depth + 1) * 0.75 + 0.5}rem` }}>
-                  <NamingRow
-                    kind={naming.rename === undefined ? naming.kind : "folder"}
-                    onSubmit={onSubmitName}
-                    onCancel={onCancelName}
-                  />
+                  <NamingRow onSubmit={onSubmitName} onCancel={onCancelName} />
                 </div>
               )}
 
@@ -348,14 +346,18 @@ function NodeList({
                 event.stopPropagation();
                 event.dataTransfer.setData("application/x-note", node.slug);
               }}
-              className="block min-w-0 flex-1 truncate py-1.5 pr-2 coarse:py-2.5"
+              className="flex min-w-0 flex-1 items-center py-1.5 pr-2 coarse:py-2.5"
             >
-              {node.name}
+              <span className="min-w-0 truncate">{node.name}</span>
+              {node.drawing && (
+                <ShapesIcon className="ml-1.5 size-3 shrink-0 opacity-50" />
+              )}
             </Link>
             <Dropdown
               label={<EllipsisIcon />}
               ariaLabel={`Actions for ${node.name}`}
-              triggerClassName={`shrink-0 rounded px-1 hover:bg-foreground/15 focus-visible:opacity-100 group-hover/row:opacity-100 coarse:opacity-100 ${
+              align="center"
+              triggerClassName={`shrink-0 rounded px-1 py-1.5 hover:bg-foreground/15 focus-visible:opacity-100 group-hover/row:opacity-100 coarse:opacity-100 ${
                 isActive ? "opacity-100" : "opacity-0"
               }`}
             >

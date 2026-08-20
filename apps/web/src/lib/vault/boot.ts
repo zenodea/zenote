@@ -1,5 +1,6 @@
 "use client";
 
+import { startSettingsSync } from "../stores/settings-sync";
 import { createClient } from "../supabase/client";
 import {
   deleteLegacyDb,
@@ -77,6 +78,8 @@ export async function bootVault(): Promise<void> {
 
   entries.sort((a, b) => a.name.localeCompare(b.name));
   vaultStore.patch({ vaults: entries, ownerId, email });
+
+  if (ownerId) void startSettingsSync();
 
   if (entries.length === 0) {
     vaultStore.patch({ status: "setup" });

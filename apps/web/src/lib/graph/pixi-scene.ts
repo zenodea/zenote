@@ -54,6 +54,7 @@ export class PixiScene {
   private labels: BitmapText[] = [];
   private regions: { label: BitmapText; nodes: number[] }[] = [];
   private circle: Texture | null = null;
+  private square: Texture | null = null;
   private palette: Palette;
   private lastVisible: Set<number> | null | undefined = undefined;
   private edgesBuilt = false;
@@ -123,8 +124,23 @@ export class PixiScene {
       this.circle = circle;
     }
 
+    let square = this.square;
+    if (!square) {
+      // Same area as the disc, so both shapes carry equal visual weight.
+      const half = NODE_TEXTURE_RADIUS * Math.sqrt(Math.PI) * 0.5;
+      const box = new Graphics()
+        .rect(-half, -half, half * 2, half * 2)
+        .fill(0xffffff);
+      square = this.app.renderer.generateTexture({
+        target: box,
+        resolution: 2,
+      });
+      box.destroy();
+      this.square = square;
+    }
+
     for (const node of nodes) {
-      const sprite = new Sprite(circle);
+      const sprite = new Sprite(node.drawing ? square : circle);
       sprite.anchor.set(0.5);
       sprite.tint =
         node.degree === 0 ? this.palette.foreground : this.palette.accent;
@@ -320,5 +336,6 @@ export class PixiScene {
   destroy() {
     this.app.destroy({ removeView: false }, { children: true, texture: true });
     this.circle?.destroy(true);
+    this.square?.destroy(true);
   }
 }

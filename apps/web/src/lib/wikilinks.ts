@@ -12,6 +12,12 @@ export function wikilinkRegex(): RegExp {
   return new RegExp(WIKILINK_SOURCE, "g");
 }
 
+const IMAGE_EXTENSION = /\.(png|jpe?g|gif|webp|svg|avif)$/i;
+
+export function isImageName(name: string): boolean {
+  return IMAGE_EXTENSION.test(name.trim());
+}
+
 export type WikilinkOccurrence = {
   target: string;
   text: string;
@@ -35,6 +41,7 @@ export function extractOccurrences(body: string): WikilinkOccurrence[] {
 
     for (const match of prose.matchAll(wikilinkRegex())) {
       const [full, target, , alias] = match;
+      if (isImageName(target)) continue;
       let before = renderInline(prose.slice(0, match.index));
       let after = renderInline(prose.slice(match.index + full.length));
       if (before.length > CONTEXT_WINDOW) {

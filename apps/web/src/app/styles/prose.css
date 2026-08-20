@@ -26,7 +26,3 @@
     var(--background)
   );
 }
-
-.prose pre {
-  border: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
-}

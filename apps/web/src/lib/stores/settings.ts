@@ -27,7 +27,10 @@ export const DEFAULT_SETTINGS: Settings = {
 
 export const SETTINGS_STORAGE_KEY = "settings";
 
-const store = createPersistentStore(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS);
+export const settingsStore = createPersistentStore(
+  SETTINGS_STORAGE_KEY,
+  DEFAULT_SETTINGS,
+);
 
-export const updateSettings = store.patch;
-export const useSettings = store.use;
+export const updateSettings = settingsStore.patch;
+export const useSettings = settingsStore.use;

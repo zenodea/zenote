@@ -4,6 +4,7 @@
 @import "./styles/prose.css";
 @import "./styles/scroller.css";
 @import "./styles/editor.css";
+@import "./styles/excalidraw.css";
 
 @plugin "@tailwindcss/typography";
 

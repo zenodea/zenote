@@ -395,7 +395,7 @@ function Turn({
         return drawn.state === "output-available" && drawn.output ? (
           <ConceptGraph key={index} data={drawn.output as ConceptGraphData} />
         ) : (
-          <p key={index} className="text-xs italic opacity-50">
+          <p key={index} className="text-center text-xs italic opacity-50">
             Sketching a map…
           </p>
         );
@@ -424,7 +424,7 @@ function Turn({
         {parts.length > 0 ? (
           parts
         ) : (
-          <p className="animate-pulse opacity-50">Thinking…</p>
+          <p className="not-prose animate-pulse text-sm opacity-50">Thinking…</p>
         )}
         {stopped && <p className="text-xs italic opacity-60">Stopped early.</p>}
       </div>
@@ -529,7 +529,7 @@ function ToolLine({
       label = "Working…";
   }
 
-  return <p className="text-xs italic opacity-50">{label}</p>;
+  return <p className="text-center text-xs italic opacity-50">{label}</p>;
 }
 
 function WriteCard({

@@ -47,20 +47,14 @@ export function SidebarFooter({
             href="/vaults"
             title="Vaults"
             aria-current={pathname === "/vaults" ? "page" : undefined}
-            className={`flex min-w-0 flex-col items-center rounded px-3 py-1 ${
+            className={`flex min-w-0 items-center gap-1.5 rounded px-3 py-1.5 ${
               pathname === "/vaults"
                 ? "bg-foreground/10 text-accent"
                 : "opacity-60 hover:bg-foreground/10 hover:opacity-100"
             }`}
           >
-            <span className="flex min-w-0 items-center gap-1.5">
-              <span
-                aria-hidden
-                className="h-1.5 w-1.5 shrink-0 rotate-45 border border-current"
-              />
-              <span className="truncate text-sm">{vault.name}</span>
-            </span>
-            <SyncStatus className="block max-w-full truncate" />
+            <SyncStatus />
+            <span className="max-w-36 truncate text-sm">{vault.name}</span>
           </Link>
         </div>
       )}

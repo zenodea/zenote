@@ -25,7 +25,7 @@ export function SaveStatus() {
     >
       <span
         aria-hidden
-        className={`size-1.5 rotate-45 border transition-colors duration-200 ${
+        className={`size-2 rotate-45 border transition-colors duration-200 ${
           failed
             ? "border-[#ef4444] bg-[#ef4444]"
             : saving

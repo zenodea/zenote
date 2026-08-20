@@ -12,10 +12,11 @@ export function SyncStatus({ className = "" }: { className?: string }) {
     folders.filter((folder) => folder.pending !== null).length +
     tombstones.length;
 
-  if (state === "synced" && pending === 0) return null;
+  const synced = state === "synced" && pending === 0;
 
-  const label =
-    state === "local"
+  const label = synced
+    ? "Synced"
+    : state === "local"
       ? ownerId
         ? "Not synced"
         : "Local vault"
@@ -32,9 +33,22 @@ export function SyncStatus({ className = "" }: { className?: string }) {
   return (
     <span
       role="status"
-      className={`truncate text-xs opacity-60 ${className}`}
+      title={label}
+      className={`flex shrink-0 items-center gap-1 ${className}`}
     >
-      {label}
+      <span className="sr-only">{label}</span>
+      {state === "error" && (
+        <svg aria-hidden viewBox="0 0 2 8" className="h-2 w-1 fill-danger">
+          <rect x="0.4" y="0" width="1.2" height="5" rx="0.6" />
+          <circle cx="1" cy="7.1" r="0.85" />
+        </svg>
+      )}
+      <span
+        aria-hidden
+        className={`h-2 w-2 rotate-45 border border-current ${
+          synced ? "bg-current" : ""
+        }`}
+      />
     </span>
   );
 }

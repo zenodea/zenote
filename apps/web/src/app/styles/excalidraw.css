@@ -1,0 +1,39 @@
+/* Excalidraw's UI follows the app's theme tokens, in both of its themes.
+   Doubled class outranks the package's own definitions whatever loads last. */
+.excalidraw.excalidraw,
+.excalidraw.excalidraw.theme--dark {
+  --ui-font: var(--font-geist-sans), system-ui, sans-serif;
+
+  --color-primary: var(--accent);
+  --color-primary-darker: color-mix(in srgb, var(--accent) 85%, var(--foreground));
+  --color-primary-darkest: color-mix(in srgb, var(--accent) 70%, var(--foreground));
+  --color-primary-hover: color-mix(in srgb, var(--accent) 88%, var(--background));
+  --color-primary-light: color-mix(in srgb, var(--accent) 18%, var(--background));
+  --color-primary-light-darker: color-mix(in srgb, var(--accent) 28%, var(--background));
+  --color-on-primary-container: color-mix(in srgb, var(--accent) 55%, var(--foreground));
+  --color-surface-primary-container: color-mix(in srgb, var(--accent) 16%, var(--background));
+
+  --color-brand-hover: var(--color-primary-darker);
+  --color-brand-active: var(--color-primary-darkest);
+
+  --default-bg-color: var(--background);
+  --island-bg-color: color-mix(in srgb, var(--foreground) 3%, var(--background));
+  --popup-bg-color: var(--background);
+  --sidebar-bg-color: var(--background);
+
+  --color-surface-lowest: var(--background);
+  --color-surface-low: color-mix(in srgb, var(--foreground) 6%, var(--background));
+  --color-surface-mid: color-mix(in srgb, var(--foreground) 10%, var(--background));
+  --color-surface-high: color-mix(in srgb, var(--foreground) 14%, var(--background));
+  --color-on-surface: var(--foreground);
+
+  --sidebar-shadow: none;
+  --sidebar-border-color: color-mix(in srgb, var(--foreground) 15%, transparent);
+
+  --text-primary-color: var(--foreground);
+  --button-hover-bg: color-mix(in srgb, var(--foreground) 8%, var(--background));
+  --select-highlight-color: var(--accent);
+  --focus-highlight-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  --color-selection: var(--accent);
+  --color-danger: var(--danger);
+}

@@ -124,7 +124,7 @@ function SyncRow({
     >
       <span aria-hidden className="pr-1.5 opacity-60">
         <span
-          className={`inline-block h-1.5 w-1.5 rotate-45 border border-current ${
+          className={`inline-block h-2 w-2 rotate-45 border border-current ${
             state === "synced" ? "bg-current" : ""
           }`}
         />
@@ -215,7 +215,7 @@ export function VaultsView() {
                         >
                           <span
                             aria-hidden
-                            className={`h-1.5 w-1.5 shrink-0 rotate-45 border border-current ${
+                            className={`h-2 w-2 shrink-0 rotate-45 border border-current ${
                               active ? "bg-current" : ""
                             }`}
                           />
@@ -259,7 +259,7 @@ export function VaultsView() {
                       >
                         <span
                           aria-hidden
-                          className={`h-1.5 w-1.5 shrink-0 rotate-45 border border-current ${
+                          className={`h-2 w-2 shrink-0 rotate-45 border border-current ${
                             active ? "bg-current" : ""
                           }`}
                         />

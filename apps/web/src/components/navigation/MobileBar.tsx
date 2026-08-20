@@ -10,12 +10,9 @@ import {
   MenuIcon,
   SearchIcon,
 } from "@/components/ui/Icons";
+import { startUnnamedNote } from "@/components/navigation/use-vault-actions";
 import { openSwitcher } from "@/lib/stores/commands";
-import {
-  startNoteInDrawer,
-  toggleDrawer,
-  useDrawer,
-} from "@/lib/stores/drawer";
+import { toggleDrawer, useDrawer } from "@/lib/stores/drawer";
 
 function warmRenderer() {
   import("@/lib/graph/pixi-scene").catch(() => {});
@@ -47,7 +44,7 @@ export function MobileBar() {
         <SearchIcon />
       </Button>
       <Button
-        onClick={startNoteInDrawer}
+        onClick={() => void startUnnamedNote()}
         aria-label="New note"
         className="flex flex-1 items-center justify-center"
       >

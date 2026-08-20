@@ -1,7 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { createPortal } from "react-dom";
 import { useEscape } from "@/hooks/use-hotkey";
+
+const VIEWPORT_MARGIN = 8;
+const TRIGGER_GAP = 4;
 
 export function Dropdown({
   label,
@@ -21,15 +31,64 @@ export function Dropdown({
   triggerClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
   const root = useRef<HTMLDivElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
 
   useEscape(() => setOpen(false), open);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+
+    function place() {
+      const trigger = root.current;
+      const panel = menu.current;
+      if (!trigger || !panel) return;
+
+      const rect = trigger.getBoundingClientRect();
+      const width = panel.offsetWidth;
+      const height = panel.offsetHeight;
+
+      let left =
+        align === "center"
+          ? rect.left + rect.width / 2 - width / 2
+          : align === "right"
+            ? rect.right - width
+            : rect.left;
+      left = Math.min(
+        Math.max(left, VIEWPORT_MARGIN),
+        window.innerWidth - width - VIEWPORT_MARGIN,
+      );
+
+      let top =
+        direction === "up"
+          ? rect.top - height - TRIGGER_GAP
+          : rect.bottom + TRIGGER_GAP;
+      top = Math.min(
+        Math.max(top, VIEWPORT_MARGIN),
+        window.innerHeight - height - VIEWPORT_MARGIN,
+      );
+
+      setPos({ left, top });
+    }
+
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open, align, direction]);
 
   useEffect(() => {
     if (!open) return;
 
     function onPointerDown(event: PointerEvent) {
-      if (!root.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (root.current?.contains(target) || menu.current?.contains(target))
+        return;
+      setOpen(false);
     }
 
     document.addEventListener("pointerdown", onPointerDown);
@@ -52,23 +111,21 @@ export function Dropdown({
         {label}
       </button>
 
-      {open && (
-        <div
-          role="menu"
-          onClick={closeOnClick ? () => setOpen(false) : undefined}
-          className={`absolute z-20 min-w-36 rounded border border-foreground/15 bg-background p-1 text-sm shadow-lg ${
-            direction === "up" ? "bottom-full mb-1" : "top-full mt-1"
-          } ${
-            align === "right"
-              ? "right-0"
-              : align === "center"
-                ? "left-1/2 -translate-x-1/2"
-                : "left-0"
-          }`}
-        >
-          {children}
-        </div>
-      )}
+      {open &&
+        createPortal(
+          <div
+            ref={menu}
+            role="menu"
+            onClick={closeOnClick ? () => setOpen(false) : undefined}
+            style={
+              pos ? { left: pos.left, top: pos.top } : { visibility: "hidden" }
+            }
+            className="fixed z-50 min-w-36 rounded border border-foreground/15 bg-background p-1 text-sm shadow-lg"
+          >
+            {children}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

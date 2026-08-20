@@ -109,7 +109,7 @@ export function Toggle({
       aria-checked={checked}
       aria-label={ariaLabel}
       onClick={() => onChange(!checked)}
-      className="relative h-5 w-10 shrink-0"
+      className="relative h-6 w-12 shrink-0"
     >
       <svg
         aria-hidden
@@ -127,10 +127,10 @@ export function Toggle({
       </svg>
       <span
         aria-hidden
-        className={`absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border transition-[left,background-color,border-color] duration-200 motion-reduce:transition-none ${
+        className={`absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 border transition-[left,background-color,border-color] duration-200 motion-reduce:transition-none ${
           checked
-            ? "left-[calc(100%-0.875rem)] border-accent bg-accent"
-            : "left-3.5 border-foreground/40 bg-background"
+            ? "left-[calc(100%-1.05rem)] border-accent bg-accent"
+            : "left-[1.05rem] border-foreground/40 bg-background"
         }`}
       />
     </button>
