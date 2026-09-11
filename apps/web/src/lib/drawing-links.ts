@@ -1,5 +1,6 @@
 import {
   isImageName,
+  renderInline,
   resolveWikilink,
   wikilinkRegex,
   type WikilinkResolver,
@@ -42,6 +43,47 @@ export function withNoteLinks(
   });
 
   return changed ? next : elements;
+}
+
+export function withDisplayText(
+  elements: readonly Element[],
+): readonly Element[] {
+  let changed = false;
+
+  const next = elements.map((element) => {
+    if (element.type !== "text" || typeof element.text !== "string") {
+      return element;
+    }
+
+    const text = renderInline(element.text);
+    if (text === element.text) return element;
+
+    changed = true;
+    return {
+      ...element,
+      text,
+      ...(typeof element.originalText === "string"
+        ? { originalText: renderInline(element.originalText) }
+        : {}),
+    };
+  });
+
+  return changed ? next : elements;
+}
+
+export function linkedSlugs(
+  sceneText: string,
+  resolver: WikilinkResolver,
+): string[] {
+  const slugs = new Set<string>();
+
+  for (const match of sceneText.matchAll(wikilinkRegex())) {
+    if (isImageName(match[1])) continue;
+    const slug = resolveWikilink(resolver, match[1]);
+    if (slug !== null) slugs.add(slug);
+  }
+
+  return [...slugs];
 }
 
 export function noteHref(link: unknown): string | null {

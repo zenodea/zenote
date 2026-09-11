@@ -33,7 +33,7 @@ export type WikilinkOccurrence = {
 
 const CONTEXT_WINDOW = 80;
 
-function renderInline(markdown: string): string {
+export function renderInline(markdown: string): string {
   return markdown.replace(wikilinkRegex(), (_, target, _heading, alias) =>
     ((alias as string | undefined) ?? (target as string)).trim(),
   );

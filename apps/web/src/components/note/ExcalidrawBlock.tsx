@@ -1,13 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "@excalidraw/excalidraw/index.css";
-import { parseScene } from "@/lib/drawing";
+import { parseScene, sceneTextLines } from "@/lib/drawing";
 import {
   interceptNoteLinks,
+  linkedSlugs,
   noteHref,
+  withDisplayText,
   withNoteLinks,
 } from "@/lib/drawing-links";
+import { DrawingLinks } from "@/components/note/DrawingLinks";
+import { useVault } from "@/lib/vault/store";
 import { navigate } from "@/lib/navigation";
 import { useThemeId } from "@/lib/use-theme";
 import type { WikilinkResolver } from "@/lib/wikilinks";
@@ -33,6 +37,7 @@ export function ExcalidrawBlock({
   fill?: boolean;
 }) {
   const theme = useThemeId();
+  const { notes } = useVault();
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [failed, setFailed] = useState(false);
   const host = useRef<HTMLDivElement>(null);
@@ -63,9 +68,11 @@ export function ExcalidrawBlock({
         setLoaded({
           Excalidraw: excalidraw.Excalidraw,
           initialData: {
-            elements: withNoteLinks(
-              built as readonly Record<string, unknown>[],
-              resolver,
+            elements: withDisplayText(
+              withNoteLinks(
+                built as readonly Record<string, unknown>[],
+                resolver,
+              ),
             ),
             appState: parsed.appState,
             files: parsed.files,
@@ -88,6 +95,16 @@ export function ExcalidrawBlock({
     return interceptNoteLinks(host.current, navigate);
   }, [loaded]);
 
+  const linked = useMemo(() => {
+    const titles = new Map(notes.map((note) => [note.slug, note.title]));
+    return linkedSlugs(sceneTextLines(scene).join("\n"), resolver).flatMap(
+      (slug) => {
+        const title = titles.get(slug);
+        return title === undefined ? [] : [{ slug, title }];
+      },
+    );
+  }, [notes, scene, resolver]);
+
   if (failed) {
     return (
       <pre>
@@ -105,7 +122,7 @@ export function ExcalidrawBlock({
   return (
     <div
       ref={host}
-      className={`not-prose w-full overflow-hidden rounded ${
+      className={`not-prose relative w-full overflow-hidden rounded ${
         fill ? "drawing-pane" : "my-6 h-[60dvh] border border-foreground/15"
       }`}
     >
@@ -132,6 +149,7 @@ export function ExcalidrawBlock({
           }}
         />
       )}
+      {loaded && <DrawingLinks notes={linked} />}
     </div>
   );
 }
