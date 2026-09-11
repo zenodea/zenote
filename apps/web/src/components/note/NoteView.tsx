@@ -8,6 +8,7 @@ import { stripTitleHeading } from "@/lib/note-body";
 import { folder as folderOf, joinSlug, sanitizeName } from "@/lib/slug";
 import { clearFreshNote, isFreshNote } from "@/lib/stores/fresh-note";
 import { useSettings } from "@/lib/stores/settings";
+import { useTouchPhone } from "@/hooks/use-media-query";
 import { Scroller } from "@/components/ui/Scroller";
 import { Backlinks } from "@/components/note/Backlinks";
 import { DeleteNoteModal } from "@/components/note/DeleteNoteModal";
@@ -42,6 +43,8 @@ export function NoteView({
   neighbourhood: Graph;
 }) {
   const settings = useSettings();
+  const touchPhone = useTouchPhone();
+  const vimMode = settings.vimMode && !touchPhone;
   const autosave = useAutosave(slug);
 
   const [startedEmpty] = useState(note?.body === "");
@@ -128,6 +131,7 @@ export function NoteView({
         <ExcalidrawEditor
           key={slug}
           initialScene={drawing}
+          resolver={resolver}
           autoFocus={!autoEditTitle}
           onChange={(scene) => {
             const next = drawingBody(scene);
@@ -144,7 +148,7 @@ export function NoteView({
           >
             {reading ? (
               drawing !== null ? (
-                <ExcalidrawBlock scene={drawing} fill />
+                <ExcalidrawBlock scene={drawing} resolver={resolver} fill />
               ) : (
                 <div className="prose max-w-none">
                   <NoteMarkdown
@@ -163,7 +167,7 @@ export function NoteView({
                   autosave.change(next);
                 }}
                 linkTargets={linkTargets}
-                vimMode={settings.vimMode}
+                vimMode={vimMode}
                 vimStatusBar={() => vimBarRef.current}
               />
             )}
@@ -183,7 +187,7 @@ export function NoteView({
         />
       )}
 
-      {!reading && settings.vimMode && drawing === null && (
+      {!reading && vimMode && drawing === null && (
         <VimPrompt hostRef={vimBarRef} />
       )}
     </>

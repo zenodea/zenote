@@ -7,7 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Read your notes online",
     start_url: "/",
     scope: "/",
-    display: "standalone",
+    display: "fullscreen",
+    display_override: ["fullscreen", "standalone"],
     background_color: "#ffffff",
     theme_color: "#ffffff",
     icons: [

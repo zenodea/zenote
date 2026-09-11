@@ -4,7 +4,7 @@ import Link from "next/link";
 import { AiButton } from "@/components/ai/AiButton";
 import { SyncStatus } from "@/components/frame/SyncStatus";
 import { iconClass } from "@/components/ui/Button";
-import { GraphIcon, SlidersIcon } from "@/components/ui/Icons";
+import { GraphIcon, SlidersIcon, TodoIcon } from "@/components/ui/Icons";
 import { useVault } from "@/lib/vault/store";
 
 function warmRenderer() {
@@ -27,7 +27,9 @@ export function SidebarFooter({
   return (
     <div
       data-seam="top"
-      className="flex shrink-0 items-center justify-between border-t border-foreground/15 p-2"
+      className={`flex shrink-0 items-center border-t border-foreground/15 p-2 ${
+        minimised ? "justify-center" : "justify-between"
+      }`}
     >
       <Link
         href="/settings"
@@ -41,7 +43,9 @@ export function SidebarFooter({
       {vault && (
         <div
           inert={minimised}
-          className={`flex min-w-0 flex-1 justify-center transition-opacity ${reveal}`}
+          className={`flex min-w-0 justify-center transition-opacity ${reveal} ${
+            minimised ? "w-0 overflow-hidden" : "flex-1"
+          }`}
         >
           <Link
             href="/vaults"
@@ -61,7 +65,9 @@ export function SidebarFooter({
       {!drawer && (
         <div
           inert={minimised}
-          className={`flex shrink-0 items-center gap-1 transition-opacity ${reveal}`}
+          className={`flex shrink-0 items-center gap-1 transition-opacity ${reveal} ${
+            minimised ? "w-0 overflow-hidden" : ""
+          }`}
         >
           <Link
             href="/graph"
@@ -73,6 +79,15 @@ export function SidebarFooter({
             onFocus={warmRenderer}
           >
             <GraphIcon />
+          </Link>
+          <Link
+            href="/todos"
+            aria-label="Todos"
+            title="Todos"
+            aria-current={pathname === "/todos" ? "page" : undefined}
+            className={`block ${iconClass(pathname === "/todos")}`}
+          >
+            <TodoIcon />
           </Link>
           <AiButton />
         </div>

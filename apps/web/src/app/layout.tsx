@@ -47,7 +47,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: { default: "Zenote", template: "%s — Zenote" },
   description: "Read your notes online",
-  appleWebApp: { capable: true, title: "Zenote", statusBarStyle: "default" },
+  appleWebApp: {
+    capable: true,
+    title: "Zenote",
+    statusBarStyle: "black-translucent",
+  },
   icons: { apple: "/apple-touch-icon.png" },
 };
 

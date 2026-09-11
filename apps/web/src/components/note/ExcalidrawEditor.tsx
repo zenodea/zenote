@@ -1,17 +1,29 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useLatestRef } from "@/hooks/use-latest-ref";
 import "@excalidraw/excalidraw/index.css";
 import { useLoadingIndicator } from "@/hooks/use-loading-indicator";
 import { parseScene } from "@/lib/drawing";
+import { noteHref, withNoteLinks } from "@/lib/drawing-links";
+import { navigate } from "@/lib/navigation";
 import { useThemeId } from "@/lib/use-theme";
+import type { WikilinkResolver } from "@/lib/wikilinks";
 import { AiDiamond } from "@/components/ai/AiDiamond";
 
 type ExcalidrawModule = typeof import("@excalidraw/excalidraw");
+type ExcalidrawProps = Parameters<ExcalidrawModule["Excalidraw"]>[0];
+type ExcalidrawImperativeAPI = Parameters<
+  NonNullable<ExcalidrawProps["excalidrawAPI"]>
+>[0];
+type SceneElements = NonNullable<
+  Parameters<ExcalidrawImperativeAPI["updateScene"]>[0]["elements"]
+>;
 
 type Loaded = {
   Excalidraw: ExcalidrawModule["Excalidraw"];
   serializeAsJSON: ExcalidrawModule["serializeAsJSON"];
+  captureNever: ExcalidrawModule["CaptureUpdateAction"]["NEVER"];
   initialData: {
     elements: readonly unknown[];
     appState: Record<string, unknown>;
@@ -24,14 +36,18 @@ const SETTLE_MS = 500;
 
 export function ExcalidrawEditor({
   initialScene,
+  resolver,
   onChange,
   autoFocus = true,
 }: {
   initialScene: string;
+  resolver: WikilinkResolver;
   onChange: (scene: string) => void;
   autoFocus?: boolean;
 }) {
   const theme = useThemeId();
+  const api = useRef<ExcalidrawImperativeAPI | null>(null);
+  const resolverRef = useLatestRef(resolver);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [revealed, setRevealed] = useState(false);
   const slowLoad = useLoadingIndicator(loaded === null);
@@ -48,7 +64,7 @@ export function ExcalidrawEditor({
       if (!alive) return;
 
       const parsed = parseScene(sceneRef.current);
-      const elements = !parsed
+      const built = !parsed
         ? []
         : parsed.skeleton
           ? excalidraw.convertToExcalidrawElements(
@@ -58,10 +74,15 @@ export function ExcalidrawEditor({
               { regenerateIds: false },
             )
           : parsed.elements;
+      const elements = withNoteLinks(
+        built as readonly Record<string, unknown>[],
+        resolverRef.current,
+      );
 
       setLoaded({
         Excalidraw: excalidraw.Excalidraw,
         serializeAsJSON: excalidraw.serializeAsJSON,
+        captureNever: excalidraw.CaptureUpdateAction.NEVER,
         initialData: {
           elements,
           appState: parsed?.appState ?? {},
@@ -76,7 +97,7 @@ export function ExcalidrawEditor({
       if (timer.current) clearTimeout(timer.current);
       settle.current?.();
     };
-  }, []);
+  }, [resolverRef]);
 
   // The canvas paints its own background before the scene lands; reveal after.
   useEffect(() => {
@@ -114,7 +135,7 @@ export function ExcalidrawEditor({
     );
   }
 
-  const { Excalidraw, serializeAsJSON, initialData } = loaded;
+  const { Excalidraw, serializeAsJSON, captureNever, initialData } = loaded;
   const dark = theme
     ? theme.endsWith("-dark")
     : window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -132,11 +153,31 @@ export function ExcalidrawEditor({
         initialData={
           initialData as Parameters<typeof Excalidraw>[0]["initialData"]
         }
+        excalidrawAPI={(instance) => {
+          api.current = instance;
+        }}
+        onLinkOpen={(element, event) => {
+          const href = noteHref(element.link);
+          if (href === null) return;
+          event.preventDefault();
+          navigate(href);
+        }}
         onChange={(elements, appState, files) => {
           if (timer.current) clearTimeout(timer.current);
           settle.current = () => {
             settle.current = null;
             try {
+              const linked = withNoteLinks(
+                elements as readonly Record<string, unknown>[],
+                resolverRef.current,
+              );
+              if (linked !== elements) {
+                api.current?.updateScene({
+                  elements: linked as SceneElements,
+                  captureUpdate: captureNever,
+                });
+                return;
+              }
               const scene = serializeAsJSON(elements, appState, files, "local");
               if (scene === sceneRef.current) return;
               sceneRef.current = scene;

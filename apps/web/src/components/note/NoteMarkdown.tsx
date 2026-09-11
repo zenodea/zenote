@@ -1,16 +1,14 @@
 "use client";
 
-import { isValidElement, type ComponentProps } from "react";
+import { isValidElement, useMemo, type ComponentProps } from "react";
 import Link from "next/link";
-import Markdown, {
-  defaultUrlTransform,
-  type ExtraProps,
-} from "react-markdown";
+import Markdown, { defaultUrlTransform, type ExtraProps } from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import "katex/dist/katex.min.css";
 import { remarkTag } from "@/lib/remark-tag";
+import { remarkTodo } from "@/lib/remark-todo";
 import { ATTACHMENT_PROTOCOL, remarkWikilink } from "@/lib/remark-wikilink";
 import type { WikilinkResolver } from "@/lib/wikilinks";
 import { AttachmentImage } from "@/components/note/AttachmentImage";
@@ -20,7 +18,10 @@ import { MermaidDiagram } from "@/components/note/MermaidDiagram";
 
 const LANGUAGE_PREFIX = "language-";
 
-function Pre({ children }: ComponentProps<"pre">) {
+function Pre({
+  children,
+  resolver,
+}: ComponentProps<"pre"> & { resolver: WikilinkResolver }) {
   if (!isValidElement(children)) return <pre>{children}</pre>;
 
   const code = children.props as { className?: string; children?: unknown };
@@ -31,7 +32,9 @@ function Pre({ children }: ComponentProps<"pre">) {
     ?.slice(LANGUAGE_PREFIX.length);
 
   if (language === "mermaid") return <MermaidDiagram chart={text} />;
-  if (language === "excalidraw") return <ExcalidrawBlock scene={text} />;
+  if (language === "excalidraw") {
+    return <ExcalidrawBlock scene={text} resolver={resolver} />;
+  }
 
   return (
     <CodeBlock text={text} language={language}>
@@ -85,17 +88,29 @@ export function NoteMarkdown({
   source: string;
   resolver: WikilinkResolver;
 }) {
+  const components = useMemo(
+    () => ({
+      pre: (props: ComponentProps<"pre">) => (
+        <Pre {...props} resolver={resolver} />
+      ),
+      a: Anchor,
+      img: Img,
+    }),
+    [resolver],
+  );
+
   return (
     <Markdown
       remarkPlugins={[
         remarkGfm,
         remarkMath,
+        remarkTodo,
         [remarkWikilink, { resolver }],
         remarkTag,
       ]}
       rehypePlugins={[rehypeKatex]}
       urlTransform={urlTransform}
-      components={{ pre: Pre, a: Anchor, img: Img }}
+      components={components}
     >
       {source}
     </Markdown>

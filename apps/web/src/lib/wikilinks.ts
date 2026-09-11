@@ -1,3 +1,9 @@
+import {
+  drawingBody,
+  drawingScene,
+  mapSceneText,
+  sceneTextLines,
+} from "./drawing";
 import { stripCode } from "./markdown";
 import { filename } from "./slug";
 import type { Note } from "./note";
@@ -33,10 +39,15 @@ function renderInline(markdown: string): string {
   );
 }
 
+function proseLines(body: string): string[] {
+  const scene = drawingScene(body);
+  return scene === null ? stripCode(body).split("\n") : sceneTextLines(scene);
+}
+
 export function extractOccurrences(body: string): WikilinkOccurrence[] {
   const occurrences: WikilinkOccurrence[] = [];
 
-  for (const line of stripCode(body).split("\n")) {
+  for (const line of proseLines(body)) {
     const prose = line.replace(/^[>\s]*(?:[-*+] |\d+\. |#{1,6} )?/, "");
 
     for (const match of prose.matchAll(wikilinkRegex())) {
@@ -70,19 +81,29 @@ export function replaceWikilinkTargets(
   body: string,
   rename: (target: string) => string | null,
 ): string {
+  const scene = drawingScene(body);
+  if (scene !== null) {
+    const next = mapSceneText(scene, (text) => rewriteInProse(text, rename));
+    return next === scene ? body : drawingBody(next);
+  }
   return body
     .split(/(```[\s\S]*?```|`[^`\n]*`)/g)
     .map((segment, index) =>
-      index % 2 === 1
-        ? segment
-        : segment.replace(wikilinkRegex(), (full, target, heading, alias) => {
-            const next = rename(target as string);
-            if (next === null) return full;
-            const rest = `${heading ? `#${heading}` : ""}${alias ? `|${alias}` : ""}`;
-            return `[[${next}${rest}]]`;
-          }),
+      index % 2 === 1 ? segment : rewriteInProse(segment, rename),
     )
     .join("");
+}
+
+function rewriteInProse(
+  text: string,
+  rename: (target: string) => string | null,
+): string {
+  return text.replace(wikilinkRegex(), (full, target, heading, alias) => {
+    const next = rename(target as string);
+    if (next === null) return full;
+    const rest = `${heading ? `#${heading}` : ""}${alias ? `|${alias}` : ""}`;
+    return `[[${next}${rest}]]`;
+  });
 }
 
 function normalise(value: string): string {

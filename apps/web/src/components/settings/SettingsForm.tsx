@@ -3,14 +3,12 @@
 import type { ReactNode } from "react";
 import { SEARCH_MODES } from "@/lib/search";
 import { updateSettings, useSettings } from "@/lib/stores/settings";
-import { useCoarsePointer, useLayoutMode } from "@/hooks/use-media-query";
+import { useTouchPhone } from "@/hooks/use-media-query";
 import { Segmented } from "@/components/ui/Segmented";
 
 export function SettingsForm() {
   const settings = useSettings();
-  const phone = useLayoutMode() === "phone";
-  const coarse = useCoarsePointer();
-  const touchPhone = phone && coarse;
+  const touchPhone = useTouchPhone();
 
   return (
     <ul className="divide-y divide-foreground/15">

@@ -26,3 +26,74 @@
     var(--background)
   );
 }
+
+.tag,
+.prose a.tag {
+  display: inline-block;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  padding: 0.05em 0.55em;
+  color: var(--accent);
+  font-size: 0.85em;
+  font-weight: 500;
+  line-height: 1.6;
+  text-decoration: none;
+  transition: background-color 150ms ease;
+}
+
+.tag:hover,
+.prose a.tag:hover {
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tag {
+    transition: none;
+  }
+}
+
+.todo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-style: normal;
+}
+
+.todo-box {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 0.6em;
+  height: 0.6em;
+  rotate: 45deg;
+  border: 1px solid color-mix(in srgb, var(--foreground) 45%, transparent);
+}
+
+.todo-done .todo-box {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.todo-done .todo-text {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.todo-due {
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--foreground) 10%, transparent);
+  padding: 0.05em 0.5em;
+  font-size: 0.8em;
+  font-style: normal;
+  opacity: 0.75;
+}
+
+.todo-overdue .todo-due {
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+  color: var(--danger);
+  opacity: 1;
+}
+
+.cm-todo-done {
+  opacity: 0.55;
+  text-decoration: line-through;
+}

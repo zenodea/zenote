@@ -49,9 +49,3 @@
 .scroller[data-dragging] .scroller-mark {
   --ink: color-mix(in srgb, var(--foreground) 85%, transparent);
 }
-
-.tag {
-  color: var(--accent);
-  font-size: 0.9em;
-  text-decoration: none;
-}

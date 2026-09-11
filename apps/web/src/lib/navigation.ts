@@ -14,13 +14,27 @@ export function navigate(href: string): void {
   setTimeout(() => window.history.pushState(null, "", href), FADE_OUT_MS);
 }
 
+function internalHref(anchor: Element): string | null {
+  if (anchor instanceof HTMLAnchorElement) {
+    return anchor.pathname === "/login"
+      ? null
+      : anchor.pathname + anchor.search;
+  }
+  const href = anchor.getAttribute("href");
+  return href !== null && href.startsWith("/") && href !== "/login"
+    ? href
+    : null;
+}
+
 export function interceptLinkClicks(): () => void {
   const onClick = (event: MouseEvent) => {
     if (!navigatesAway(event)) return;
     const anchor = (event.target as Element).closest("a");
-    if (!anchor || anchor.pathname === "/login") return;
+    if (!anchor) return;
+    const href = internalHref(anchor);
+    if (href === null) return;
     event.preventDefault();
-    navigate(anchor.pathname + anchor.search);
+    navigate(href);
   };
 
   document.addEventListener("click", onClick, true);

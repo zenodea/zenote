@@ -49,3 +49,9 @@ export function useLayoutMode(): LayoutMode {
 export function useCoarsePointer() {
   return useMediaQuery(COARSE_QUERY);
 }
+
+export function useTouchPhone() {
+  const phone = useMediaQuery(PHONE_QUERY);
+  const coarse = useMediaQuery(COARSE_QUERY);
+  return phone && coarse;
+}

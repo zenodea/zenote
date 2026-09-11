@@ -1,14 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { withNoteLinks } from "@/lib/drawing-links";
 import { parseScene } from "@/lib/drawing";
 import { useThemeId } from "@/lib/use-theme";
+import type { WikilinkResolver } from "@/lib/wikilinks";
 
 export function ExcalidrawBlock({
   scene,
+  resolver,
   fill = false,
 }: {
   scene: string;
+  resolver: WikilinkResolver;
   fill?: boolean;
 }) {
   const theme = useThemeId();
@@ -30,18 +34,22 @@ export function ExcalidrawBlock({
       }
 
       try {
-        const { exportToSvg, convertToExcalidrawElements } = await import(
-          "@excalidraw/excalidraw"
-        );
+        const { exportToSvg, convertToExcalidrawElements } =
+          await import("@excalidraw/excalidraw");
 
-        const elements = parsed.skeleton
+        const built = parsed.skeleton
           ? convertToExcalidrawElements(
               parsed.elements as Parameters<
                 typeof convertToExcalidrawElements
               >[0],
               { regenerateIds: false },
             )
-          : (parsed.elements as Parameters<typeof exportToSvg>[0]["elements"]);
+          : parsed.elements;
+
+        const elements = withNoteLinks(
+          built as readonly Record<string, unknown>[],
+          resolver,
+        ) as Parameters<typeof exportToSvg>[0]["elements"];
 
         const dark = theme
           ? theme.endsWith("-dark")
@@ -72,7 +80,7 @@ export function ExcalidrawBlock({
     return () => {
       cancelled = true;
     };
-  }, [scene, theme, fill]);
+  }, [scene, theme, fill, resolver]);
 
   if (failed) {
     return (

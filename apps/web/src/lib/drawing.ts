@@ -54,3 +54,48 @@ export function parseScene(raw: string): ParsedScene | null {
     return null;
   }
 }
+
+export function sceneTextLines(scene: string): string[] {
+  const parsed = parseScene(scene);
+  if (!parsed) return [];
+
+  return parsed.elements.flatMap((element) =>
+    element.type === "text" && typeof element.text === "string"
+      ? element.text.split("\n")
+      : [],
+  );
+}
+
+export function mapSceneText(
+  scene: string,
+  rewrite: (text: string) => string,
+): string {
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(scene) as Record<string, unknown>;
+  } catch {
+    return scene;
+  }
+  if (!Array.isArray(parsed.elements)) return scene;
+
+  let changed = false;
+  const elements = (parsed.elements as Record<string, unknown>[]).map(
+    (element) => {
+      if (element.type !== "text" || typeof element.text !== "string") {
+        return element;
+      }
+      const text = rewrite(element.text);
+      const original =
+        typeof element.originalText === "string"
+          ? rewrite(element.originalText)
+          : element.originalText;
+      if (text === element.text && original === element.originalText) {
+        return element;
+      }
+      changed = true;
+      return { ...element, text, originalText: original };
+    },
+  );
+
+  return changed ? JSON.stringify({ ...parsed, elements }, null, 2) : scene;
+}

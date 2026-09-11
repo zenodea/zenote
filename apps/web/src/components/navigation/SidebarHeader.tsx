@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { Button, iconClass } from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import {
   FilePlusIcon,
@@ -9,7 +8,6 @@ import {
   LogoIcon,
   SearchIcon,
   ShapesIcon,
-  SlidersIcon,
 } from "@/components/ui/Icons";
 import type { useSidebarSearch } from "@/components/navigation/use-sidebar-search";
 import {
@@ -45,7 +43,9 @@ export function SidebarHeader({
   return (
     <div
       data-seam="bottom"
-      className="flex h-14 shrink-0 items-center gap-2 border-b border-foreground/15 px-4"
+      className={`flex h-14 shrink-0 items-center border-b border-foreground/15 ${
+        drawer ? "gap-1 px-3" : "gap-2 px-4"
+      }`}
     >
       {searchOpen ? (
         <Input
@@ -74,7 +74,9 @@ export function SidebarHeader({
       )}
       <div
         inert={minimised}
-        className={`flex shrink-0 items-center gap-2 transition-opacity ${reveal}`}
+        className={`flex shrink-0 items-center transition-opacity ${
+          drawer ? "gap-1" : "gap-2"
+        } ${reveal} ${minimised ? "w-0 overflow-hidden" : ""}`}
       >
         {!searchOpen && (
           <>
@@ -123,15 +125,6 @@ export function SidebarHeader({
         >
           <SearchIcon />
         </Button>
-        {drawer && !searchOpen && (
-          <Link
-            href="/settings"
-            aria-label="Settings"
-            className={`block ${iconClass(false)}`}
-          >
-            <SlidersIcon />
-          </Link>
-        )}
       </div>
     </div>
   );
