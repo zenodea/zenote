@@ -352,3 +352,23 @@ export function ShapesIcon({ className = "block" }: { className?: string }) {
     </svg>
   );
 }
+
+export function TodoIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="block"
+    >
+      <path d="M8 1.4 14.6 8 8 14.6 1.4 8Z" />
+      <path d="M5.4 8 7.2 9.8 10.6 6.2" />
+    </svg>
+  );
+}

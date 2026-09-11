@@ -9,6 +9,7 @@ import {
   GraphIcon,
   MenuIcon,
   SearchIcon,
+  TodoIcon,
 } from "@/components/ui/Icons";
 import { startUnnamedNote } from "@/components/navigation/use-vault-actions";
 import { openSwitcher } from "@/lib/stores/commands";
@@ -60,6 +61,16 @@ export function MobileBar() {
         }`}
       >
         <GraphIcon />
+      </Link>
+      <Link
+        href="/todos"
+        aria-label="Todos"
+        aria-current={pathname === "/todos" ? "page" : undefined}
+        className={`flex flex-1 items-center justify-center ${
+          pathname === "/todos" ? "text-accent" : "opacity-60"
+        }`}
+      >
+        <TodoIcon />
       </Link>
       <div className="flex flex-1 items-center justify-center">
         <AiButton />

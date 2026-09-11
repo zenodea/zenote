@@ -53,6 +53,9 @@ An assistant sits next to the note you are reading. It answers from your own not
 which ones it opened, and can write notes back if you let it. Each conversation stays with its
 note.
 
+Pick Claude, OpenAI, Gemini or OpenRouter in settings and paste your own key there. Nothing
+is read from the environment.
+
 ## Finding
 
 <img src=".github/assets/screenshots/quick-switcher.png" alt="The quick switcher">
@@ -60,6 +63,14 @@ note.
 `⌘K` jumps to any note by name. `⌘F` searches inside the one you are reading. The sidebar
 searches titles or full text and filters by tag. Search runs in the browser, so results come
 up as you type.
+
+## Todos
+
+Write `!![call the bank][2026-09-11T18:20]` anywhere in a note. The time is optional, and so
+is the date: `!![someday]` is a todo too.
+
+The todo icon next to the graph opens every one of them, as a list or on a calendar. Ticking
+one off strikes it through where you wrote it.
 
 ## Offline
 
@@ -103,8 +114,8 @@ Six themes, each with a dark and a light version.
 ## Built with
 
 Next.js and React, CodeMirror for the editor, PixiJS for the graph, IndexedDB for the copy
-of the vault your device keeps, Supabase for the database and the login, Gemini for the
-assistant. It runs on Vercel, and every push is checked and shipped by GitHub Actions.
+of the vault your device keeps, Supabase for the database and the login. It runs on Vercel,
+and every push is checked and shipped by GitHub Actions.
 
 ## License
 

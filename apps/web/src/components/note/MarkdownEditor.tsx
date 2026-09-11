@@ -12,6 +12,7 @@ import { classHighlighter } from "@lezer/highlight";
 import { attachmentPaste } from "@/lib/editor/attachment-paste";
 import { markdownHighlight } from "@/lib/editor/highlight";
 import { livePreview } from "@/lib/editor/live-preview";
+import { todoMarks } from "@/lib/editor/todo-marks";
 import { editorTheme } from "@/lib/editor/theme";
 import { adoptStatusBar, vimExtensions } from "@/lib/editor/vim";
 import { wikilinkCompletions } from "@/lib/editor/wikilink-completion";
@@ -84,7 +85,10 @@ export function MarkdownEditor({
 
       const top = viewport!.offsetTop;
       const bottom = top + viewport!.height;
-      if (caret.top >= top + CARET_MARGIN && caret.bottom <= bottom - CARET_MARGIN) {
+      if (
+        caret.top >= top + CARET_MARGIN &&
+        caret.bottom <= bottom - CARET_MARGIN
+      ) {
         return;
       }
 
@@ -129,6 +133,7 @@ export function MarkdownEditor({
           syntaxHighlighting(markdownHighlight),
           syntaxHighlighting(classHighlighter),
           livePreview,
+          todoMarks,
           editorTheme,
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
