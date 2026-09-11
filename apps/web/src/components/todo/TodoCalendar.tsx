@@ -119,8 +119,8 @@ export function TodoCalendar({
                   total === 0
                     ? "border-transparent"
                     : open.length > 0
-                      ? "border-accent bg-accent"
-                      : "border-foreground/40"
+                      ? "border-accent"
+                      : "border-accent bg-accent"
                 }`}
               />
             </button>

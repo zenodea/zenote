@@ -106,7 +106,7 @@ export function ExcalidrawBlock({
     <div
       ref={host}
       className={`not-prose w-full overflow-hidden rounded ${
-        fill ? "h-[75dvh]" : "my-6 h-[60dvh] border border-foreground/15"
+        fill ? "drawing-pane" : "my-6 h-[60dvh] border border-foreground/15"
       }`}
     >
       {Excalidraw && initialData && (

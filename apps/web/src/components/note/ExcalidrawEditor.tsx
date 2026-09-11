@@ -19,6 +19,7 @@ import { navigate } from "@/lib/navigation";
 import { useThemeId } from "@/lib/use-theme";
 import type { WikilinkResolver } from "@/lib/wikilinks";
 import { AiDiamond } from "@/components/ai/AiDiamond";
+import { DrawingWikilinkSuggest } from "@/components/note/DrawingWikilinkSuggest";
 
 type Loaded = {
   Excalidraw: ExcalidrawModule["Excalidraw"];
@@ -37,11 +38,13 @@ const SETTLE_MS = 500;
 export function ExcalidrawEditor({
   initialScene,
   resolver,
+  linkTargets,
   onChange,
   autoFocus = true,
 }: {
   initialScene: string;
   resolver: WikilinkResolver;
+  linkTargets: string[];
   onChange: (scene: string) => void;
   autoFocus?: boolean;
 }) {
@@ -50,6 +53,7 @@ export function ExcalidrawEditor({
   const resolverRef = useLatestRef(resolver);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [revealed, setRevealed] = useState(false);
+  const [suggestHost, setSuggestHost] = useState<HTMLElement | null>(null);
   const slowLoad = useLoadingIndicator(loaded === null);
   const sceneRef = useRef(initialScene);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -110,6 +114,7 @@ export function ExcalidrawEditor({
 
   useEffect(() => {
     if (!loaded || !container.current) return;
+    setSuggestHost(container.current);
     return interceptNoteLinks(container.current, navigate);
   }, [loaded]);
 
@@ -192,6 +197,7 @@ export function ExcalidrawEditor({
           timer.current = setTimeout(() => settle.current?.(), SETTLE_MS);
         }}
       />
+      <DrawingWikilinkSuggest host={suggestHost} targets={linkTargets} />
     </div>
   );
 }

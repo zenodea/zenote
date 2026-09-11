@@ -132,6 +132,7 @@ export function NoteView({
           key={slug}
           initialScene={drawing}
           resolver={resolver}
+          linkTargets={linkTargets}
           autoFocus={!autoEditTitle}
           onChange={(scene) => {
             const next = drawingBody(scene);
@@ -142,8 +143,8 @@ export function NoteView({
       ) : (
         <Scroller className="min-h-0 flex-1">
           <article
-            className={`mx-auto w-full px-6 ${
-              drawing !== null ? "py-6" : "max-w-3xl py-12"
+            className={`mx-auto w-full ${
+              drawing !== null ? "px-0" : "max-w-3xl px-6 py-12"
             }`}
           >
             {reading ? (
@@ -172,9 +173,16 @@ export function NoteView({
               />
             )}
 
-            {reading && <NoteGraph graph={neighbourhood} focusId={slug} />}
-
-            {reading && <Backlinks backlinks={backlinks} />}
+            {reading && (
+              <div
+                className={
+                  drawing !== null ? "mx-auto w-full max-w-3xl px-6 pb-12" : ""
+                }
+              >
+                <NoteGraph graph={neighbourhood} focusId={slug} />
+                <Backlinks backlinks={backlinks} />
+              </div>
+            )}
           </article>
         </Scroller>
       )}

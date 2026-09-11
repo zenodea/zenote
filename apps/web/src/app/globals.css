@@ -46,6 +46,11 @@ html {
   padding-bottom: var(--safe-bottom);
 }
 
+/* The pane under the note toolbar: the whole screen minus chrome. */
+.drawing-pane {
+  height: calc(100dvh - var(--keyboard) - var(--mobile-bar) - 3.5rem);
+}
+
 ::selection {
   background: color-mix(in srgb, var(--accent) 30%, transparent);
 }
