@@ -46,6 +46,10 @@ html {
   padding-bottom: var(--safe-bottom);
 }
 
+::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

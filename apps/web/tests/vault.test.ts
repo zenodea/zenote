@@ -8,6 +8,9 @@ import { buildResolver, extractTargets } from "../src/lib/wikilinks";
 import {
   collectTodos,
   dueDate,
+  editTodoInBody,
+  joinDue,
+  splitDue,
   formatDue,
   hasTime,
   isPast,
@@ -178,6 +181,34 @@ function local(base: Note, changes: Partial<LocalNote> = {}): LocalNote {
     collected.map((todo) => todo.index),
     [0, 1, 2],
   );
+}
+
+{
+  const body = "!![call the bank][2026-09-11T18:20]\n!!x[buy milk][2026-09-12]";
+
+  const renamed = editTodoInBody(body, 0, {
+    text: "call the dentist",
+    due: "2026-10-01",
+  });
+  assert.ok(renamed.startsWith("!![call the dentist][2026-10-01]"));
+  assert.ok(renamed.includes("!!x[buy milk][2026-09-12]"));
+
+  const cleared = editTodoInBody(body, 1, { text: "buy milk", due: null });
+  assert.ok(
+    cleared.includes("!!x[buy milk]\n") || cleared.endsWith("!!x[buy milk]"),
+  );
+  assert.equal(parseTodos(cleared)[1].done, true);
+  assert.equal(parseTodos(cleared)[1].due, null);
+
+  assert.deepEqual(splitDue("2026-09-11T18:20"), {
+    date: "2026-09-11",
+    time: "18:20",
+  });
+  assert.deepEqual(splitDue("2026-09-11"), { date: "2026-09-11", time: "" });
+  assert.deepEqual(splitDue(null), { date: "", time: "" });
+  assert.equal(joinDue("2026-09-11", "18:20"), "2026-09-11T18:20");
+  assert.equal(joinDue("2026-09-11", ""), "2026-09-11");
+  assert.equal(joinDue("", "18:20"), null);
 }
 
 console.log("vault unit tests passed");

@@ -49,3 +49,25 @@ export function noteHref(link: unknown): string | null {
     ? link
     : null;
 }
+
+export function interceptNoteLinks(
+  host: HTMLElement,
+  go: (href: string) => void,
+): () => void {
+  const onClick = (event: MouseEvent) => {
+    if (event.button !== 0) return;
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const anchor = target.closest("a");
+    const href = anchor?.getAttribute("href") ?? null;
+    if (href === null || !href.startsWith(NOTE_LINK_PREFIX)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    go(href);
+  };
+
+  host.addEventListener("click", onClick, true);
+  return () => host.removeEventListener("click", onClick, true);
+}

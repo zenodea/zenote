@@ -68,6 +68,41 @@ export function toggleTodoInBody(body: string, index: number): string {
     .join("");
 }
 
+export function editTodoInBody(
+  body: string,
+  index: number,
+  next: { text: string; due: string | null },
+): string {
+  let seen = 0;
+
+  return body
+    .split(CODE_SPLIT)
+    .map((segment, part) =>
+      part % 2 === 1
+        ? segment
+        : segment.replace(todoRegex(), (full, done) =>
+            seen++ === index
+              ? formatTodo(done === "x", next.text, next.due)
+              : full,
+          ),
+    )
+    .join("");
+}
+
+export function splitDue(due: string | null): { date: string; time: string } {
+  const match = due?.match(DUE_PATTERN);
+  if (!match) return { date: "", time: "" };
+  return {
+    date: `${match[1]}-${match[2]}-${match[3]}`,
+    time: match[4] ? `${match[4]}:${match[5]}` : "",
+  };
+}
+
+export function joinDue(date: string, time: string): string | null {
+  if (!date) return null;
+  return time ? `${date}T${time}` : date;
+}
+
 export function collectTodos(notes: Note[]): VaultTodo[] {
   return notes.flatMap((note) =>
     parseTodos(note.body).map((todo) => ({

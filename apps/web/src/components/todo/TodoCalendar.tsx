@@ -42,9 +42,11 @@ function monthGrid(month: Date): Date[] {
 export function TodoCalendar({
   todos,
   onToggle,
+  onEdit,
 }: {
   todos: VaultTodo[];
   onToggle: (todo: VaultTodo) => void;
+  onEdit: (todo: VaultTodo, next: { text: string; due: string | null }) => void;
 }) {
   const today = new Date();
   const [month, setMonth] = useState(
@@ -136,6 +138,7 @@ export function TodoCalendar({
                 key={`${todo.slug}-${todo.index}`}
                 todo={todo}
                 onToggle={onToggle}
+                onEdit={onEdit}
               />
             ))}
           </ul>
@@ -153,6 +156,7 @@ export function TodoCalendar({
                 key={`${todo.slug}-${todo.index}`}
                 todo={todo}
                 onToggle={onToggle}
+                onEdit={onEdit}
               />
             ))}
           </ul>

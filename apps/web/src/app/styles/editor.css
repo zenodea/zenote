@@ -72,6 +72,14 @@
   outline: none;
 }
 
+/* CodeMirror paints its own selection layer; !important beats its base theme. */
+.cm-editor .cm-selectionBackground,
+.cm-editor.cm-focused .cm-selectionBackground,
+.cm-editor .cm-content ::selection,
+.cm-editor .cm-line::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent) !important;
+}
+
 /* Matches from vim's / search, colored like the find bar's highlights. */
 .cm-editor .cm-searchMatch {
   background-color: color-mix(in srgb, var(--accent) 25%, transparent);

@@ -10,6 +10,7 @@ import { useTitle } from "@/hooks/use-title";
 import {
   collectTodos,
   dueDate,
+  editTodoInBody,
   sortTodos,
   startOfDay,
   toggleTodoInBody,
@@ -43,6 +44,15 @@ async function toggleTodo(todo: VaultTodo) {
   await saveBody(todo.slug, toggleTodoInBody(note.body, todo.index));
 }
 
+async function editTodo(
+  todo: VaultTodo,
+  next: { text: string; due: string | null },
+) {
+  const note = getBySlug().get(todo.slug);
+  if (!note) return;
+  await saveBody(todo.slug, editTodoInBody(note.body, todo.index, next));
+}
+
 export function TodosView() {
   const { notes } = useVault();
   const [view, setView] = useState<(typeof VIEWS)[number]>("list");
@@ -62,6 +72,8 @@ export function TodosView() {
   }, [todos]);
 
   const toggle = (todo: VaultTodo) => void toggleTodo(todo);
+  const edit = (todo: VaultTodo, next: { text: string; due: string | null }) =>
+    void editTodo(todo, next);
 
   return (
     <>
@@ -79,14 +91,16 @@ export function TodosView() {
           className="w-56"
         />
 
-        {todos.length === 0 ? (
-          <p className="mt-8 text-sm opacity-60">
+        {todos.length === 0 && (
+          <p className="mt-6 text-sm opacity-60">
             Nothing yet. Write <code>!![call the bank][2026-09-11]</code> in any
             note and it turns up here.
           </p>
-        ) : view === "calendar" ? (
+        )}
+
+        {view === "calendar" ? (
           <div className="mt-6">
-            <TodoCalendar todos={todos} onToggle={toggle} />
+            <TodoCalendar todos={todos} onToggle={toggle} onEdit={edit} />
           </div>
         ) : (
           BUCKETS.filter((bucket) => grouped.has(bucket)).map((bucket) => (
@@ -100,6 +114,7 @@ export function TodosView() {
                     key={`${todo.slug}-${todo.index}`}
                     todo={todo}
                     onToggle={toggle}
+                    onEdit={edit}
                   />
                 ))}
               </ul>

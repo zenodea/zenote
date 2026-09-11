@@ -81,12 +81,14 @@ export function Row({
   children: ReactNode;
 }) {
   return (
-    <li className="flex items-center justify-between gap-6 py-4">
-      <div>
+    <li className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+      <div className="min-w-0">
         <p className="font-medium">{title}</p>
         <p className="mt-1 text-sm opacity-60">{description}</p>
       </div>
-      {children}
+      <div className="flex min-w-0 shrink-0 items-center sm:justify-end">
+        {children}
+      </div>
     </li>
   );
 }

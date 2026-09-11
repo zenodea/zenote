@@ -1,10 +1,27 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { withNoteLinks } from "@/lib/drawing-links";
+import "@excalidraw/excalidraw/index.css";
 import { parseScene } from "@/lib/drawing";
+import {
+  interceptNoteLinks,
+  noteHref,
+  withNoteLinks,
+} from "@/lib/drawing-links";
+import { navigate } from "@/lib/navigation";
 import { useThemeId } from "@/lib/use-theme";
 import type { WikilinkResolver } from "@/lib/wikilinks";
+import type { ExcalidrawModule } from "@/components/note/excalidraw-types";
+
+type Loaded = {
+  Excalidraw: ExcalidrawModule["Excalidraw"];
+  initialData: {
+    elements: readonly unknown[];
+    appState: Record<string, unknown>;
+    files: Record<string, unknown>;
+    scrollToContent: boolean;
+  };
+};
 
 export function ExcalidrawBlock({
   scene,
@@ -16,11 +33,12 @@ export function ExcalidrawBlock({
   fill?: boolean;
 }) {
   const theme = useThemeId();
-  const host = useRef<HTMLDivElement>(null);
+  const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [failed, setFailed] = useState(false);
+  const host = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    let alive = true;
 
     (async () => {
       const parsed = parseScene(scene);
@@ -28,59 +46,47 @@ export function ExcalidrawBlock({
         setFailed(true);
         return;
       }
-      if (parsed.elements.length === 0) {
-        host.current?.replaceChildren();
-        return;
-      }
 
       try {
-        const { exportToSvg, convertToExcalidrawElements } =
-          await import("@excalidraw/excalidraw");
+        const excalidraw = await import("@excalidraw/excalidraw");
+        if (!alive) return;
 
         const built = parsed.skeleton
-          ? convertToExcalidrawElements(
+          ? excalidraw.convertToExcalidrawElements(
               parsed.elements as Parameters<
-                typeof convertToExcalidrawElements
+                typeof excalidraw.convertToExcalidrawElements
               >[0],
               { regenerateIds: false },
             )
           : parsed.elements;
 
-        const elements = withNoteLinks(
-          built as readonly Record<string, unknown>[],
-          resolver,
-        ) as Parameters<typeof exportToSvg>[0]["elements"];
-
-        const dark = theme
-          ? theme.endsWith("-dark")
-          : window.matchMedia("(prefers-color-scheme: dark)").matches;
-
-        const svg = await exportToSvg({
-          elements,
-          appState: {
-            ...parsed.appState,
-            exportBackground: false,
-            exportWithDarkMode: dark,
+        setLoaded({
+          Excalidraw: excalidraw.Excalidraw,
+          initialData: {
+            elements: withNoteLinks(
+              built as readonly Record<string, unknown>[],
+              resolver,
+            ),
+            appState: parsed.appState,
+            files: parsed.files,
+            scrollToContent: true,
           },
-          files: parsed.files as Parameters<typeof exportToSvg>[0]["files"],
         });
-
-        if (cancelled || !host.current) return;
-        svg.style.maxWidth = "100%";
-        svg.style.maxHeight = fill ? "80dvh" : "70dvh";
-        svg.style.width = fill ? "100%" : "auto";
-        svg.style.height = "auto";
-        host.current.replaceChildren(svg);
         setFailed(false);
       } catch {
-        if (!cancelled) setFailed(true);
+        if (alive) setFailed(true);
       }
     })();
 
     return () => {
-      cancelled = true;
+      alive = false;
     };
-  }, [scene, theme, fill, resolver]);
+  }, [scene, resolver]);
+
+  useEffect(() => {
+    if (!loaded || !host.current) return;
+    return interceptNoteLinks(host.current, navigate);
+  }, [loaded]);
 
   if (failed) {
     return (
@@ -90,10 +96,42 @@ export function ExcalidrawBlock({
     );
   }
 
+  const { Excalidraw, initialData } = loaded ?? {};
+  const dark = theme
+    ? theme.endsWith("-dark")
+    : typeof window !== "undefined" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches;
+
   return (
     <div
       ref={host}
-      className={`not-prose flex w-full justify-center ${fill ? "" : "my-6"}`}
-    />
+      className={`not-prose w-full overflow-hidden rounded ${
+        fill ? "h-[75dvh]" : "my-6 h-[60dvh] border border-foreground/15"
+      }`}
+    >
+      {Excalidraw && initialData && (
+        <Excalidraw
+          viewModeEnabled
+          theme={dark ? "dark" : "light"}
+          initialData={
+            initialData as Parameters<typeof Excalidraw>[0]["initialData"]
+          }
+          UIOptions={{
+            canvasActions: {
+              export: false,
+              saveToActiveFile: false,
+              loadScene: false,
+              toggleTheme: false,
+            },
+          }}
+          onLinkOpen={(element, event) => {
+            const href = noteHref(element.link);
+            if (href === null) return;
+            event.preventDefault();
+            navigate(href);
+          }}
+        />
+      )}
+    </div>
   );
 }

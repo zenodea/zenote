@@ -5,20 +5,20 @@ import { useLatestRef } from "@/hooks/use-latest-ref";
 import "@excalidraw/excalidraw/index.css";
 import { useLoadingIndicator } from "@/hooks/use-loading-indicator";
 import { parseScene } from "@/lib/drawing";
-import { noteHref, withNoteLinks } from "@/lib/drawing-links";
+import {
+  interceptNoteLinks,
+  noteHref,
+  withNoteLinks,
+} from "@/lib/drawing-links";
+import type {
+  ExcalidrawModule,
+  ExcalidrawImperativeAPI,
+  SceneElements,
+} from "@/components/note/excalidraw-types";
 import { navigate } from "@/lib/navigation";
 import { useThemeId } from "@/lib/use-theme";
 import type { WikilinkResolver } from "@/lib/wikilinks";
 import { AiDiamond } from "@/components/ai/AiDiamond";
-
-type ExcalidrawModule = typeof import("@excalidraw/excalidraw");
-type ExcalidrawProps = Parameters<ExcalidrawModule["Excalidraw"]>[0];
-type ExcalidrawImperativeAPI = Parameters<
-  NonNullable<ExcalidrawProps["excalidrawAPI"]>
->[0];
-type SceneElements = NonNullable<
-  Parameters<ExcalidrawImperativeAPI["updateScene"]>[0]["elements"]
->;
 
 type Loaded = {
   Excalidraw: ExcalidrawModule["Excalidraw"];
@@ -106,6 +106,11 @@ export function ExcalidrawEditor({
       requestAnimationFrame(() => setRevealed(true)),
     );
     return () => cancelAnimationFrame(frame);
+  }, [loaded]);
+
+  useEffect(() => {
+    if (!loaded || !container.current) return;
+    return interceptNoteLinks(container.current, navigate);
   }, [loaded]);
 
   // The library sidebar is Excalidraw's DOM; tag it so Junctions can see it.

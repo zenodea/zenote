@@ -15,6 +15,7 @@ import { livePreview } from "@/lib/editor/live-preview";
 import { todoMarks } from "@/lib/editor/todo-marks";
 import { editorTheme } from "@/lib/editor/theme";
 import { adoptStatusBar, vimExtensions } from "@/lib/editor/vim";
+import { dueCompletions } from "@/lib/editor/due-completion";
 import { wikilinkCompletions } from "@/lib/editor/wikilink-completion";
 import { useLatestRef } from "@/hooks/use-latest-ref";
 
@@ -126,7 +127,10 @@ export function MarkdownEditor({
           keymap.of([...defaultKeymap, ...historyKeymap]),
           markdown({ base: markdownLanguage, codeLanguages: languages }),
           autocompletion({
-            override: [wikilinkCompletions(targetsRef.current)],
+            override: [
+              wikilinkCompletions(targetsRef.current),
+              dueCompletions(),
+            ],
           }),
           EditorView.lineWrapping,
           attachmentPaste,

@@ -20,7 +20,7 @@ export function SettingsView() {
       <PageHeader title="Settings" />
 
       <Scroller className="min-h-0 flex-1">
-        <div className="mx-auto w-full max-w-3xl px-6 py-6">
+        <div className="mx-auto w-full max-w-3xl px-4 py-6 md:px-6">
           <section>
             <h2 className="text-sm font-semibold uppercase tracking-wide opacity-60">
               Document

@@ -67,7 +67,7 @@ function ModelPicker({
       label={<span className="font-mono text-xs">{model}</span>}
       ariaLabel="Assistant model"
       align="right"
-      triggerClassName="shrink-0 rounded border border-foreground/15 bg-background px-2.5 py-1.5 opacity-70 hover:opacity-100"
+      triggerClassName="max-w-full truncate rounded border border-foreground/15 bg-background px-2.5 py-1.5 opacity-70 hover:opacity-100"
     >
       {options.map((option) => (
         <button
@@ -122,7 +122,7 @@ export function AssistantSettings() {
           placeholder="Paste a key"
           aria-label={`${AI_PROVIDER_LABELS[provider]} API key`}
           onChange={(event) => setAiKey(provider, event.target.value)}
-          className="w-56 shrink-0 font-mono text-xs"
+          className="w-full min-w-0 font-mono text-xs sm:w-56"
         />
       </Row>
       <Row
@@ -141,7 +141,7 @@ export function AssistantSettings() {
             placeholder="vendor/model"
             aria-label="Assistant model"
             onChange={(event) => setAiModel(provider, event.target.value)}
-            className="w-56 shrink-0 font-mono text-xs"
+            className="w-full min-w-0 font-mono text-xs sm:w-56"
           />
         ) : (
           <ModelPicker provider={provider} model={model} />

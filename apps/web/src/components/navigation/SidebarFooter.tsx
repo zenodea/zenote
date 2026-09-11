@@ -7,6 +7,8 @@ import { iconClass } from "@/components/ui/Button";
 import { GraphIcon, SlidersIcon, TodoIcon } from "@/components/ui/Icons";
 import { useVault } from "@/lib/vault/store";
 
+const RAIL_INSET = 9;
+
 function warmRenderer() {
   import("@/lib/graph/pixi-scene").catch(() => {});
 }
@@ -27,16 +29,17 @@ export function SidebarFooter({
   return (
     <div
       data-seam="top"
-      className={`flex shrink-0 items-center border-t border-foreground/15 p-2 ${
-        minimised ? "justify-center" : "justify-between"
-      }`}
+      className="flex shrink-0 items-center justify-between border-t border-foreground/15 p-2"
     >
       <Link
         href="/settings"
         aria-label="Settings"
         title="Settings"
         aria-current={pathname === "/settings" ? "page" : undefined}
-        className={`block shrink-0 ${iconClass(pathname === "/settings")}`}
+        style={{ marginLeft: minimised ? RAIL_INSET : 0 }}
+        className={`block shrink-0 transition-[margin] duration-300 ease-in-out motion-reduce:transition-none ${iconClass(
+          pathname === "/settings",
+        )}`}
       >
         <SlidersIcon />
       </Link>
