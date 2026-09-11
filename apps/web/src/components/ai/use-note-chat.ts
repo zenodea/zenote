@@ -12,7 +12,7 @@ import { useAiAssistant } from "@/components/ai/AiAssistantContext";
 import { useLatestRef } from "@/hooks/use-latest-ref";
 import { useLinger } from "@/hooks/use-linger";
 import type { ChatSubject, VaultUIMessage } from "@/lib/chat";
-import { useSettings } from "@/lib/stores/settings";
+import { aiCredentials, settingsStore } from "@/lib/stores/settings";
 import { vaultStore } from "@/lib/vault/store";
 import { pullOnce } from "@/lib/vault/sync";
 
@@ -31,53 +31,67 @@ const WRITE_TOOLS = new Set([
   "tool-move_note",
 ]);
 
+function chatTransport(subject: ChatSubject | null, chatId: string | null) {
+  const requestBody = () => {
+    const settings = settingsStore.get();
+    return {
+      vaultId: vaultStore.get().vault?.id,
+      subject,
+      chatId,
+      allowWrites: settings.aiWrites,
+      notesOnly: settings.aiVaultOnly,
+      ...aiCredentials(settings),
+    };
+  };
+
+  return new DefaultChatTransport<VaultUIMessage>({
+    api: "/api/chat",
+    prepareSendMessagesRequest: ({
+      id,
+      messages,
+      trigger,
+      messageId,
+      body,
+    }) => ({
+      body: { ...requestBody(), ...body, id, messages, trigger, messageId },
+    }),
+  });
+}
+
 export function useNoteChat(thread: OpenThread, onActivity?: () => void) {
   const { setBusy } = useAiAssistant();
-  const settingsRef = useLatestRef(useSettings());
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const chatIdRef = useRef(thread.chatId);
-
-  function requestBody() {
-    return {
-      vaultId: vaultStore.get().vault?.id,
-      subject: thread.subject,
-      chatId: chatIdRef.current,
-      allowWrites: settingsRef.current.aiWrites,
-      notesOnly: settingsRef.current.aiVaultOnly,
-    };
-  }
+  const [chatId, setChatId] = useState(thread.chatId);
 
   const transport = useMemo(
-    () =>
-      new DefaultChatTransport<VaultUIMessage>({
-        api: "/api/chat",
-        body: {
-          vaultId: vaultStore.get().vault?.id,
-          subject: thread.subject,
-          chatId: thread.chatId,
-        },
-      }),
-    [thread],
+    () => chatTransport(thread.subject, chatId),
+    [thread.subject, chatId],
   );
 
-  const { messages, sendMessage, addToolApprovalResponse, status, stop, error } =
-    useChat<VaultUIMessage>({
-      messages: thread.messages,
-      transport,
-      sendAutomaticallyWhen: (options) =>
-        lastAssistantMessageIsCompleteWithToolCalls(options) ||
-        lastAssistantMessageIsCompleteWithApprovalResponses(options),
-      onFinish: ({ message }) => {
-        const wrote = message.parts.some(
-          (part) =>
-            WRITE_TOOLS.has(part.type) &&
-            (part as { state?: string }).state === "output-available",
-        );
-        if (wrote) void pullOnce();
-      },
-    });
+  const {
+    messages,
+    sendMessage,
+    addToolApprovalResponse,
+    status,
+    stop,
+    error,
+  } = useChat<VaultUIMessage>({
+    messages: thread.messages,
+    transport,
+    sendAutomaticallyWhen: (options) =>
+      lastAssistantMessageIsCompleteWithToolCalls(options) ||
+      lastAssistantMessageIsCompleteWithApprovalResponses(options),
+    onFinish: ({ message }) => {
+      const wrote = message.parts.some(
+        (part) =>
+          WRITE_TOOLS.has(part.type) &&
+          (part as { state?: string }).state === "output-available",
+      );
+      if (wrote) void pullOnce();
+    },
+  });
 
   const streaming = status === "submitted" || status === "streaming";
   const busy = useLinger(streaming, SETTLE_MS);
@@ -112,20 +126,19 @@ export function useNoteChat(thread: OpenThread, onActivity?: () => void) {
     if (!text || streaming) return;
     setInput("");
     onActivity?.();
-    if (!chatIdRef.current) {
+    let open = chatId;
+    if (!open) {
       const vaultId = vaultStore.get().vault?.id;
-      chatIdRef.current = vaultId
+      open = vaultId
         ? await createChat(vaultId, thread.subject).catch(() => null)
         : null;
+      setChatId(open);
     }
-    void sendMessage({ text }, { body: requestBody() });
+    void sendMessage({ text }, { body: { chatId: open } });
   }
 
   function respondToApproval(response: { id: string; approved: boolean }) {
-    return addToolApprovalResponse({
-      ...response,
-      options: { body: requestBody() },
-    });
+    return addToolApprovalResponse(response);
   }
 
   return {

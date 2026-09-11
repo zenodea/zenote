@@ -19,7 +19,9 @@
     "test:vaults": "node tests/vaults.mjs"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.52",
     "@ai-sdk/google": "^4.0.44",
+    "@ai-sdk/openai": "^4.0.65",
     "@ai-sdk/react": "^4.0.69",
     "@codemirror/autocomplete": "^6.20.3",
     "@codemirror/commands": "^6.10.4",

@@ -24,6 +24,7 @@ import { navigate } from "@/lib/navigation";
 import { vaultStore } from "@/lib/vault/store";
 import { setGraphFocus, useGraphFocus } from "@/lib/stores/graph-focus";
 import { setGraphReady } from "@/lib/stores/graph-ready";
+import { aiCredentials, settingsStore } from "@/lib/stores/settings";
 import {
   useRouteLoaderShowing,
   useRouteWait,
@@ -373,6 +374,7 @@ export function GraphView({
             body: JSON.stringify({
               vaultId: vaultStore.get().vault?.id,
               clusters: groups,
+              ...aiCredentials(settingsStore.get()),
             }),
           });
           names = ((await response.json()) as { names?: string[] }).names ?? [];
@@ -389,8 +391,7 @@ export function GraphView({
             .filter((region) => region.name),
         );
         start();
-      } catch {
-      }
+      } catch {}
     })();
 
     return () => {
@@ -537,7 +538,10 @@ export function GraphView({
     }
 
     if (panningRef.current) {
-      if (previous && Math.hypot(point.x - previous.x, point.y - previous.y) > 1) {
+      if (
+        previous &&
+        Math.hypot(point.x - previous.x, point.y - previous.y) > 1
+      ) {
         cancelPress();
       }
       panTo(point);

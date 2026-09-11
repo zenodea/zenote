@@ -1,8 +1,7 @@
+import { generateText } from "ai";
+import { resolveModel } from "@/lib/server/ai-model";
 import { getNoteTitles } from "@/lib/server/vault-data";
 import { getUser } from "@/lib/server/supabase";
-
-const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.5-flash-lite";
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
 const SAMPLE = 14;
 
@@ -26,9 +25,6 @@ export async function POST(request: Request) {
     return Response.json({ error: "Not authenticated." }, { status: 401 });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return Response.json({ names: [] });
-
   const body = await request.json().catch(() => null);
   const clusters: unknown = body?.clusters;
   const vaultId: unknown = body?.vaultId;
@@ -46,31 +42,30 @@ export async function POST(request: Request) {
     return new Response("Expected { clusters: string[][] }.", { status: 400 });
   }
 
+  const resolved = resolveModel(body);
+  if ("error" in resolved) return Response.json({ names: [] });
+
   const titles = await getNoteTitles(vaultId);
   const groups = (clusters as string[][]).map((slugs) =>
     slugs.slice(0, SAMPLE).map((slug) => titles[slug] ?? slug),
   );
   if (groups.length === 0) return Response.json({ names: [] });
 
-  const upstream = await fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: prompt(groups) }] }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 400 },
-    }),
-  });
-
-  if (!upstream.ok) {
-    console.error("Cluster naming failed:", upstream.status);
+  let text: string;
+  try {
+    const result = await generateText({
+      model: resolved.model,
+      prompt: prompt(groups),
+      abortSignal: AbortSignal.any([
+        request.signal,
+        AbortSignal.timeout(20_000),
+      ]),
+    });
+    text = result.text;
+  } catch (error) {
+    console.error("Cluster naming failed:", error);
     return Response.json({ names: [] });
   }
-
-  const data = await upstream.json().catch(() => null);
-  const text: string =
-    data?.candidates?.[0]?.content?.parts
-      ?.map((part: { text?: string }) => part.text ?? "")
-      .join("") ?? "";
 
   const names = text
     .split("\n")

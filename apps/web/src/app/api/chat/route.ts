@@ -1,4 +1,3 @@
-import { createGoogle, type GoogleProvider } from "@ai-sdk/google";
 import {
   convertToModelMessages,
   generateId,
@@ -20,10 +19,10 @@ import {
   saveMessage,
   touchChat,
 } from "@/lib/server/chats";
+import { resolveModel } from "@/lib/server/ai-model";
 import { rateLimited } from "@/lib/server/rate-limit";
 import { getUser } from "@/lib/server/supabase";
-
-const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.5-flash-lite";
+import type { LanguageModel } from "ai";
 
 const STEP_LIMIT = 6;
 
@@ -79,7 +78,7 @@ function systemPrompt(
 }
 
 async function nameThread(
-  google: GoogleProvider,
+  model: LanguageModel,
   chatId: string,
   question: string,
   answer: string,
@@ -87,7 +86,7 @@ async function nameThread(
   const fallback = question.slice(0, 60);
   try {
     const { text } = await generateText({
-      model: google(MODEL),
+      model,
       prompt: [
         "Name this conversation the way a book names a chapter: at most five words, no punctuation, no quotes.",
         `Q: ${question.slice(0, 500)}`,
@@ -114,14 +113,14 @@ export async function POST(request: Request) {
     });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return new Response("GEMINI_API_KEY is not configured on the server.", {
-      status: 500,
-    });
-  }
-
   const body = await request.json().catch(() => null);
+
+  const resolved = resolveModel(body);
+  if ("error" in resolved) {
+    return new Response(resolved.error, { status: 400 });
+  }
+  const { model } = resolved;
+
   const subject = body?.subject ?? null;
   const vaultId: unknown = body?.vaultId;
   if (typeof vaultId !== "string" || vaultId.length > 40) {
@@ -160,10 +159,9 @@ export async function POST(request: Request) {
   const allowWrites = body?.allowWrites !== false;
   const notesOnly = body?.notesOnly === true;
 
-  const google = createGoogle({ apiKey });
   const tools = vaultTools(vaultId);
   const result = streamText({
-    model: google(MODEL),
+    model,
     system: systemPrompt(title, notes, neighbours, allowWrites, notesOnly),
     messages: await convertToModelMessages(history, {
       tools,
@@ -201,7 +199,7 @@ export async function POST(request: Request) {
       const question = history.findLast((message) => message.role === "user");
       if (chat?.title === "" && question) {
         await nameThread(
-          google,
+          model,
           chatId,
           messageText(question),
           messageText(responseMessage),
