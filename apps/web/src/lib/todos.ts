@@ -25,6 +25,18 @@ export function formatTodo(done: boolean, text: string, due: string | null) {
   return `!!${done ? "x" : ""}[${text}]${due === null ? "" : `[${due}]`}`;
 }
 
+export const INBOX_SLUG = "Todos";
+
+export function appendTodo(
+  body: string,
+  text: string,
+  due: string | null,
+): string {
+  const line = formatTodo(false, text, due);
+  const trimmed = body.replace(/\s+$/, "");
+  return trimmed === "" ? `${line}\n` : `${trimmed}\n\n${line}\n`;
+}
+
 export function parseTodos(body: string): Todo[] {
   const todos: Todo[] = [];
   let offset = 0;

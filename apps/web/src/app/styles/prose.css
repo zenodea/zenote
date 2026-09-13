@@ -27,6 +27,32 @@
   );
 }
 
+.prose :where(code)::before,
+.prose :where(code)::after {
+  content: none;
+}
+
+.prose :where(code):not(:where(pre code)) {
+  font-size: 0.875em;
+  font-weight: 600;
+}
+
+.prose :where(a) {
+  text-underline-offset: 3px;
+}
+
+.prose :where(h5),
+.prose :where(h6) {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-size: 1em;
+  font-weight: 600;
+}
+
+.prose :where(h6) {
+  opacity: 0.8;
+}
+
 .tag,
 .prose a.tag {
   display: inline-block;

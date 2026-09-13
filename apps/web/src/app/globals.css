@@ -48,7 +48,18 @@ html {
 
 /* The pane under the note toolbar: the whole screen minus chrome. */
 .drawing-pane {
-  height: calc(100dvh - var(--keyboard) - var(--mobile-bar) - 3.5rem);
+  height: calc(
+    100dvh - var(--keyboard) - var(--mobile-bar) - var(--safe-top) - 3.5rem
+  );
+}
+
+.app-head {
+  height: calc(3.5rem + var(--safe-top));
+  padding-top: var(--safe-top);
+}
+
+.app-drawer {
+  padding-left: var(--safe-left);
 }
 
 ::selection {
@@ -60,6 +71,8 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   overscroll-behavior: none;
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
 }
 
 /* A <details> that slides both ways instead of snapping. interpolate-size is

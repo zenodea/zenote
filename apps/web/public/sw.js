@@ -1,9 +1,12 @@
 const SHELL = "/";
-const SHELL_CACHE = "zenote-shell-v1";
-const ASSET_CACHE = "zenote-assets-v1";
+const SHELL_CACHE = "zenote-shell-v2";
+const ASSET_CACHE = "zenote-assets-v2";
+const KEEP = [SHELL_CACHE, ASSET_CACHE];
 
 const ASSET_PREFIXES = ["/_next/static/", "/icon", "/apple-touch-icon"];
-const ASSET_PATHS = ["/manifest.webmanifest", "/favicon.ico"];
+const ASSET_PATHS = ["/favicon.ico"];
+
+const FRESH_PATHS = ["/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
@@ -16,8 +19,32 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches
+      .keys()
+      .then((names) =>
+        Promise.all(
+          names
+            .filter((name) => !KEEP.includes(name))
+            .map((name) => caches.delete(name)),
+        ),
+      )
+      .then(() => self.clients.claim()),
+  );
 });
+
+async function handleFresh(request) {
+  const cache = await caches.open(ASSET_CACHE);
+  try {
+    const response = await fetch(request, { cache: "no-cache" });
+    if (response.ok) cache.put(request, response.clone());
+    return response;
+  } catch (error) {
+    const held = await cache.match(request);
+    if (held) return held;
+    throw error;
+  }
+}
 
 async function handleNavigation(request) {
   const cache = await caches.open(SHELL_CACHE);
@@ -54,6 +81,11 @@ self.addEventListener("fetch", (event) => {
   if (request.mode === "navigate") {
     if (url.pathname === "/login" || url.pathname.startsWith("/api/")) return;
     event.respondWith(handleNavigation(request));
+    return;
+  }
+
+  if (FRESH_PATHS.includes(url.pathname)) {
+    event.respondWith(handleFresh(request));
     return;
   }
 

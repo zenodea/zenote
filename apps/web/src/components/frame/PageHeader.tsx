@@ -12,7 +12,7 @@ export function PageHeader({
   return (
     <header
       data-seam="bottom"
-      className="flex h-14 shrink-0 items-center border-b border-foreground/15 bg-background"
+      className="app-head flex shrink-0 items-center border-b border-foreground/15 bg-background"
     >
       <div className="flex h-full w-full min-w-0 max-w-3xl items-center gap-3 px-4 md:px-6">
         <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight">

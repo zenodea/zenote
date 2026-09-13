@@ -162,6 +162,7 @@ export function NoteView({
               <MarkdownEditor
                 key={slug}
                 initialBody={body}
+                resolver={resolver}
                 autoFocus={!autoEditTitle}
                 onChange={(next) => {
                   typed.current = { revision, body: next };

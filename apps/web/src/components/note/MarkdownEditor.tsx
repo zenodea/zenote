@@ -11,19 +11,25 @@ import { EditorView, keymap } from "@codemirror/view";
 import { classHighlighter } from "@lezer/highlight";
 import { attachmentPaste } from "@/lib/editor/attachment-paste";
 import { markdownHighlight } from "@/lib/editor/highlight";
-import { livePreview } from "@/lib/editor/live-preview";
-import { todoMarks } from "@/lib/editor/todo-marks";
+import {
+  livePreview,
+  previewBlocks,
+  previewLinks,
+  previewResolver,
+} from "@/lib/editor/live-preview";
 import { editorTheme } from "@/lib/editor/theme";
 import { adoptStatusBar, vimExtensions } from "@/lib/editor/vim";
 import { dueCompletions } from "@/lib/editor/due-completion";
 import { wikilinkCompletions } from "@/lib/editor/wikilink-completion";
 import { useLatestRef } from "@/hooks/use-latest-ref";
+import type { WikilinkResolver } from "@/lib/wikilinks";
 
 const CARET_MARGIN = 24;
 
 export function MarkdownEditor({
   initialBody,
   onChange,
+  resolver,
   linkTargets = [],
   vimMode = false,
   autoFocus = true,
@@ -31,6 +37,7 @@ export function MarkdownEditor({
 }: {
   initialBody: string;
   onChange: (body: string) => void;
+  resolver: WikilinkResolver;
   linkTargets?: string[];
   vimMode?: boolean;
   autoFocus?: boolean;
@@ -45,6 +52,8 @@ export function MarkdownEditor({
   const statusBarRef = useLatestRef(vimStatusBar);
   const viewRef = useRef<EditorView | null>(null);
   const vimCompartmentRef = useRef<Compartment | null>(null);
+  const resolverCompartmentRef = useRef<Compartment | null>(null);
+  const initialResolverRef = useRef(resolver);
   const adoptFrame = useRef(0);
 
   const adoptWhenHosted = useCallback(
@@ -69,6 +78,15 @@ export function MarkdownEditor({
     });
     if (vimMode) adoptWhenHosted(viewRef.current);
   }, [vimMode, adoptWhenHosted]);
+
+  useEffect(() => {
+    if (!viewRef.current || !resolverCompartmentRef.current) return;
+    viewRef.current.dispatch({
+      effects: resolverCompartmentRef.current.reconfigure(
+        previewResolver.of(resolver),
+      ),
+    });
+  }, [resolver]);
 
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -117,12 +135,17 @@ export function MarkdownEditor({
   useEffect(() => {
     const vimCompartment = new Compartment();
     vimCompartmentRef.current = vimCompartment;
+    const resolverCompartment = new Compartment();
+    resolverCompartmentRef.current = resolverCompartment;
 
     const view = new EditorView({
       state: EditorState.create({
         doc: initialRef.current,
         extensions: [
           vimCompartment.of(initialVimRef.current ? vimExtensions : []),
+          resolverCompartment.of(
+            previewResolver.of(initialResolverRef.current),
+          ),
           history(),
           keymap.of([...defaultKeymap, ...historyKeymap]),
           markdown({ base: markdownLanguage, codeLanguages: languages }),
@@ -137,7 +160,8 @@ export function MarkdownEditor({
           syntaxHighlighting(markdownHighlight),
           syntaxHighlighting(classHighlighter),
           livePreview,
-          todoMarks,
+          previewBlocks,
+          previewLinks,
           editorTheme,
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {

@@ -101,7 +101,7 @@ export function Sidebar() {
         inert={drawer && !drawerOpen}
         className={
           drawer
-            ? `fixed inset-y-0 left-0 z-40 flex w-72 max-w-[85%] flex-col overflow-hidden border-r border-foreground/15 bg-background text-sm transition-transform duration-300 ease-in-out ${
+            ? `app-drawer fixed inset-y-0 left-0 z-40 flex w-72 max-w-[85%] flex-col overflow-hidden border-r border-foreground/15 bg-background text-sm transition-transform duration-300 ease-in-out ${
                 drawerOpen ? "translate-x-0" : "-translate-x-full"
               }`
             : `sidebar flex shrink-0 flex-col overflow-hidden border-r border-foreground/15 text-sm transition-[width] duration-300 ease-in-out ${

@@ -168,7 +168,7 @@ export function AiPanel() {
       >
         <div
           data-seam={show && !phone ? "bottom" : undefined}
-          className="flex h-14 shrink-0 items-center gap-2 border-b border-foreground/15 px-4"
+          className="app-head flex shrink-0 items-center gap-2 border-b border-foreground/15 px-4"
         >
           <div className="min-w-0 flex-1">
             <p className="font-semibold">AI Assistant</p>

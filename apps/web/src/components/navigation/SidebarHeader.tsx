@@ -43,7 +43,7 @@ export function SidebarHeader({
   return (
     <div
       data-seam="bottom"
-      className={`flex h-14 shrink-0 items-center border-b border-foreground/15 ${
+      className={`app-head flex shrink-0 items-center border-b border-foreground/15 ${
         drawer ? "gap-1 px-3" : "gap-2 px-4"
       }`}
     >

@@ -20,6 +20,7 @@ import { useThemeId } from "@/lib/use-theme";
 import type { WikilinkResolver } from "@/lib/wikilinks";
 import { AiDiamond } from "@/components/ai/AiDiamond";
 import { DrawingWikilinkSuggest } from "@/components/note/DrawingWikilinkSuggest";
+import { useDrawingReveal } from "@/components/note/use-drawing-reveal";
 
 type Loaded = {
   Excalidraw: ExcalidrawModule["Excalidraw"];
@@ -52,7 +53,8 @@ export function ExcalidrawEditor({
   const api = useRef<ExcalidrawImperativeAPI | null>(null);
   const resolverRef = useLatestRef(resolver);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
-  const [revealed, setRevealed] = useState(false);
+  const [painted, setPainted] = useState(false);
+  const revealed = useDrawingReveal(loaded !== null, painted);
   const [suggestHost, setSuggestHost] = useState<HTMLElement | null>(null);
   const slowLoad = useLoadingIndicator(loaded === null);
   const sceneRef = useRef(initialScene);
@@ -102,15 +104,6 @@ export function ExcalidrawEditor({
       settle.current?.();
     };
   }, [resolverRef]);
-
-  // The canvas paints its own background before the scene lands; reveal after.
-  useEffect(() => {
-    if (!loaded) return;
-    const frame = requestAnimationFrame(() =>
-      requestAnimationFrame(() => setRevealed(true)),
-    );
-    return () => cancelAnimationFrame(frame);
-  }, [loaded]);
 
   useEffect(() => {
     if (!loaded || !container.current) return;
@@ -165,6 +158,7 @@ export function ExcalidrawEditor({
         }
         excalidrawAPI={(instance) => {
           api.current = instance;
+          setPainted(true);
         }}
         onLinkOpen={(element, event) => {
           const href = noteHref(element.link);

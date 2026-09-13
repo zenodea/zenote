@@ -104,3 +104,85 @@
   text-decoration: underline dotted;
   cursor: help;
 }
+
+.cm-wikilink,
+.cm-link {
+  color: var(--accent);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.cm-editor .cm-line.cm-quote {
+  border-left: 0.25rem solid
+    color-mix(in srgb, var(--foreground) 20%, transparent);
+  padding-left: 1em;
+  font-style: italic;
+  font-weight: 500;
+}
+
+.cm-editor .cm-line.cm-list {
+  padding-left: 1.625em;
+  text-indent: -1.625em;
+}
+
+.cm-embed img {
+  display: block;
+  max-width: 100%;
+  border-radius: 0.25rem;
+}
+
+.cm-rule {
+  display: block;
+  padding: 1em 0;
+}
+
+.cm-rule hr {
+  border: none;
+  border-top: 1px solid color-mix(in srgb, var(--foreground) 15%, transparent);
+}
+
+.cm-math-display {
+  display: block;
+  padding: 0.5em 0;
+  text-align: center;
+}
+
+.cm-table-wrap {
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+
+.cm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875em;
+  line-height: 1.7142857;
+  text-align: left;
+  text-indent: 0;
+}
+
+.cm-table th {
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--foreground) 25%, transparent);
+  padding: 0 0.5714286em 0.5714286em;
+  font-weight: 600;
+  vertical-align: bottom;
+}
+
+.cm-table td {
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--foreground) 15%, transparent);
+  padding: 0.5714286em;
+  vertical-align: baseline;
+}
+
+.cm-table th:first-child,
+.cm-table td:first-child {
+  padding-left: 0;
+}
+
+.cm-table th:last-child,
+.cm-table td:last-child {
+  padding-right: 0;
+}

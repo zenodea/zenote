@@ -11,11 +11,15 @@ import {
   withNoteLinks,
 } from "@/lib/drawing-links";
 import { DrawingLinks } from "@/components/note/DrawingLinks";
+import { useDrawingReveal } from "@/components/note/use-drawing-reveal";
 import { useVault } from "@/lib/vault/store";
 import { navigate } from "@/lib/navigation";
 import { useThemeId } from "@/lib/use-theme";
 import type { WikilinkResolver } from "@/lib/wikilinks";
-import type { ExcalidrawModule } from "@/components/note/excalidraw-types";
+import type {
+  ExcalidrawImperativeAPI,
+  ExcalidrawModule,
+} from "@/components/note/excalidraw-types";
 
 type Loaded = {
   Excalidraw: ExcalidrawModule["Excalidraw"];
@@ -40,7 +44,11 @@ export function ExcalidrawBlock({
   const { notes } = useVault();
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [failed, setFailed] = useState(false);
+  const [painted, setPainted] = useState(false);
+  const revealed = useDrawingReveal(loaded !== null, painted);
   const host = useRef<HTMLDivElement>(null);
+  const api = useRef<ExcalidrawImperativeAPI | null>(null);
+  const refit = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -95,6 +103,49 @@ export function ExcalidrawBlock({
     return interceptNoteLinks(host.current, navigate);
   }, [loaded]);
 
+  useEffect(() => {
+    const node = host.current;
+    if (!loaded || !node) return;
+
+    let frame = 0;
+    let fitted = "";
+
+    const fit = () => {
+      const instance = api.current;
+      if (!instance) return;
+
+      const { width, height } = node.getBoundingClientRect();
+      if (width < 1 || height < 1) return;
+
+      const size = `${Math.round(width)}x${Math.round(height)}`;
+      if (size === fitted) return;
+
+      const elements = instance.getSceneElements();
+      if (elements.length === 0) return;
+
+      fitted = size;
+      instance.scrollToContent(elements, {
+        fitToContent: true,
+        animate: false,
+      });
+    };
+
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(fit);
+    };
+
+    refit.current = schedule;
+    const observer = new ResizeObserver(schedule);
+    observer.observe(node);
+
+    return () => {
+      refit.current = null;
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [loaded]);
+
   const linked = useMemo(() => {
     const titles = new Map(notes.map((note) => [note.slug, note.title]));
     return linkedSlugs(sceneTextLines(scene).join("\n"), resolver).flatMap(
@@ -122,34 +173,45 @@ export function ExcalidrawBlock({
   return (
     <div
       ref={host}
-      className={`not-prose relative w-full overflow-hidden rounded ${
+      className={`not-prose relative w-full overflow-hidden rounded bg-background ${
         fill ? "drawing-pane" : "my-6 h-[60dvh] border border-foreground/15"
       }`}
     >
       {Excalidraw && initialData && (
-        <Excalidraw
-          viewModeEnabled
-          theme={dark ? "dark" : "light"}
-          initialData={
-            initialData as Parameters<typeof Excalidraw>[0]["initialData"]
-          }
-          UIOptions={{
-            canvasActions: {
-              export: false,
-              saveToActiveFile: false,
-              loadScene: false,
-              toggleTheme: false,
-            },
-          }}
-          onLinkOpen={(element, event) => {
-            const href = noteHref(element.link);
-            if (href === null) return;
-            event.preventDefault();
-            navigate(href);
-          }}
-        />
+        <div
+          className={`h-full w-full transition-opacity duration-150 ${
+            revealed ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          <Excalidraw
+            viewModeEnabled
+            theme={dark ? "dark" : "light"}
+            initialData={
+              initialData as Parameters<typeof Excalidraw>[0]["initialData"]
+            }
+            excalidrawAPI={(instance) => {
+              api.current = instance;
+              refit.current?.();
+              setPainted(true);
+            }}
+            UIOptions={{
+              canvasActions: {
+                export: false,
+                saveToActiveFile: false,
+                loadScene: false,
+                toggleTheme: false,
+              },
+            }}
+            onLinkOpen={(element, event) => {
+              const href = noteHref(element.link);
+              if (href === null) return;
+              event.preventDefault();
+              navigate(href);
+            }}
+          />
+        </div>
       )}
-      {loaded && <DrawingLinks notes={linked} />}
+      {revealed && <DrawingLinks notes={linked} />}
     </div>
   );
 }

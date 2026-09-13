@@ -10,10 +10,22 @@ export const editorTheme = EditorView.theme({
   },
   ".cm-line": { padding: "0" },
   ".cm-line.cm-codeblock": {
+    padding: "0 1.1428571em",
     fontFamily: "var(--font-geist-mono), monospace",
-    fontSize: "0.9em",
+    fontSize: "0.875em",
+    lineHeight: "1.7142857",
     backgroundColor:
       "color-mix(in srgb, var(--foreground) 6%, var(--background))",
+  },
+  ".cm-line.cm-codeblock-open": {
+    paddingTop: "0.8571429em",
+    borderTopLeftRadius: "0.375rem",
+    borderTopRightRadius: "0.375rem",
+  },
+  ".cm-line.cm-codeblock-close": {
+    paddingBottom: "0.8571429em",
+    borderBottomLeftRadius: "0.375rem",
+    borderBottomRightRadius: "0.375rem",
   },
   ".cm-cursor": { borderLeftColor: "var(--accent)" },
   ".cm-panels": { border: "none", backgroundColor: "transparent" },

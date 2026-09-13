@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Frame } from "@/components/frame/Frame";
+import { Fullscreen } from "@/components/frame/Fullscreen";
 import { KeyboardInset } from "@/components/frame/KeyboardInset";
 import { ThemeFavicon } from "@/components/frame/ThemeFavicon";
 import { SETTINGS_STORAGE_KEY } from "@/lib/stores/settings";
@@ -53,6 +54,7 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
   },
   icons: { apple: "/apple-touch-icon.png" },
+  other: { "apple-mobile-web-app-capable": "yes" },
 };
 
 export const viewport: Viewport = {
@@ -79,6 +81,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="relative flex h-full overflow-hidden">
         {children}
         <Frame />
+        <Fullscreen />
         <KeyboardInset />
         <ThemeFavicon />
       </body>
