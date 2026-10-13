@@ -1,0 +1,379 @@
+/* Zenote editor styles for the landing page demo.
+   Ported from apps/web/src/app/styles/editor.css, prose.css and
+   src/lib/editor/theme.ts. Everything is scoped under .try-cm.
+   Host tokens: --fg, --bg, --accent, --danger (optional), --sans, --mono. */
+
+.try-cm {
+  /* The bundled CodeMirror theme (theme.ts / highlight.ts) reads the app's
+     token names, so map them onto the landing page's. */
+  --foreground: var(--fg);
+  --background: var(--bg);
+  --font-geist-mono: var(--mono);
+  --font-geist-sans: var(--sans);
+
+  color: var(--fg);
+  font-family: var(--sans), system-ui, sans-serif;
+  font-size: 1rem;
+  line-height: 1.75;
+}
+
+/* --- Editor frame (theme.ts) --- */
+.try-cm .cm-editor {
+  background-color: transparent;
+  font-size: 1rem;
+}
+.try-cm .cm-editor.cm-focused {
+  outline: none;
+}
+.try-cm .cm-scroller {
+  font-family: inherit;
+  line-height: 1.75;
+}
+.try-cm .cm-content {
+  padding: 0;
+  caret-color: var(--accent);
+}
+.try-cm .cm-line {
+  padding: 0;
+}
+.try-cm .cm-cursor {
+  border-left-color: var(--accent);
+}
+.try-cm .cm-panels {
+  border: none;
+  background-color: transparent;
+  color: var(--fg);
+}
+
+/* Autocomplete tooltips render inside .cm-editor, so the scope holds. */
+.try-cm .cm-tooltip {
+  background-color: var(--bg);
+  color: var(--fg);
+  border: 1px solid color-mix(in srgb, var(--fg) 15%, transparent);
+  border-radius: 0.25rem;
+}
+.try-cm .cm-tooltip.cm-tooltip-autocomplete > ul {
+  font-family: var(--sans), system-ui, sans-serif;
+}
+.try-cm .cm-tooltip.cm-tooltip-autocomplete > ul > li {
+  font-family: inherit;
+  padding: 0.25rem 0.5rem;
+}
+.try-cm .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
+  background-color: color-mix(in srgb, var(--fg) 10%, transparent);
+  color: var(--accent);
+}
+.try-cm .cm-completionDetail {
+  margin-left: 0.5em;
+  font-style: normal;
+  opacity: 0.6;
+}
+
+/* Headings (2.25em/800, 1.5em/700, 1.25em/600), bold, links and inline
+   code are styled by the bundled highlight.ts, exactly as in the app. */
+
+/* --- Fenced code blocks (theme.ts) --- */
+.try-cm .cm-line.cm-codeblock {
+  padding: 0 1.1428571em;
+  font-family: var(--mono), monospace;
+  font-size: 0.875em;
+  line-height: 1.7142857;
+  background-color: color-mix(in srgb, var(--fg) 6%, var(--bg));
+}
+.try-cm .cm-line.cm-codeblock-open {
+  padding-top: 0.8571429em;
+  border-top-left-radius: 0.375rem;
+  border-top-right-radius: 0.375rem;
+}
+.try-cm .cm-line.cm-codeblock-close {
+  padding-bottom: 0.8571429em;
+  border-bottom-left-radius: 0.375rem;
+  border-bottom-right-radius: 0.375rem;
+}
+
+/* --- Code token palette (editor.css) --- */
+.try-cm .tok-keyword,
+.try-cm .tok-tagName {
+  color: var(--accent);
+}
+.try-cm .tok-atom,
+.try-cm .tok-bool,
+.try-cm .tok-number,
+.try-cm .tok-literal {
+  color: color-mix(in srgb, var(--accent) 70%, var(--fg));
+}
+.try-cm .tok-string,
+.try-cm .tok-string2 {
+  color: color-mix(in srgb, var(--accent) 45%, var(--fg));
+}
+.try-cm .tok-comment {
+  color: color-mix(in srgb, var(--fg) 55%, transparent);
+  font-style: italic;
+}
+.try-cm .tok-typeName,
+.try-cm .tok-className,
+.try-cm .tok-namespace {
+  color: color-mix(in srgb, var(--accent) 85%, var(--fg));
+}
+.try-cm .tok-propertyName,
+.try-cm .tok-attributeName,
+.try-cm .tok-macroName,
+.try-cm .tok-labelName {
+  color: color-mix(in srgb, var(--fg) 75%, var(--accent));
+}
+.try-cm .tok-operator,
+.try-cm .tok-punctuation,
+.try-cm .tok-meta {
+  color: color-mix(in srgb, var(--fg) 70%, transparent);
+}
+.try-cm .tok-invalid {
+  color: #ef4444;
+}
+
+/* --- Vim (editor.css) --- */
+/* Block cursor; !important beats the extension's hardcoded pink. */
+.try-cm .cm-editor .cm-fat-cursor {
+  background: var(--accent) !important;
+  color: var(--bg) !important;
+}
+.try-cm .cm-editor:not(.cm-focused) .cm-fat-cursor {
+  background: none !important;
+  outline: solid 1px var(--accent) !important;
+}
+
+/* Vim's own status panel at the bottom of the editor (used when the host
+   does not pass a vimStatusBar element). */
+.try-cm .cm-vim-panel {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 1.75rem;
+  padding: 0 0.25rem;
+  font-family: var(--mono), monospace;
+  font-size: 0.75rem;
+  color: var(--accent);
+}
+.try-cm .cm-vim-panel input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  outline: none;
+}
+/* When the status is adopted into a host element, drop the empty panel. */
+.try-cm .cm-editor.cm-vim-hosted .cm-panels-bottom {
+  display: none;
+}
+
+/* A host status element, as in the app (add class="vim-statusbar"). It may
+   live outside .try-cm, so these rules are not scoped. The app hides the
+   mode text and shows only the ":" prompt; a demo usually wants the mode,
+   so it stays visible here. */
+.vim-statusbar {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-family: var(--mono), monospace;
+  font-size: 0.75rem;
+}
+/* !important beats the prompt's inline styles from the vim engine. */
+.vim-statusbar span {
+  font-family: var(--mono), monospace !important;
+  color: var(--accent) !important;
+}
+.vim-statusbar > div {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 0.375rem;
+}
+.vim-statusbar input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--fg) !important;
+  font: inherit;
+  outline: none;
+}
+
+/* Vim errors ship inline `color: red`; align with the app's error red. */
+.try-cm .cm-vim-message,
+.vim-statusbar .cm-vim-message {
+  color: #ef4444 !important;
+}
+
+/* --- Selection and search (editor.css) --- */
+.try-cm .cm-editor .cm-selectionBackground,
+.try-cm .cm-editor.cm-focused .cm-selectionBackground,
+.try-cm .cm-editor .cm-content ::selection,
+.try-cm .cm-editor .cm-line::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent) !important;
+}
+.try-cm .cm-editor .cm-searchMatch {
+  background-color: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+/* --- Links (editor.css) --- */
+.try-cm .wikilink-broken {
+  color: #ef4444;
+  font-style: normal;
+  text-decoration: underline dotted;
+  cursor: help;
+}
+/* lang-markdown parses the inner [target] of [[target]] as a link, and
+   highlight.ts colours that inner span with the accent, which hides the
+   broken-link red (the app has the same quirk). Let the red show through. */
+.try-cm .wikilink-broken .tok-link {
+  color: inherit;
+  font-weight: inherit;
+  text-decoration: none;
+}
+.try-cm .cm-wikilink,
+.try-cm .cm-link {
+  color: var(--accent);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* --- Block lines (editor.css) --- */
+.try-cm .cm-editor .cm-line.cm-quote {
+  border-left: 0.25rem solid color-mix(in srgb, var(--fg) 20%, transparent);
+  padding-left: 1em;
+  font-style: italic;
+  font-weight: 500;
+}
+.try-cm .cm-editor .cm-line.cm-list {
+  padding-left: 1.625em;
+  text-indent: -1.625em;
+}
+
+/* --- Widgets (editor.css) --- */
+.try-cm .cm-embed img {
+  display: block;
+  max-width: 100%;
+  border-radius: 0.25rem;
+}
+.try-cm .cm-rule {
+  display: block;
+  padding: 1em 0;
+}
+.try-cm .cm-rule hr {
+  border: none;
+  border-top: 1px solid color-mix(in srgb, var(--fg) 15%, transparent);
+}
+.try-cm .cm-math-display {
+  display: block;
+  padding: 0.5em 0;
+  text-align: center;
+}
+/* KaTeX is not bundled; math shows as its TeX source. */
+.try-cm .cm-tex {
+  font-family: var(--mono), monospace;
+  font-size: 0.875em;
+}
+.try-cm .cm-table-wrap {
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+.try-cm .cm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875em;
+  line-height: 1.7142857;
+  text-align: left;
+  text-indent: 0;
+}
+.try-cm .cm-table th {
+  border-bottom: 1px solid color-mix(in srgb, var(--fg) 25%, transparent);
+  padding: 0 0.5714286em 0.5714286em;
+  font-weight: 600;
+  vertical-align: bottom;
+}
+.try-cm .cm-table td {
+  border-bottom: 1px solid color-mix(in srgb, var(--fg) 15%, transparent);
+  padding: 0.5714286em;
+  vertical-align: baseline;
+}
+.try-cm .cm-table th:first-child,
+.try-cm .cm-table td:first-child {
+  padding-left: 0;
+}
+.try-cm .cm-table th:last-child,
+.try-cm .cm-table td:last-child {
+  padding-right: 0;
+}
+.try-cm .cm-table code {
+  font-family: var(--mono), monospace;
+  font-size: 0.875em;
+  font-weight: 600;
+}
+
+/* --- Tag pill (prose.css) --- */
+.try-cm .tag {
+  display: inline-block;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  padding: 0.05em 0.55em;
+  color: var(--accent);
+  font-size: 0.85em;
+  font-weight: 500;
+  line-height: 1.6;
+  text-decoration: none;
+  text-indent: 0;
+  transition: background-color 150ms ease;
+}
+.try-cm .tag:hover {
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .try-cm .tag {
+    transition: none;
+  }
+}
+
+/* --- Todo widget (prose.css) --- */
+.try-cm .todo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-style: normal;
+  text-indent: 0;
+}
+.try-cm .todo-box {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 0.6em;
+  height: 0.6em;
+  rotate: 45deg;
+  border: 1px solid color-mix(in srgb, var(--fg) 45%, transparent);
+}
+.try-cm .todo-done .todo-box {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+.try-cm .todo-done .todo-text {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+.try-cm .todo-due {
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--fg) 10%, transparent);
+  padding: 0.05em 0.5em;
+  font-size: 0.8em;
+  font-style: normal;
+  opacity: 0.75;
+}
+.try-cm .todo-overdue .todo-due {
+  background: color-mix(in srgb, var(--danger, #b3261e) 18%, transparent);
+  color: var(--danger, #b3261e);
+  opacity: 1;
+}
+.try-cm .cm-todo-done {
+  opacity: 0.55;
+  text-decoration: line-through;
+}

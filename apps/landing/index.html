@@ -1,0 +1,1571 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Zenote</title>
+<meta name="description" content="A markdown vault you open in a browser: linked notes, a map of how they connect, and an assistant that can read them.">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+</head>
+<body>
+<!--LANDING:START-->
+<link rel="stylesheet" href="assets/try-vault.css">
+<script src="assets/try-vault.js"></script>
+<style>
+/* Layout: one framed column cut by hairline seams that draw themselves in, with a diamond
+   wherever two seams meet. Seams, junctions and timings are lifted from the app's Frame. */
+:root {
+  --bg: #ffffff;
+  --fg: #171717;
+  --accent: #7c3aed;
+  --muted: color-mix(in srgb, var(--fg) 60%, var(--bg));
+  --faint: color-mix(in srgb, var(--fg) 34%, var(--bg));
+  --line: color-mix(in srgb, var(--fg) 15%, var(--bg));
+  --mark: color-mix(in srgb, var(--fg) 30%, var(--bg));
+  --panel: color-mix(in srgb, var(--fg) 3.5%, var(--bg));
+  --raised: color-mix(in srgb, var(--fg) 7%, var(--bg));
+  --accent-soft: color-mix(in srgb, var(--accent) 15%, var(--bg));
+  --on-accent: #ffffff;
+  --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --head: 3.5rem;
+  --max: 1180px;
+  --ease: cubic-bezier(0.7, 0, 0.2, 1);
+  --lines: 420ms;
+  --fade: 160ms;
+  --close: 720ms;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a0a0a; --fg: #ededed; --accent: #a78bfa; --on-accent: #0a0a0a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0a0a0a; --fg: #ededed; --accent: #a78bfa; --on-accent: #0a0a0a;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: calc(var(--head) + 1rem); }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 16px/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  padding-inline: 16px;
+  transition: background-color .4s ease, color .4s ease;
+}
+::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+a { color: inherit; }
+img { max-width: 100%; height: auto; display: block; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+code, kbd, .mono { font-family: var(--mono); }
+
+/* ---------- seams and junctions ---------- */
+.frame { max-width: var(--max); margin-inline: auto; position: relative; }
+
+/* Without the script the seams are plain borders. */
+:root:not(.seamed) [data-seam~="top"] { border-top: 1px solid var(--line); }
+:root:not(.seamed) [data-seam~="left"] { border-left: 1px solid var(--line); }
+:root:not(.seamed) [data-seam~="right"] { border-right: 1px solid var(--line); }
+@media (max-width: 900px) {
+  :root:not(.seamed) [data-seam-narrow] { border-left: 0; }
+  :root:not(.seamed) [data-seam-narrow~="top"] { border-top: 1px solid var(--line); }
+}
+
+#seams { position: absolute; left: 0; top: 0; width: 0; height: 0; z-index: 5; pointer-events: none; }
+.line { position: absolute; display: block; background: var(--line); transition: transform var(--lines) var(--ease), background-color .4s ease; }
+.line.h { height: 1px; transform: scaleX(0); transform-origin: left center; }
+.line.v { width: 1px; transform: scaleY(0); transform-origin: center top; }
+.line.on { transform: none; }
+
+/* The app's Diamond: 6px, rotated, a 30% border on the page colour. */
+.mark {
+  position: absolute; display: block;
+  width: 6px; height: 6px;
+  border: 1px solid var(--mark);
+  background: var(--bg);
+  transform: translate(-50%, -50%) rotate(45deg);
+  opacity: 0;
+  transition: opacity var(--fade) ease calc(var(--lines) * .6), background-color .4s ease;
+}
+.mark.on { opacity: 1; }
+.snap .line, .snap .mark { transition: none; }
+
+/* ---------- header ---------- */
+.top {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 20;
+  margin-inline: -16px;
+  padding-inline: 16px;
+  background: color-mix(in srgb, var(--bg) 84%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: background-color .4s ease;
+}
+.top::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+  background: var(--line);
+  transform-origin: var(--ax, 50%) center;
+  animation: draw-x var(--lines) var(--ease) both;
+}
+@keyframes draw-x { from { transform: scaleX(0); } }
+.top-in {
+  max-width: var(--max);
+  margin-inline: auto;
+  height: var(--head);
+  display: flex; align-items: center; gap: 1.5rem;
+  padding-inline: 1.25rem;
+  border-inline: 1px solid var(--line);
+}
+.head-marks { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+.head-marks .mark { top: calc(100% - .5px); }
+
+.brand { display: inline-flex; align-items: center; color: var(--fg); text-decoration: none; }
+.brand svg { height: 22px; width: auto; }
+.nav { display: flex; gap: 1.25rem; margin-left: auto; font-size: .9rem; }
+.nav a { color: var(--muted); text-decoration: none; transition: color .15s; }
+.nav a:hover { color: var(--fg); }
+
+.btn {
+  display: inline-flex; align-items: center; gap: .5rem;
+  height: 2.5rem; padding-inline: 1rem;
+  border-radius: 8px;
+  font: 500 .95rem/1 var(--sans);
+  text-decoration: none;
+  border: 1px solid var(--line);
+  color: var(--fg);
+  background: var(--bg);
+  cursor: pointer;
+  transition: border-color .15s, background-color .15s;
+}
+.btn:hover { border-color: var(--faint); background: var(--panel); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.primary:hover { background: color-mix(in srgb, var(--accent) 88%, var(--fg)); }
+.btn.small { height: 2rem; padding-inline: .8rem; font-size: .85rem; }
+.btn svg { width: 16px; height: 16px; }
+
+/* ---------- hero ---------- */
+.hero { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.hero-copy {
+  padding: clamp(2.5rem, 6vw, 5rem) clamp(1.25rem, 4vw, 3.5rem);
+  display: flex; flex-direction: column; justify-content: center; gap: 1.5rem;
+}
+.eyebrow {
+  font: 500 .75rem/1 var(--mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: inline-flex; align-items: center; gap: .6rem;
+}
+.eyebrow i { width: 7px; height: 7px; transform: rotate(45deg); border: 1.5px solid var(--accent); display: inline-block; }
+h1 {
+  margin: 0;
+  font-size: clamp(2.6rem, 5vw, 3.9rem);
+  line-height: 1.02;
+  letter-spacing: -.035em;
+  font-weight: 700;
+  text-wrap: balance;
+}
+.wl { font-family: var(--mono); font-weight: 400; color: var(--accent); letter-spacing: -.08em; }
+.wl-word { color: var(--accent); text-decoration: underline; text-decoration-thickness: .06em; text-underline-offset: .12em; }
+.lede { margin: 0; font-size: 1.12rem; color: var(--muted); max-width: 34rem; text-wrap: pretty; }
+.lede strong { color: var(--fg); font-weight: 500; }
+.actions { display: flex; flex-wrap: wrap; gap: .75rem; }
+.facts { display: flex; flex-wrap: wrap; gap: .4rem 1.1rem; font: .8rem/1.4 var(--mono); color: var(--faint); list-style: none; margin: 0; padding: 0; }
+.facts li { display: inline-flex; align-items: center; gap: .45rem; }
+.facts li::before { content: ""; width: 5px; height: 5px; transform: rotate(45deg); border: 1px solid currentColor; }
+
+.graph-pane { display: flex; flex-direction: column; min-width: 0; position: relative; }
+.pane-head {
+  height: var(--head);
+  display: flex; align-items: center; gap: .75rem;
+  padding-inline: 1.25rem;
+}
+.pane-head b { font-weight: 600; font-size: 1.05rem; letter-spacing: -.01em; }
+.pane-head span { color: var(--muted); font-size: .9rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gtools { margin-left: auto; display: flex; align-items: center; gap: .35rem; }
+.gsearch { position: relative; }
+.search {
+  display: flex; align-items: center;
+  height: 2rem; width: 13rem;
+  border: 1px solid var(--line); border-radius: 6px;
+  padding-inline: .6rem;
+  background: var(--bg);
+}
+.search:focus-within { border-color: var(--accent); }
+.search input { border: 0; outline: 0; background: transparent; color: var(--fg); font: .85rem var(--sans); width: 100%; min-width: 0; }
+.search input::-webkit-search-cancel-button { display: none; }
+.search input::placeholder { color: var(--faint); }
+.search kbd { font-size: .75rem; color: var(--faint); }
+.gresults {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 8;
+  list-style: none; margin: 0; padding: .3rem;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+  box-shadow: 0 16px 32px -12px rgb(0 0 0 / .35);
+  animation: panel-in 150ms ease-out both;
+}
+.gresults li { padding: .45rem .55rem; border-radius: 5px; font-size: .85rem; color: var(--muted); cursor: pointer; display: flex; justify-content: space-between; gap: .5rem; }
+.gresults li small { font: .68rem var(--mono); color: var(--faint); text-transform: lowercase; }
+.gresults li.on, .gresults li:hover { background: var(--accent-soft); color: var(--fg); }
+.gresults .empty { cursor: default; color: var(--faint); }
+.gbtn {
+  height: 2rem; min-width: 2rem; padding-inline: .6rem;
+  border: 1px solid var(--line); border-radius: 6px;
+  background: var(--bg); color: var(--fg); font: .85rem var(--sans); cursor: pointer;
+}
+.gbtn:hover { background: var(--panel); border-color: var(--faint); }
+.focus-chip {
+  position: absolute; left: 1rem; bottom: .8rem; z-index: 2;
+  display: flex; align-items: center; gap: .5rem;
+  padding: .3rem .35rem .3rem .7rem; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--bg);
+  font-size: .8rem; color: var(--muted);
+  max-width: calc(100% - 2rem);
+  animation: panel-in 150ms ease-out both;
+}
+.focus-chip[hidden] { display: none; }
+.focus-chip b { color: var(--fg); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.focus-chip span { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.focus-chip button { width: 1.5rem; height: 1.5rem; border-radius: 999px; border: 0; background: var(--raised); color: var(--fg); cursor: pointer; font: .8rem var(--sans); }
+.focus-chip button:hover { background: var(--accent-soft); }
+.focus-chip:not([hidden]) ~ .graph-hint { opacity: 0; }
+.canvas-wrap { position: relative; flex: 1; min-height: 440px; }
+#graph { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: pan-y; cursor: grab; }
+#graph.pinch { touch-action: none; }
+#graph.hot { cursor: pointer; }
+#graph.drag { cursor: grabbing; }
+.graph-hint { position: absolute; left: 1.25rem; right: 1.25rem; bottom: 1rem; font: .72rem var(--mono); color: var(--faint); pointer-events: none; transition: opacity .2s; }
+
+/* ---------- feature rows ---------- */
+.row { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.row-copy { padding: clamp(2.5rem, 5vw, 4.5rem) clamp(1.25rem, 4vw, 3.5rem); }
+.row-copy .sticky { display: flex; flex-direction: column; gap: 1rem; }
+h2 { margin: 0; font-size: clamp(1.75rem, 3vw, 2.35rem); line-height: 1.1; letter-spacing: -.03em; font-weight: 650; text-wrap: balance; }
+.row-copy p { margin: 0; color: var(--muted); max-width: 32rem; text-wrap: pretty; }
+.row-copy p strong { color: var(--fg); font-weight: 500; }
+.row-copy p code, .cell p code { font-size: .88em; color: var(--fg); background: var(--raised); padding: .1em .35em; border-radius: 4px; }
+.row-media {
+  padding: clamp(1.25rem, 3.5vw, 3rem);
+  background: var(--panel);
+  display: flex; align-items: center; justify-content: center;
+  min-width: 0;
+  position: relative;
+  transition: background-color .4s ease;
+}
+.shot {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 30px 60px -30px rgb(0 0 0 / .45);
+  background: #0a0a0a;
+  width: 100%;
+}
+.chips { display: flex; flex-wrap: wrap; gap: .4rem; padding: 0; margin: 0; list-style: none; }
+.chips li { font-size: .82rem; padding: .25rem .6rem; border-radius: 999px; background: var(--raised); color: var(--fg); }
+
+/* mock editor */
+.editor-wrap { position: relative; width: 100%; max-width: 560px; padding-bottom: 7.5rem; }
+/* The mock editor always wears the app's default dark theme, whatever the page is set to. */
+.editor-wrap {
+  --bg: #0a0a0a; --fg: #ededed; --accent: #a78bfa;
+  --muted: color-mix(in srgb, var(--fg) 60%, var(--bg));
+  --faint: color-mix(in srgb, var(--fg) 34%, var(--bg));
+  --line: color-mix(in srgb, var(--fg) 15%, var(--bg));
+  --raised: color-mix(in srgb, var(--fg) 7%, var(--bg));
+  --accent-soft: color-mix(in srgb, var(--accent) 15%, var(--bg));
+  color: var(--fg);
+  color-scheme: dark;
+}
+.editor {
+  width: 100%;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--bg);
+  box-shadow: 0 30px 60px -30px rgb(0 0 0 / .35);
+  overflow: hidden;
+}
+.editor-head { display: flex; align-items: center; gap: .6rem; height: 2.75rem; padding-inline: 1rem; border-bottom: 1px solid var(--line); font-size: .9rem; }
+.editor-head b { font-weight: 600; }
+.tag { font-size: .75rem; color: var(--muted); background: var(--raised); padding: .15rem .5rem; border-radius: 999px; }
+.editor-head .mode { margin-left: auto; font: .72rem var(--mono); color: var(--faint); }
+.editor-body { padding: 1.25rem 1.25rem 1.5rem; font: .9rem/1.75 var(--mono); color: var(--fg); overflow-x: auto; min-height: 10.5rem; }
+.editor-body .h { font-weight: 500; }
+.editor-body .md { color: var(--faint); }
+.editor-body .link { color: var(--accent); }
+.caret { display: inline-block; width: 2px; height: 1.1em; vertical-align: -0.2em; background: var(--accent); }
+.suggest {
+  position: absolute; bottom: 0; left: 4.5rem;
+  min-width: 15rem;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--bg);
+  box-shadow: 0 16px 32px -12px rgb(0 0 0 / .35);
+  font: .85rem/1 var(--sans);
+  padding: .3rem;
+  list-style: none; margin: 0;
+  transform-origin: top left;
+}
+.suggest[hidden] { display: none; }
+/* The app's modal-panel-in. */
+.suggest.pop { animation: panel-in 150ms ease-out both; }
+@keyframes panel-in { from { opacity: 0; transform: translateY(6px) scale(.98); } }
+.suggest li { padding: .55rem .65rem; border-radius: 5px; display: flex; justify-content: space-between; gap: 1rem; color: var(--muted); transition: background-color .12s, color .12s; }
+.suggest li.on { background: var(--accent-soft); color: var(--fg); }
+.suggest li small { font: .72rem var(--mono); color: var(--faint); }
+
+/* three cells */
+.cells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cell { padding: clamp(2rem, 4vw, 3rem) clamp(1.25rem, 3vw, 2.25rem); display: flex; flex-direction: column; gap: 1rem; position: relative; min-width: 0; }
+.cell h3 { margin: 0; font-size: 1.25rem; letter-spacing: -.02em; font-weight: 600; }
+.cell p { margin: 0; color: var(--muted); font-size: .95rem; text-wrap: pretty; }
+.cell .demo { margin-top: auto; padding-top: .5rem; }
+
+.keys { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.keys td { padding: .55rem 0; border-top: 1px solid var(--line); }
+.keys td:last-child { color: var(--muted); }
+kbd {
+  display: inline-block; min-width: 2.1rem; text-align: center;
+  font-size: .78rem; padding: .2rem .45rem;
+  border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px;
+  background: var(--bg); color: var(--fg);
+}
+
+.todo-src { font: .8rem/1.5 var(--mono); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: .6rem .75rem; color: var(--muted); overflow-x: auto; white-space: nowrap; }
+.todo-src .t { color: var(--accent); }
+.todo-arrow { font: .75rem var(--mono); color: var(--faint); padding: .35rem .75rem; }
+.todo {
+  display: flex; align-items: center; gap: .8rem; width: 100%;
+  border: 1px solid var(--line); border-radius: 8px; padding: .75rem .85rem;
+  background: var(--bg); color: var(--fg);
+  font: inherit; text-align: left; cursor: pointer;
+}
+.todo:hover { border-color: var(--faint); }
+.todo .dia { flex: none; width: 11px; height: 11px; transform: rotate(45deg); border: 1.5px solid var(--accent); transition: background-color .2s; }
+.todo .what { flex: 1; transition: color .2s; }
+.todo .when { font: .75rem var(--mono); color: var(--muted); }
+.todo[aria-pressed="true"] .dia { background: var(--accent); }
+.todo[aria-pressed="true"] .what { text-decoration: line-through; color: var(--faint); }
+
+.ticks { list-style: none; margin: 0; padding: 0; display: grid; gap: .55rem; font-size: .92rem; }
+.ticks li { display: flex; gap: .7rem; align-items: baseline; }
+.ticks li::before { content: ""; flex: none; width: 6px; height: 6px; transform: translateY(-2px) rotate(45deg); border: 1.5px solid var(--accent); }
+
+/* phones */
+.phones { display: flex; gap: clamp(.75rem, 3vw, 2rem); justify-content: center; align-items: flex-start; }
+.phones img { width: min(240px, 44%); border-radius: 22px; border: 1px solid var(--line); box-shadow: 0 30px 60px -30px rgb(0 0 0 / .5); }
+.phones img:last-child { margin-top: 2.5rem; }
+
+/* themes */
+.themes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; width: 100%; }
+.swatch { border-radius: 10px; overflow: hidden; border: 1px solid var(--line); display: grid; }
+.swatch button { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: .65rem; padding: .7rem .8rem; cursor: pointer; font: .85rem/1.2 var(--sans); position: relative; }
+.swatch button:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+.swatch button small { display: block; opacity: .55; font-size: .75rem; }
+.swatch button i { width: 10px; height: 10px; transform: rotate(45deg); flex: none; }
+.swatch button[aria-pressed="true"]::after { content: "on"; position: absolute; right: .75rem; font: .68rem var(--mono); opacity: .7; }
+.theme-tools { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.theme-tools span { font: .78rem var(--mono); color: var(--faint); }
+
+/* ---------- closing: the sign-in diamond, which opens into a vault ---------- */
+.closing {
+  position: relative;
+  container-type: inline-size;
+  display: grid; justify-items: center; align-content: center;
+  overflow: hidden;
+  /* One height, open or closed: the vault opens inside the same box. */
+  --stage: clamp(480px, calc(100svh - 72px), 820px);
+  height: var(--stage);
+  --box: min(520px, calc(100cqw - 40px), calc(var(--stage) - 64px));
+}
+.gate { position: relative; width: var(--box); height: var(--box); }
+.gate-dia, .gate-trace {
+  position: absolute; left: 50%; top: 50%;
+  width: calc(var(--box) / 1.41421); height: calc(var(--box) / 1.41421);
+  transform: translate(-50%, -50%) rotate(45deg);
+  pointer-events: none;
+}
+.gate-dia {
+  border: 1px solid var(--mark);
+  background: var(--bg);
+  z-index: 6;
+  transition: left var(--close) var(--ease) var(--fade), top var(--close) var(--ease) var(--fade),
+              width var(--close) var(--ease) var(--fade), height var(--close) var(--ease) var(--fade),
+              background-color .4s ease;
+}
+.gate-trace { overflow: visible; transition: opacity .3s; z-index: 6; }
+.gate-trace rect { fill: none; stroke: var(--accent); stroke-width: 1.5; animation: trace 3.2s linear infinite; }
+@keyframes trace { to { stroke-dashoffset: calc(var(--perimeter) * -1); } }
+.gate-in {
+  position: absolute; left: 50%; top: 50%; z-index: 7;
+  width: min(280px, calc(var(--box) * .56));
+  transform: translate(-50%, -50%);
+  display: grid; gap: .9rem; justify-items: center; text-align: center;
+  transition: opacity var(--fade) ease;
+}
+.gate-in h2 { font-size: clamp(1.5rem, 5cqw, 2.1rem); }
+.gate-in p { margin: 0; color: var(--muted); font-size: .9rem; }
+.gate-in .quiet { font-size: .82rem; color: var(--muted); text-decoration: none; }
+.gate-in .quiet:hover { color: var(--fg); }
+.gate.shut .gate-in { opacity: 0; pointer-events: none; }
+.gate.shut .gate-trace, .gate.opening .gate-trace { opacity: 0; visibility: hidden; transition: none; }
+.gate.shut .gate-dia { width: 6px; height: 6px; left: var(--tx); top: var(--ty); }
+.gate.opening .gate-dia { transition-delay: 0ms; }
+.gate.opening .gate-in { transition-delay: var(--close); }
+
+/* Full width, like the header: its top seam runs edge to edge and meets the frame's sides. */
+.foot { margin-inline: -16px; padding-inline: 16px; }
+.foot-in {
+  max-width: var(--max); margin-inline: auto;
+  display: flex; flex-wrap: wrap; gap: 1rem 2rem; align-items: center;
+  padding: 1.5rem clamp(1.25rem, 4vw, 3.5rem) calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  font-size: .85rem; color: var(--muted);
+}
+footer .brand svg { height: 18px; }
+footer .built { font-family: var(--mono); font-size: .78rem; color: var(--faint); }
+footer nav { margin-left: auto; display: flex; gap: 1.25rem; }
+footer nav a { color: var(--muted); text-decoration: none; }
+footer nav a:hover { color: var(--fg); }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .caret, .top::after, .suggest.pop { animation: none; }
+  body, .line, .mark, .gate-dia, .gate-in, .gate-trace, .try, .closing { transition: none; }
+  .gate .gate-trace rect { animation: none; }
+}
+
+/* ---------- narrow ---------- */
+@media (max-width: 900px) {
+  .hero, .row { grid-template-columns: minmax(0, 1fr); }
+  .canvas-wrap { min-height: 380px; }
+  .cells { grid-template-columns: minmax(0, 1fr); }
+  .nav { display: none; }
+  .top .btn:not(.primary) { display: none; }
+  .top .btn.primary { margin-left: auto; }
+}
+@media (max-width: 520px) {
+  .themes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .search { width: 9rem; }
+  .wide-only { display: none; }
+  .pane-head b { display: none; }
+  .pane-head span { font-size: .8rem; }
+  .suggest { left: 1rem; }
+}
+</style>
+
+<header class="top" id="top">
+  <div class="top-in">
+    <a class="brand" href="#" aria-label="Zenote home">
+      <svg viewBox="0 0 304 64" fill="none" aria-hidden="true">
+        <path d="M16 16h32M16 32h22M16 48h32M64 16V48M64 16h32M64 32h22M64 48h32M112 16V48M112 16 144 48M144 16V48M208 16h32M224 16V48M256 16V48M256 16h32M256 32h22M256 48h32" stroke="currentColor" stroke-width="6.5" stroke-linecap="round"/>
+        <path d="M176 16 192 32 176 48 160 32Z" stroke="currentColor" stroke-width="6.5" stroke-linejoin="round"/>
+        <path d="M51 13 13 51" stroke="var(--accent)" stroke-width="6.5" stroke-linecap="round"/>
+      </svg>
+    </a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#write">Write</a>
+      <a href="#read">Read</a>
+      <a href="#ask">Ask</a>
+      <a href="#draw">Draw</a>
+      <a href="#themes">Themes</a>
+    </nav>
+    <a class="btn small" href="https://github.com/zenodea/zenote">GitHub</a>
+    <a class="btn small primary" data-app href="https://notes.zenodea.com/login">Open Zenote</a>
+  </div>
+  <div class="head-marks" id="head-marks" aria-hidden="true"></div>
+</header>
+
+<div class="frame">
+
+  <section class="hero" data-seam="left right" aria-labelledby="hero-title">
+    <div class="hero-copy">
+      <span class="eyebrow"><i></i>Markdown vault · open source</span>
+      <h1 id="hero-title">Every <span class="wl">[[</span><span class="wl-word">link</span><span class="wl">]]</span> draws a&nbsp;line.</h1>
+      <p class="lede">Zenote is a markdown vault you open in a browser. <strong>Link notes with double brackets</strong>, see how they connect on a living map, and ask an assistant that has read them.</p>
+      <div class="actions">
+        <a class="btn primary" data-try href="#start">Try it now
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a class="btn" href="https://github.com/zenodea/zenote">View the source</a>
+      </div>
+      <ul class="facts">
+        <li>Works offline</li>
+        <li>Installs from the browser</li>
+        <li>GPL-3.0</li>
+      </ul>
+    </div>
+
+    <div class="graph-pane" data-seam="left" data-seam-narrow="top">
+      <div class="pane-head" data-seam="bottom">
+        <b>Graph</b>
+        <span id="graph-count">0 notes · 0 links</span>
+        <div class="gtools">
+          <div class="gsearch">
+            <label class="search">
+              <input id="graph-search" type="search" placeholder="Search notes" autocomplete="off" spellcheck="false" aria-label="Search notes in the graph" aria-controls="graph-results">
+            </label>
+            <ul class="gresults" id="graph-results" role="listbox" hidden></ul>
+          </div>
+          <button class="gbtn" type="button" data-zoom="reset">Reset</button>
+        </div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="graph" aria-label="An example vault drawn as a graph: each dot is a note, each line a link between two notes."></canvas>
+        <div class="focus-chip" id="focus-chip" hidden></div>
+        <span class="graph-hint" id="graph-hint">Right-click a note to focus it · drag to pan · scroll or pinch to zoom</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="row" id="write" data-seam="top left right" aria-labelledby="write-title">
+    <div class="row-copy">
+      <div class="sticky">
+        <span class="eyebrow"><i></i>Write</span>
+        <h2 id="write-title">Plain markdown, formatted as you type.</h2>
+        <p>The editor keeps your markdown exactly as you wrote it and styles it as you go. Type <code>[[</code> and it suggests notes to link to.</p>
+        <p>Saving happens on its own. If the same note changed somewhere else while you typed, your version stays put and the other one appears next to it as a conflict copy. There is a Vim mode if you want one.</p>
+      </div>
+    </div>
+    <div class="row-media" data-seam="left" data-seam-narrow="top">
+      <div class="editor-wrap">
+        <div class="editor" role="img" aria-label="The editor suggesting notes after typing two opening brackets">
+          <div class="editor-head"><b>redis</b><span class="tag">#backend</span><span class="tag">#nosql</span><span class="mode">-- INSERT --</span></div>
+          <div class="editor-body"><span class="md"># </span><span class="h">Redis</span><br>
+An in-memory data structure server.<br>
+The usual jobs are a <span class="md">[[</span><span class="link">caching</span><span class="md">]]</span> layer, a<br>
+session store, and a rate limiter.<br>
+Commands are atomic without <span id="typed"><span class="md">[[</span><span class="link">lo</span></span><span class="caret"></span></div>
+        </div>
+        <ul class="suggest" id="suggest" aria-hidden="true">
+          <li class="on">locking <small>#concurrency</small></li>
+          <li>load-balancing <small>#devops</small></li>
+          <li>logical-clocks <small>#distributed</small></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="row" id="read" data-seam="top left right" aria-labelledby="read-title">
+    <div class="row-copy">
+      <div class="sticky">
+        <span class="eyebrow"><i></i>Read</span>
+        <h2 id="read-title">Links you can follow both ways.</h2>
+        <p>Notes render with headings, code, tables, maths and diagrams. A link to a note you have not written yet is marked, not broken.</p>
+        <p>At the bottom of each note you get the notes around it in the graph, and <strong>Linked from</strong>: every place in the vault that mentions this one, quoted in context.</p>
+      </div>
+    </div>
+    <div class="row-media" data-seam="left" data-seam-narrow="top">
+      <img class="shot" src="assets/reading.png" width="2880" height="1800" loading="lazy" alt="A note about Kubernetes in the reading view, with a link to load-balancing.">
+    </div>
+  </section>
+
+  <section class="row" id="ask" data-seam="top left right" aria-labelledby="ask-title">
+    <div class="row-copy">
+      <div class="sticky">
+        <span class="eyebrow"><i></i>Ask</span>
+        <h2 id="ask-title">An assistant that answers from your notes.</h2>
+        <p>It sits next to the note you are reading, shows which notes it opened, and writes notes back only if you let it. Each conversation stays with its note.</p>
+        <ul class="chips" aria-label="Supported providers">
+          <li>Claude</li><li>OpenAI</li><li>Gemini</li><li>OpenRouter</li>
+        </ul>
+        <p>Pick a provider in settings and paste your own key there.</p>
+      </div>
+    </div>
+    <div class="row-media" data-seam="left" data-seam-narrow="top">
+      <img class="shot" src="assets/assistant.png" width="2400" height="1368" loading="lazy" alt="The Redis note open beside the assistant, which answers in two sentences how the note relates to caching and links the Caching and Memcached notes.">
+    </div>
+  </section>
+
+  <section class="row" id="draw" data-seam="top left right" aria-labelledby="draw-title">
+    <div class="row-copy">
+      <div class="sticky">
+        <span class="eyebrow"><i></i>Draw</span>
+        <h2 id="draw-title">Sketch it where the notes are.</h2>
+        <p>A drawing is a note with an Excalidraw canvas: boxes, arrows, pen and text, with the shape library one click away. It is saved as a fenced <code>excalidraw</code> block, so it stays plain markdown like everything else.</p>
+        <p>Type <strong>[[a note]]</strong> into a label and it becomes a link you can follow from the canvas. Drop a drawing into any note, or ask the assistant to sketch one.</p>
+      </div>
+    </div>
+    <div class="row-media" data-seam="left" data-seam-narrow="top">
+      <img class="shot" src="assets/drawing.png" width="2400" height="1373" loading="lazy" alt="A drawing note called Architecture open on the Excalidraw canvas: two rounded boxes joined by an arrow, with the toolbar above and the stroke, fill and layer options beside it.">
+    </div>
+  </section>
+
+  <section class="cells" data-seam="top left right" aria-label="More features">
+    <div class="cell">
+      <span class="eyebrow"><i></i>Find</span>
+      <h3>Everything is a keystroke away.</h3>
+      <p>Search runs in the browser, so results come up as you type. Filter the sidebar by title, full text or tag.</p>
+      <table class="keys demo">
+        <tbody>
+          <tr><td><kbd>⌘K</kbd></td><td>Jump to a note</td></tr>
+          <tr><td><kbd>⌘F</kbd></td><td>Find in this note</td></tr>
+          <tr><td><kbd>/</kbd></td><td>Search the graph</td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>Close whatever is open</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="cell" data-seam="left" data-seam-narrow="top">
+      <span class="eyebrow"><i></i>Todos</span>
+      <h3>Todos live where you wrote them.</h3>
+      <p>Write one anywhere in a note. The date and time are optional. One page collects them all, as a list or on a calendar.</p>
+      <div class="demo">
+        <div class="todo-src"><span class="t">!![</span>call the bank<span class="t">][</span>2026-09-11T18:20<span class="t">]</span></div>
+        <div class="todo-arrow" aria-hidden="true">↓ renders as</div>
+        <button class="todo" type="button" id="todo-demo" aria-pressed="false">
+          <span class="dia" aria-hidden="true"></span>
+          <span class="what">call the bank</span>
+          <span class="when">Fri 11 Sep · 18:20</span>
+        </button>
+      </div>
+    </div>
+    <div class="cell" data-seam="left" data-seam-narrow="top">
+      <span class="eyebrow"><i></i>Offline</span>
+      <h3>Your vault lives on your device.</h3>
+      <p>It keeps working when the internet does not, and syncs on its own when you are back.</p>
+      <ul class="ticks demo">
+        <li>Opens without internet after one signed-in visit</li>
+        <li>Keep several vaults, local or synced to your account</li>
+        <li>A desktop app that starts in a local vault, no login needed</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="row" id="phone" data-seam="top left right" aria-labelledby="phone-title">
+    <div class="row-copy">
+      <div class="sticky">
+        <span class="eyebrow"><i></i>Mobile</span>
+        <h2 id="phone-title">The same vault in your pocket.</h2>
+        <p>On a phone the vault folds into a drawer and the note gets the whole screen. Add Zenote to your home screen and it opens like an app.</p>
+      </div>
+    </div>
+    <div class="row-media" data-seam="left" data-seam-narrow="top">
+      <div class="phones">
+        <img src="assets/mobile-note.png" loading="lazy" alt="A note open on a phone.">
+        <img src="assets/mobile-drawer.png" loading="lazy" alt="The vault drawer open on a phone.">
+      </div>
+    </div>
+  </section>
+
+  <section class="row" id="themes" data-seam="top left right" aria-labelledby="themes-title">
+    <div class="row-copy">
+      <div class="sticky">
+        <span class="eyebrow"><i></i>Themes</span>
+        <h2 id="themes-title">Six themes, each in dark and light.</h2>
+        <p>Pick one here and this page wears it, graph included.</p>
+        <div class="theme-tools">
+          <button class="btn small" type="button" id="theme-reset">Back to default</button>
+          <span id="theme-name">Default · follows your system</span>
+        </div>
+      </div>
+    </div>
+    <div class="row-media" data-seam="left" data-seam-narrow="top">
+      <div class="themes" id="theme-grid"></div>
+    </div>
+  </section>
+
+  <section class="closing" id="start" data-seam="top left right" aria-labelledby="closing-title">
+    <div class="gate" id="gate">
+      <span class="gate-dia" aria-hidden="true"></span>
+      <svg class="gate-trace" id="gate-trace" aria-hidden="true"><rect x="0.5" y="0.5"></rect></svg>
+      <div class="gate-in">
+        <span class="eyebrow"><i></i>Try it</span>
+        <h2 id="closing-title">Start a vault.</h2>
+        <p id="gate-note">It opens right here. Your notes stay in this browser.</p>
+        <button class="btn primary" type="button" data-try id="gate-go">Try it now</button>
+        <a class="quiet" data-app href="https://notes.zenodea.com/login">or open the full app</a>
+      </div>
+    </div>
+
+    <div class="tv" id="try" role="region" aria-label="Try Zenote" hidden></div>
+  </section>
+
+</div>
+
+<footer class="foot" data-seam="top">
+  <div class="foot-in" data-seam="left right">
+    <a class="brand" href="#" aria-label="Zenote home">
+      <svg viewBox="0 0 304 64" fill="none" aria-hidden="true">
+        <path d="M16 16h32M16 32h22M16 48h32M64 16V48M64 16h32M64 32h22M64 48h32M112 16V48M112 16 144 48M144 16V48M208 16h32M224 16V48M256 16V48M256 16h32M256 32h22M256 48h32" stroke="currentColor" stroke-width="6.5" stroke-linecap="round"/>
+        <path d="M176 16 192 32 176 48 160 32Z" stroke="currentColor" stroke-width="6.5" stroke-linejoin="round"/>
+        <path d="M51 13 13 51" stroke="var(--accent)" stroke-width="6.5" stroke-linecap="round"/>
+      </svg>
+    </a>
+    <span class="built">Next.js · CodeMirror · PixiJS · Supabase</span>
+    <nav aria-label="Footer">
+      <a href="https://github.com/zenodea/zenote">GitHub</a>
+      <a href="https://github.com/zenodea/zenote/blob/main/LICENSE">GPL-3.0</a>
+    </nav>
+  </div>
+</footer>
+
+<div id="seams" aria-hidden="true"></div>
+
+<script>
+(function () {
+  // Where the "full app" links go. Set this to the app's address when the page is
+  // hosted somewhere other than the app itself.
+  var APP_URL = "https://notes.zenodea.com/login";
+  document.querySelectorAll("[data-app]").forEach(function (a) { a.href = APP_URL; });
+
+  // The app's own timings, from src/lib/frame.ts and Frame.tsx.
+  var LINES_MS = 420, FADE_MS = 160, CLOSE_MS = 720, MIN_TRACE_MS = 500, CHROME_MS = 260;
+  var HEADER = 56, SIDEBAR = 256;
+
+  var root = document.documentElement;
+  var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var narrow = matchMedia("(max-width: 900px)");
+  var wait = function (ms) { return new Promise(function (r) { setTimeout(r, reduce ? 0 : ms); }); };
+  function esc(t) { return String(t).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function slugify(t) { return String(t).toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""); }
+  function css(name) { return getComputedStyle(root).getPropertyValue(name).trim(); }
+  function typing(el) { var t = (el && el.tagName) || ""; return t === "INPUT" || t === "TEXTAREA" || (el && el.isContentEditable); }
+
+  /* ================= seams and junctions (after Junctions.tsx) ================= */
+  root.classList.add("seamed");
+  var layer = document.getElementById("seams");
+  var header = document.getElementById("top");
+  var headMarks = document.getElementById("head-marks");
+  var drawn = new WeakMap();
+  var lines = [], marks = [], verticals = [];
+
+  function sides(el) {
+    var s = narrow.matches && el.dataset.seamNarrow != null ? el.dataset.seamNarrow : el.dataset.seam;
+    return s ? s.split(/\s+/).filter(Boolean) : [];
+  }
+
+  function build() {
+    layer.textContent = "";
+    lines = []; marks = []; verticals = [];
+    var horizontal = [];
+    var sx = window.scrollX, sy = window.scrollY;
+
+    document.querySelectorAll("[data-seam]").forEach(function (el) {
+      var r = el.getBoundingClientRect();
+      if (!r.width && !r.height) return;
+      sides(el).forEach(function (side) {
+        var line = document.createElement("i");
+        var x, y;
+        if (side === "top" || side === "bottom") {
+          y = (side === "top" ? r.top : r.bottom - 1) + sy;
+          x = r.left + sx;
+          line.className = "line h";
+          line.style.cssText = "left:" + x + "px;top:" + y + "px;width:" + r.width + "px";
+          if (el.dataset.ox) line.style.transformOrigin = el.dataset.ox + "px center";
+          horizontal.push({ y: y + 0.5, x1: x, x2: x + r.width, el: el });
+        } else {
+          x = (side === "left" ? r.left : r.right - 1) + sx;
+          y = r.top + sy;
+          line.className = "line v";
+          line.style.cssText = "left:" + x + "px;top:" + y + "px;height:" + r.height + "px";
+          if (el.dataset.oy) line.style.transformOrigin = "center " + el.dataset.oy + "px";
+          verticals.push({ x: x + 0.5, y1: y, y2: y + r.height, el: el });
+        }
+        line.owner = el;
+        if (drawn.get(el)) line.classList.add("on");
+        layer.appendChild(line);
+        lines.push(line);
+      });
+    });
+
+    var points = new Map();
+    horizontal.forEach(function (h) {
+      verticals.forEach(function (v) {
+        if (v.x < h.x1 - 1.5 || v.x > h.x2 + 1.5) return;
+        if (h.y < v.y1 - 1.5 || h.y > v.y2 + 1.5) return;
+        var key = Math.round(v.x) + ":" + Math.round(h.y);
+        var p = points.get(key) || { x: v.x, y: h.y, els: [] };
+        if (p.els.indexOf(h.el) < 0) p.els.push(h.el);
+        if (p.els.indexOf(v.el) < 0) p.els.push(v.el);
+        points.set(key, p);
+      });
+    });
+    points.forEach(function (p) {
+      var m = document.createElement("b");
+      m.className = "mark";
+      m.style.left = p.x + "px";
+      m.style.top = p.y + "px";
+      m.owners = p.els;
+      if (p.els.every(function (e) { return drawn.get(e); })) m.classList.add("on");
+      layer.appendChild(m);
+      marks.push(m);
+    });
+
+    var frame = document.querySelector(".frame").getBoundingClientRect();
+    header.style.setProperty("--ax", (frame.left - header.getBoundingClientRect().left) + "px");
+    heads();
+  }
+
+  function paint() {
+    lines.forEach(function (l) { l.classList.toggle("on", !!drawn.get(l.owner)); });
+    marks.forEach(function (m) { m.classList.toggle("on", m.owners.every(function (e) { return drawn.get(e); })); });
+    heads();
+  }
+
+  // Junctions on the sticky header's bottom seam move with the scroll, so they live in the header.
+  var headCache = new Map();
+  var headerDrawn = reduce;
+  function heads() {
+    var hb = header.getBoundingClientRect();
+    var y = hb.bottom + window.scrollY - 0.5;
+    var seen = new Set();
+    verticals.forEach(function (v) {
+      if (y < v.y1 - 1.5 || y > v.y2 + 1.5) return;
+      var key = Math.round(v.x);
+      if (seen.has(key)) return;
+      seen.add(key);
+      var m = headCache.get(key);
+      if (!m) {
+        m = document.createElement("b");
+        m.className = "mark";
+        headMarks.appendChild(m);
+        headCache.set(key, m);
+      }
+      m.style.left = (v.x - window.scrollX - hb.left) + "px";
+      m.hidden = false;
+      m.classList.toggle("on", !!drawn.get(v.el) || (v.el.classList.contains("hero") && headerDrawn));
+    });
+    headCache.forEach(function (m, key) { if (!seen.has(key)) m.hidden = true; });
+  }
+
+  if (reduce) layer.classList.add("snap");
+  setTimeout(function () { headerDrawn = true; heads(); }, reduce ? 0 : 1);
+
+  function reveal(el) { if (drawn.get(el)) return; drawn.set(el, true); paint(); }
+  function conceal(el) { if (!drawn.get(el)) return; drawn.delete(el); paint(); }
+
+  build();
+  var pageOwners = Array.prototype.filter.call(document.querySelectorAll("[data-seam]"), function (el) { return !el.closest("#try"); });
+  if (reduce || !("IntersectionObserver" in window)) {
+    pageOwners.forEach(function (el) { drawn.set(el, true); });
+    paint();
+  } else {
+    // A beat after the first paint, so what is already on screen draws in rather than appearing.
+    setTimeout(function () {
+      pageOwners.forEach(function (el) {
+        var r = el.getBoundingClientRect();
+        if (r.top < window.innerHeight * 0.88 && r.bottom > 0) reveal(el);
+      });
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) { if (e.isIntersecting) { reveal(e.target); io.unobserve(e.target); } });
+      }, { rootMargin: "0px 0px -12% 0px" });
+      pageOwners.forEach(function (el) { if (!drawn.get(el)) io.observe(el); });
+      // The footer never leaves the bottom strip the observer ignores, so draw it at the end of the page.
+      function atEnd() {
+        if (window.innerHeight + window.scrollY < document.documentElement.scrollHeight - 4) return;
+        pageOwners.forEach(function (el) { if (!drawn.get(el) && el.getBoundingClientRect().top < window.innerHeight) { reveal(el); io.unobserve(el); } });
+      }
+      window.addEventListener("scroll", atEnd, { passive: true });
+      atEnd();
+    }, 60);
+  }
+
+  var queued = 0;
+  function rebuild() { cancelAnimationFrame(queued); queued = requestAnimationFrame(build); }
+  window.addEventListener("resize", rebuild);
+  narrow.addEventListener("change", rebuild);
+  if ("ResizeObserver" in window) new ResizeObserver(rebuild).observe(document.querySelector(".frame"));
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(rebuild);
+  window.addEventListener("load", rebuild);
+  var scrolling = 0;
+  window.addEventListener("scroll", function () {
+    cancelAnimationFrame(scrolling);
+    scrolling = requestAnimationFrame(heads);
+  }, { passive: true });
+
+  /* ================= graph (after GraphView, use-graph-camera, use-focus-fade, pixi-scene) ================= */
+  var VIEW_EASE = 0.22, FADE = 0.18, FRICTION = 0.88, MIN_VELOCITY = 0.08;
+  var MIN_SCALE = 0.05, MAX_SCALE = 8, FIT_PADDING = 40, CLICK_SLOP = 4, LONG_PRESS_MS = 450;
+  var EDGE_ALPHA = 0.28, EDGE_FOCUS_DROP = 0.22, LABEL_SCALE = 2.0, LABEL_HUB_SCALE = 0.8, LABEL_FADE = 0.2, REGION_FADE_OUT = 1.4;
+
+  var seed = 7;
+  function rand() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
+
+  // nodes: [{ id, name, group }], links: [[idA, idB]], regions: { group: "NAME" }
+  function Graph(canvas, data, opts) {
+    opts = opts || {};
+    var overscan = opts.overscan || 1;
+    var ctx = canvas.getContext("2d");
+    var nodes = data.nodes.map(function (n, i) {
+      var a = i * 2.39996, r = 50 * Math.sqrt(i + 1) * 0.5;
+      return { id: n.id, name: n.name, group: n.group, groupName: n.groupName, faint: n.faint, x: Math.cos(a) * r, y: Math.sin(a) * r, vx: 0, vy: 0, deg: 0, h: 1, l: 0 };
+    });
+    var byId = new Map(nodes.map(function (n) { return [n.id, n]; }));
+    var links = [];
+    var adj = new Map(nodes.map(function (n) { return [n, new Set()]; }));
+    data.links.forEach(function (p) {
+      var a = byId.get(p[0]), b = byId.get(p[1]);
+      if (!a || !b || a === b || adj.get(a).has(b)) return;
+      links.push({ a: a, b: b }); adj.get(a).add(b); adj.get(b).add(a); a.deg++; b.deg++;
+    });
+    var base = Math.max(1.8, Math.min(6, 9 / Math.pow(Math.max(nodes.length, 1), 0.2)));
+    nodes.forEach(function (n) { n.r = base * (1 + Math.min(n.deg, 8) * 0.12); });
+
+    var dragged = null, hover = null, query = "", matches = null, seeds = [], depth = 1, focusAmount = 0;
+    var heat = 0, running = true, visible = true, dead = false;
+    var W = 0, H = 0, dpr = 1, fitK = 1;
+    var view = { x: 0, y: 0, k: 1 }, target = { x: 0, y: 0, k: 1 }, vel = { x: 0, y: 0 };
+    var adjusted = false;
+
+    function tick(alpha) {
+      var i, j, a, b, dx, dy, d2, d, f;
+      for (i = 0; i < nodes.length; i++) {
+        a = nodes[i];
+        for (j = i + 1; j < nodes.length; j++) {
+          b = nodes[j];
+          dx = b.x - a.x; dy = b.y - a.y; d2 = Math.max(dx * dx + dy * dy, 36);
+          if (d2 > 160000) continue;
+          f = 2200 / d2 * alpha;
+          d = Math.sqrt(d2); dx /= d; dy /= d;
+          a.vx -= dx * f; a.vy -= dy * f; b.vx += dx * f; b.vy += dy * f;
+        }
+      }
+      for (i = 0; i < links.length; i++) {
+        a = links[i].a; b = links[i].b;
+        dx = b.x - a.x; dy = b.y - a.y; d = Math.sqrt(dx * dx + dy * dy) || 1;
+        f = (d - 46) * (0.5 / Math.min(a.deg, b.deg)) * 0.12 * alpha;
+        dx /= d; dy /= d;
+        a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f;
+      }
+      for (i = 0; i < nodes.length; i++) {
+        a = nodes[i];
+        var pull = a.deg ? 0.006 : 0.02;
+        a.vx -= a.x * pull * alpha; a.vy -= a.y * pull * alpha;
+        if (a === dragged) { a.vx = a.vy = 0; continue; }
+        a.vx *= 0.5; a.vy *= 0.5;
+        var v = Math.hypot(a.vx, a.vy);
+        if (v > 20) { a.vx *= 20 / v; a.vy *= 20 / v; }
+        a.x += a.vx; a.y += a.vy;
+      }
+    }
+    for (var s = 0; s < 500; s++) tick(1);
+
+    function bounds(list) {
+      var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      list.forEach(function (n) {
+        if (n.x < minX) minX = n.x; if (n.x > maxX) maxX = n.x;
+        if (n.y < minY) minY = n.y; if (n.y > maxY) maxY = n.y;
+      });
+      return { minX: minX, minY: minY, maxX: maxX, maxY: maxY };
+    }
+    function frameList(list, cap) {
+      if (!list.length || !W) return;
+      var b = bounds(list);
+      var k = Math.min((W - FIT_PADDING * 2) / Math.max(b.maxX - b.minX, 1), (H - FIT_PADDING * 2) / Math.max(b.maxY - b.minY, 1), cap);
+      k = Math.max(MIN_SCALE, k);
+      target.k = k;
+      target.x = W / 2 - (b.minX + b.maxX) / 2 * k;
+      target.y = H / 2 - (b.minY + b.maxY) / 2 * k;
+    }
+    function fitTarget() {
+      frameList(nodes, MAX_SCALE);
+      fitK = target.k = Math.min(target.k * overscan, MAX_SCALE);
+      var b = bounds(nodes);
+      target.x = W / 2 - (b.minX + b.maxX) / 2 * target.k;
+      target.y = H / 2 - (b.minY + b.maxY) / 2 * target.k;
+    }
+    function reset() { adjusted = false; vel.x = vel.y = 0; fitTarget(); }
+
+    function resize() {
+      var r = canvas.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      var first = !W;
+      W = r.width; H = r.height;
+      canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+      if (!adjusted) { fitTarget(); }
+      if (first || reduce) { view.x = target.x; view.y = target.y; view.k = target.k; }
+      render();
+    }
+
+    function neighbourhood(list, d) {
+      var set = new Set(list), frontier = list.slice();
+      for (var i = 0; i < d; i++) {
+        var next = [];
+        frontier.forEach(function (n) { adj.get(n).forEach(function (m) { if (!set.has(m)) { set.add(m); next.push(m); } }); });
+        frontier = next;
+      }
+      return set;
+    }
+    function activeSet() {
+      if (seeds.length) return neighbourhood(seeds, depth);
+      if (matches) return new Set(matches);
+      if (dragged || hover) return neighbourhood([dragged || hover], 1);
+      return null;
+    }
+    function focusInfo() {
+      if (opts.onFocus) opts.onFocus(seeds.length ? { seeds: seeds.map(function (n) { return n.name; }), depth: depth, size: neighbourhood(seeds, depth).size } : null);
+    }
+
+    function render() {
+      if (!W) return;
+      var fg = css("--fg"), accent = css("--accent"), bg = css("--bg");
+      var active = activeSet();
+      focusAmount += ((active ? 1 : 0) - focusAmount) * (reduce ? 1 : FADE);
+      if (Math.abs((active ? 1 : 0) - focusAmount) < 0.004) focusAmount = active ? 1 : 0;
+      nodes.forEach(function (n) {
+        var th = !active || active.has(n) ? 1 : 0, tl = active && active.has(n) ? 1 : 0;
+        n.h += (th - n.h) * (reduce ? 1 : FADE); if (Math.abs(th - n.h) < 0.004) n.h = th;
+        n.l += (tl - n.l) * (reduce ? 1 : FADE); if (Math.abs(tl - n.l) < 0.004) n.l = tl;
+      });
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      var k = view.k, rel = k / fitK;
+      function px(n) { return view.x + n.x * k; }
+      function py(n) { return view.y + n.y * k; }
+
+      // Region names fade out as you zoom in.
+      if (data.regions) {
+        var regionAlpha = Math.max(0, 1 - rel / REGION_FADE_OUT) * 0.55 * (1 - focusAmount);
+        if (regionAlpha > 0.02) {
+          ctx.font = '500 13px "Geist", system-ui, sans-serif';
+          ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          if ("letterSpacing" in ctx) ctx.letterSpacing = "1.5px";
+          ctx.fillStyle = fg; ctx.globalAlpha = regionAlpha;
+          Object.keys(data.regions).forEach(function (g) {
+            var sx = 0, sy = 0, c = 0;
+            nodes.forEach(function (n) { if (n.group === g) { sx += px(n); sy += py(n); c++; } });
+            if (c >= 3) ctx.fillText(data.regions[g], sx / c, sy / c - 24);
+          });
+          if ("letterSpacing" in ctx) ctx.letterSpacing = "0px";
+        }
+      }
+
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = fg;
+      ctx.globalAlpha = EDGE_ALPHA - EDGE_FOCUS_DROP * focusAmount;
+      ctx.beginPath();
+      links.forEach(function (l) { ctx.moveTo(px(l.a), py(l.a)); ctx.lineTo(px(l.b), py(l.b)); });
+      ctx.stroke();
+      if (focusAmount > 0.02) {
+        ctx.strokeStyle = accent;
+        links.forEach(function (l) {
+          var a = 0.75 * Math.min(l.a.h, l.b.h) * focusAmount;
+          if (a < 0.02 || !active || !active.has(l.a) || !active.has(l.b)) return;
+          ctx.globalAlpha = a;
+          ctx.beginPath(); ctx.moveTo(px(l.a), py(l.a)); ctx.lineTo(px(l.b), py(l.b)); ctx.stroke();
+        });
+      }
+
+      nodes.forEach(function (n) {
+        var lone = !n.deg || n.faint;
+        ctx.globalAlpha = (0.15 + 0.85 * n.h) * (lone ? 0.55 : 1);
+        ctx.fillStyle = lone ? fg : accent;
+        ctx.beginPath(); ctx.arc(px(n), py(n), n.r, 0, Math.PI * 2); ctx.fill();
+      });
+
+      seeds.forEach(function (n) {
+        ctx.globalAlpha = focusAmount;
+        ctx.strokeStyle = accent; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(px(n), py(n), n.r + 5, 0, Math.PI * 2); ctx.stroke();
+      });
+      ctx.lineWidth = 1;
+
+      ctx.font = '11px "Geist", system-ui, sans-serif';
+      ctx.textAlign = "center"; ctx.textBaseline = "top";
+      ctx.lineJoin = "round";
+      nodes.forEach(function (n) {
+        var importance = Math.min(n.deg, 8) / 8;
+        var startAt = LABEL_SCALE - (LABEL_SCALE - LABEL_HUB_SCALE) * importance * importance;
+        var zoomAlpha = Math.max(0, Math.min(1, (rel - startAt) / LABEL_FADE));
+        var a = Math.max(n.l, zoomAlpha * (1 - focusAmount));
+        if (a < 0.02) return;
+        var x = px(n), y = py(n) + n.r + 3;
+        ctx.globalAlpha = a;
+        ctx.lineWidth = 3; ctx.strokeStyle = bg; ctx.strokeText(n.name, x, y);
+        ctx.fillStyle = fg; ctx.fillText(n.name, x, y);
+      });
+      ctx.globalAlpha = 1;
+      ctx.lineWidth = 1;
+    }
+
+    function loop() {
+      if (dead) return;
+      if (visible) {
+        if (dragged) heat = Math.max(heat, 0.1);
+        if (heat > 0.001) { tick(heat); tick(heat); if (!dragged) heat = Math.min(heat, 0.03) * 0.985; }
+        if (!panning && (Math.abs(vel.x) > MIN_VELOCITY || Math.abs(vel.y) > MIN_VELOCITY)) {
+          view.x += vel.x; view.y += vel.y; target.x += vel.x; target.y += vel.y;
+          vel.x *= FRICTION; vel.y *= FRICTION;
+        }
+        var e = reduce ? 1 : VIEW_EASE;
+        view.x += (target.x - view.x) * e; view.y += (target.y - view.y) * e; view.k += (target.k - view.k) * e;
+        render();
+      }
+      requestAnimationFrame(loop);
+    }
+
+    function toWorld(cx, cy) { return { x: (cx - view.x) / view.k, y: (cy - view.y) / view.k }; }
+    function local(e) { var r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+    function nodeAt(p) {
+      var best = null, bd = Infinity;
+      nodes.forEach(function (n) {
+        var d = Math.hypot(view.x + n.x * view.k - p.x, view.y + n.y * view.k - p.y);
+        if (d <= Math.max(n.r + 6, 12) && d < bd) { bd = d; best = n; }
+      });
+      return best;
+    }
+    function zoomAt(p, f) {
+      var k = Math.max(MIN_SCALE, Math.min(MAX_SCALE, target.k * f));
+      var w = { x: (p.x - target.x) / target.k, y: (p.y - target.y) / target.k };
+      target.k = k; target.x = p.x - w.x * k; target.y = p.y - w.y * k;
+      adjusted = true;
+    }
+
+    var press = null, panning = false, armed = opts.wheel === "always", pointers = new Map(), pinch = null, longPress = 0;
+    function onDown(e) {
+      if (e.button === 2) return;
+      armed = true;
+      canvas.setPointerCapture(e.pointerId);
+      var p = local(e);
+      pointers.set(e.pointerId, p);
+      if (pointers.size === 2) {
+        clearTimeout(longPress); press = null; panning = false; dragged = null;
+        var ps = Array.from(pointers.values());
+        pinch = { d: Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y), c: { x: (ps[0].x + ps[1].x) / 2, y: (ps[0].y + ps[1].y) / 2 } };
+        canvas.classList.add("pinch");
+        return;
+      }
+      var n = nodeAt(p);
+      press = { n: n, x: p.x, y: p.y, moved: false };
+      vel.x = vel.y = 0;
+      if (!n) { panning = true; canvas.classList.add("drag"); }
+      if (n && e.pointerType !== "mouse" && opts.controls !== false) {
+        longPress = setTimeout(function () { if (press && !press.moved) { toggleSeed(n); press = null; } }, LONG_PRESS_MS);
+      }
+    }
+    function onMove(e) {
+      var p = local(e);
+      if (pointers.has(e.pointerId)) pointers.set(e.pointerId, p);
+      if (pinch && pointers.size === 2) {
+        var ps = Array.from(pointers.values());
+        var d = Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y);
+        var c = { x: (ps[0].x + ps[1].x) / 2, y: (ps[0].y + ps[1].y) / 2 };
+        target.x += c.x - pinch.c.x; target.y += c.y - pinch.c.y; view.x = target.x; view.y = target.y;
+        zoomAt(c, d / pinch.d);
+        pinch = { d: d, c: c };
+        return;
+      }
+      if (press) {
+        var dx = p.x - press.x, dy = p.y - press.y;
+        if (!press.moved && Math.hypot(dx, dy) >= CLICK_SLOP) {
+          press.moved = true; clearTimeout(longPress);
+          if (press.n) { dragged = press.n; heat = Math.max(heat, 0.1); canvas.classList.add("drag"); }
+        }
+        if (dragged) { var w = toWorld(p.x, p.y); dragged.x = w.x; dragged.y = w.y; dragged.vx = dragged.vy = 0; }
+        else if (panning && press.moved) {
+          var mx = p.x - (press.lx == null ? press.x : press.lx), my = p.y - (press.ly == null ? press.y : press.ly);
+          view.x += mx; view.y += my; target.x += mx; target.y += my; vel.x = mx; vel.y = my; adjusted = true;
+        }
+        press.lx = p.x; press.ly = p.y;
+        return;
+      }
+      hover = nodeAt(p);
+      canvas.classList.toggle("hot", !!hover);
+    }
+    function onUp(e) {
+      pointers.delete(e.pointerId);
+      clearTimeout(longPress);
+      if (pinch) { if (pointers.size < 2) { pinch = null; canvas.classList.remove("pinch"); } press = null; return; }
+      if (press && press.n && !press.moved && opts.onOpen) opts.onOpen(press.n, api);
+      if (dragged) { heat = Math.min(heat, 0.03); }
+      dragged = null; panning = false; press = null;
+      canvas.classList.remove("drag");
+    }
+    function onContext(e) {
+      e.preventDefault();
+      var n = nodeAt(local(e));
+      if (n) toggleSeed(n); else clearFocus();
+    }
+    function onWheel(e) {
+      if (!(armed || e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      var dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+      zoomAt(local(e), Math.exp(-dy * (e.ctrlKey ? 0.01 : 0.0015)));
+    }
+    function onLeave() { if (!press) hover = null; if (opts.wheel !== "always") armed = false; canvas.classList.remove("hot"); }
+
+    function toggleSeed(n) {
+      var i = seeds.indexOf(n);
+      if (i >= 0) seeds.splice(i, 1); else seeds.push(n);
+      if (!seeds.length) depth = 1;
+      focusInfo();
+    }
+    function clearFocus() { seeds = []; depth = 1; focusInfo(); }
+
+    canvas.addEventListener("pointerdown", onDown);
+    canvas.addEventListener("pointermove", onMove);
+    canvas.addEventListener("pointerup", onUp);
+    canvas.addEventListener("pointercancel", onUp);
+    canvas.addEventListener("pointerleave", onLeave);
+    if (opts.controls !== false) canvas.addEventListener("contextmenu", onContext);
+    canvas.addEventListener("wheel", onWheel, { passive: false });
+
+    var ro = "ResizeObserver" in window ? new ResizeObserver(resize) : null;
+    if (ro) ro.observe(canvas); else window.addEventListener("resize", resize);
+    var io = "IntersectionObserver" in window ? new IntersectionObserver(function (es) { visible = es[0].isIntersecting; }) : null;
+    if (io) io.observe(canvas);
+    resize();
+    requestAnimationFrame(loop);
+
+    var api = {
+      count: { notes: nodes.filter(function (n) { return !n.faint; }).length, links: links.length },
+      search: function (q) {
+        query = q.trim().toLowerCase();
+        if (!query) { matches = null; reset(); return []; }
+        var found = nodes.filter(function (n) { return n.name.toLowerCase().indexOf(query) >= 0; });
+        found.sort(function (a, b) {
+          var sa = a.name.toLowerCase().indexOf(query) === 0 ? 0 : 1, sb = b.name.toLowerCase().indexOf(query) === 0 ? 0 : 1;
+          return sa - sb || a.name.localeCompare(b.name);
+        });
+        matches = found;
+        // Searching zooms to what matches; the app only does this on select.
+        if (found.length) { frameList(found, Math.min(fitK * 4, MAX_SCALE)); adjusted = true; }
+        return found.slice(0, 8);
+      },
+      select: function (n) {
+        seeds = [n]; depth = 1; matches = null; query = "";
+        frameList(Array.from(neighbourhood([n], 1)), Math.min(fitK * 4, MAX_SCALE)); adjusted = true;
+        focusInfo();
+      },
+      depth: function (d) { if (!seeds.length) return; depth = Math.max(1, depth + d); focusInfo(); },
+      clearFocus: clearFocus,
+      focused: function () { return seeds.length > 0; },
+      zoom: function (f) { zoomAt({ x: W / 2, y: H / 2 }, f); },
+      reset: reset,
+      resize: resize,
+      destroy: function () {
+        dead = true;
+        if (ro) ro.disconnect(); if (io) io.disconnect();
+        canvas.removeEventListener("wheel", onWheel);
+      }
+    };
+    return api;
+  }
+
+  // Search box, results list and focus chip, shared by both graphs.
+  function wireGraph(g, ui) {
+    var results = [], index = 0;
+    function list(found) {
+      results = found; index = 0;
+      if (!ui.input.value.trim()) { ui.results.hidden = true; return; }
+      ui.results.innerHTML = found.length
+        ? found.map(function (n, i) { return '<li role="option" data-i="' + i + '"' + (i === 0 ? ' class="on"' : "") + ">" + esc(n.name) + (n.groupName ? "<small>" + esc(n.groupName) + "</small>" : "") + "</li>"; }).join("")
+        : '<li class="empty">No notes match</li>';
+      ui.results.hidden = false;
+    }
+    function choose(i) {
+      var n = results[i]; if (!n) return;
+      g.select(n);
+      ui.input.value = ""; ui.results.hidden = true; ui.input.blur();
+    }
+    ui.input.addEventListener("input", function () { list(g.search(ui.input.value)); });
+    ui.input.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        if (!results.length) return;
+        index = (index + (e.key === "ArrowDown" ? 1 : -1) + results.length) % results.length;
+        ui.results.querySelectorAll("li").forEach(function (li, i) { li.classList.toggle("on", i === index); });
+      } else if (e.key === "Enter") { e.preventDefault(); choose(index); }
+      else if (e.key === "Escape") {
+        e.stopPropagation();
+        if (ui.input.value) { ui.input.value = ""; list(g.search("")); } else ui.input.blur();
+      }
+    });
+    ui.input.addEventListener("blur", function () { setTimeout(function () { ui.results.hidden = true; }, 120); });
+    ui.input.addEventListener("focus", function () { if (ui.input.value.trim()) list(g.search(ui.input.value)); });
+    ui.results.addEventListener("mousedown", function (e) {
+      var li = e.target.closest("li[data-i]"); if (!li) return;
+      e.preventDefault(); choose(+li.dataset.i);
+    });
+    if (ui.buttons) ui.buttons.forEach(function (b) {
+      b.addEventListener("click", function () {
+        var z = b.dataset.zoom;
+        if (z === "in") g.zoom(1.3); else if (z === "out") g.zoom(1 / 1.3);
+        else { g.reset(); ui.input.value = ""; g.search(""); }
+      });
+    });
+  }
+  function chip(el, g) {
+    return function (info) {
+      if (!info) { el.hidden = true; el.innerHTML = ""; return; }
+      el.innerHTML = "<b>" + esc(info.seeds.join(", ")) + "</b><span>" + info.depth + (info.depth === 1 ? " hop" : " hops") + " · " + info.size + " notes</span>" +
+        '<button type="button" data-d="-1" aria-label="Fewer hops">−</button><button type="button" data-d="1" aria-label="More hops">+</button><button type="button" data-d="x" aria-label="Clear focus">✕</button>';
+      el.hidden = false;
+      el.onclick = function (e) {
+        var b = e.target.closest("button"); if (!b) return;
+        if (b.dataset.d === "x") g().clearFocus(); else g().depth(+b.dataset.d);
+      };
+    };
+  }
+
+  /* ---------------- the hero graph ---------------- */
+  var REGIONS = { infra: "DISTRIBUTED SYSTEMS", data: "DATABASES", security: "SECURITY", algo: "ALGORITHMS", ai: "AI" };
+  var CLUSTERS = {
+    infra: ["kubernetes", "docker", "etcd", "raft", "paxos", "load-balancing", "service-mesh", "nginx", "logical-clocks", "vector-clocks", "gossip-protocol", "leader-election", "consensus", "cap-theorem", "two-phase-commit"],
+    data: ["redis", "caching", "memcached", "locking", "postgres", "acid-model", "indexes", "sharding", "consistent-hashing", "b-trees", "write-ahead-log", "replication", "mvcc", "isolation-levels", "query-planner"],
+    security: ["tls", "aes", "aes-gcm", "access-control", "access-control-matrix", "acl", "adversary-model", "hashing", "hmac", "oauth", "jwt", "csrf", "xss", "threat-modeling", "zero-trust"],
+    algo: ["graphs", "a-star-algorithm", "dijkstra", "adjacency-list", "adjacency-matrix", "bfs", "dfs", "heaps", "topological-sort", "union-find", "dynamic-programming", "binary-search", "tries", "big-o", "recursion"],
+    ai: ["ai-agents", "agent-skills", "ai-code-review", "embeddings", "rag", "ai-fundamentals", "transformers", "attention", "tokenization", "fine-tuning", "prompt-caching", "evals", "vector-search", "context-windows", "tool-use"]
+  };
+  var CROSS = [
+    ["caching", "consistent-hashing"], ["sharding", "consistent-hashing"], ["hashing", "consistent-hashing"], ["etcd", "raft"],
+    ["kubernetes", "etcd"], ["redis", "locking"], ["postgres", "locking"], ["tls", "load-balancing"], ["nginx", "load-balancing"],
+    ["rag", "embeddings"], ["graphs", "a-star-algorithm"], ["raft", "logical-clocks"], ["indexes", "postgres"], ["ai-code-review", "ai-agents"],
+    ["adversary-model", "aes-gcm"], ["heaps", "dijkstra"], ["service-mesh", "tls"], ["redis", "memcached"], ["embeddings", "indexes"],
+    ["vector-search", "indexes"], ["replication", "raft"], ["write-ahead-log", "postgres"], ["mvcc", "isolation-levels"], ["hmac", "hashing"],
+    ["jwt", "oauth"], ["tries", "tokenization"], ["b-trees", "indexes"], ["consensus", "two-phase-commit"], ["leader-election", "raft"],
+    ["zero-trust", "service-mesh"], ["tool-use", "ai-agents"], ["prompt-caching", "caching"], ["dynamic-programming", "dijkstra"]
+  ];
+  var heroNodes = [], heroLinks = [];
+  Object.keys(CLUSTERS).forEach(function (g) {
+    var names = CLUSTERS[g];
+    names.forEach(function (name, i) {
+      heroNodes.push({ id: name, name: name, group: g, groupName: REGIONS[g] });
+      if (i > 0) heroLinks.push([name, names[Math.floor(Math.pow(rand(), 1.8) * i)]]);
+      if (i > 2 && rand() < 0.4) heroLinks.push([name, names[Math.floor(rand() * i)]]);
+    });
+  });
+  heroLinks = heroLinks.concat(CROSS);
+  ["inbox", "reading-list", "quotes", "scratch"].forEach(function (n) { heroNodes.push({ id: n, name: n, group: "loose", groupName: "" }); });
+
+  var heroCanvas = document.getElementById("graph");
+  var heroChip = document.getElementById("focus-chip");
+  var hero = Graph(heroCanvas, { nodes: heroNodes, links: heroLinks }, {
+    overscan: 1,
+    wheel: "always",
+    onOpen: function (n, g) { g.select(n); },
+    onFocus: chip(heroChip, function () { return hero; })
+  });
+  document.getElementById("graph-count").textContent = hero.count.notes + " notes · " + hero.count.links + " links";
+  var heroSearch = document.getElementById("graph-search");
+  wireGraph(hero, { input: heroSearch, results: document.getElementById("graph-results"), buttons: document.querySelectorAll(".gtools [data-zoom]") });
+  if (matchMedia("(pointer: coarse)").matches) document.getElementById("graph-hint").textContent = "Long-press a note to focus it · pinch to zoom";
+
+  /* ================= the sign-in diamond (after Frame.tsx), which opens the try vault ================= */
+  var gate = document.getElementById("gate");
+  var closing = document.getElementById("start");
+  var trace = document.getElementById("gate-trace");
+  var traceRect = trace.querySelector("rect");
+  var gateGo = document.getElementById("gate-go");
+  var tryEl = document.getElementById("try");
+  var state = "idle", jx = SIDEBAR, jy = HEADER, currentTheme = null;
+  var vaultApi = window.TryVault ? window.TryVault(tryEl, {
+    Graph: Graph, wireGraph: wireGraph, chip: chip, reduce: reduce, appUrl: APP_URL, assetBase: "assets/",
+    rebuild: function (now) {
+      // While the vault is open, seams on a freshly rendered page are already drawn, not drawn in again.
+      if (state === "open") tryEl.querySelectorAll("[data-seam]").forEach(function (el) { drawn.set(el, true); });
+      if (now) build(); else rebuild();
+    },
+    onClose: function () { closeTry(); },
+    onSidebar: function () { placeJunction(); },
+    get themes() { return THEMES; },
+    currentTheme: function () { return currentTheme; },
+    applyTheme: function (id, mode) { THEMES.forEach(function (t) { if (t.id === id) apply(t, mode, true); }); }
+  }) : null;
+
+  function sizeTrace() {
+    var s = gate.querySelector(".gate-dia").getBoundingClientRect().width / Math.SQRT2;
+    if (!s || state !== "idle") return;
+    var edge = s - 1, perimeter = 4 * edge;
+    trace.setAttribute("width", s); trace.setAttribute("height", s);
+    traceRect.setAttribute("width", edge); traceRect.setAttribute("height", edge);
+    traceRect.style.setProperty("--perimeter", perimeter + "px");
+    traceRect.style.strokeDasharray = perimeter * 0.16 + " " + perimeter * 0.84;
+  }
+  function gateCopy() {
+    var sum = vaultApi ? vaultApi.summary() : { saved: false, count: 0 };
+    document.getElementById("closing-title").textContent = sum.saved ? "Your vault is waiting." : "Start a vault.";
+    document.getElementById("gate-note").textContent = sum.saved
+      ? sum.count + (sum.count === 1 ? " note" : " notes") + " saved in this browser."
+      : "It opens right here. Your notes stay in this browser.";
+    gateGo.textContent = sum.saved ? "Open your vault" : "Try it now";
+  }
+  // Speed the trace up or down from wherever it is, instead of restarting it.
+  function traceRate(to) {
+    var a = traceRect.getAnimations ? traceRect.getAnimations()[0] : null;
+    if (!a) return;
+    var from = a.playbackRate, t0 = performance.now();
+    if (reduce) { a.playbackRate = to; return; }
+    requestAnimationFrame(function step(now) {
+      var k = Math.min(1, (now - t0) / 360);
+      a.playbackRate = from + (to - from) * k * (2 - k);
+      if (k < 1) requestAnimationFrame(step);
+    });
+  }
+  // The section keeps the height the open vault needs, so opening it moves nothing.
+  var stageW = 0;
+  function sizeStage() {
+    if (stageW && coarse && window.innerWidth === stageW) return;
+    stageW = window.innerWidth;
+    var hb = header.getBoundingClientRect().height;
+    closing.style.setProperty("--stage", Math.round(Math.max(480, Math.min(820, window.innerHeight - hb - 16))) + "px");
+  }
+  var coarse = matchMedia("(pointer: coarse)").matches;
+  sizeStage(); sizeTrace(); gateCopy();
+
+  // Where the app's header seam meets its sidebar seam, inside this section.
+  function placeJunction() {
+    var s = closing.getBoundingClientRect(), g = gate.getBoundingClientRect();
+    jx = vaultApi ? vaultApi.sidebarWidth() : SIDEBAR;
+    jy = HEADER;
+    gate.style.setProperty("--tx", (s.left + jx - g.left) + "px");
+    gate.style.setProperty("--ty", (s.top + jy - g.top) + "px");
+  }
+  window.addEventListener("resize", function () {
+    sizeStage();
+    if (state === "idle") { sizeTrace(); return; }
+    if (vaultApi) vaultApi.resized();
+    placeJunction();
+    if (state === "open") rebuild();
+  });
+
+  function openTry() {
+    if (state !== "idle" || !vaultApi) return;
+    state = "busy";
+    var hb = header.getBoundingClientRect().height;
+    var top = window.scrollY + closing.getBoundingClientRect().top - hb;
+    window.scrollTo({ top: top, behavior: reduce ? "auto" : "smooth" });
+    placeJunction();
+    gate.classList.remove("opening");
+    gate.classList.add("working");
+    traceRate(3.2 / 1.4);
+    wait(MIN_TRACE_MS)
+      .then(function () {
+        gate.classList.remove("working");
+        gate.classList.add("shut");
+        traceRate(1);
+        return wait(FADE_MS + CLOSE_MS);
+      })
+      .then(function () {
+        tryEl.hidden = false;
+        vaultApi.open();
+        build();
+        return wait(30);
+      })
+      .then(function () { vaultApi.seams().forEach(reveal); return wait(LINES_MS * 0.6); })
+      .then(function () { tryEl.classList.add("on"); return wait(CHROME_MS); })
+      .then(function () { state = "open"; });
+  }
+
+  function closeTry() {
+    if (state !== "open") return;
+    state = "busy";
+    if (document.activeElement && tryEl.contains(document.activeElement)) document.activeElement.blur();
+    tryEl.classList.remove("on");
+    wait(CHROME_MS)
+      .then(function () { vaultApi.seams().forEach(conceal); return wait(LINES_MS); })
+      .then(function () {
+        vaultApi.close();
+        tryEl.hidden = true;
+        build();
+        gateCopy();
+        placeJunction();
+        gate.classList.add("opening");
+        gate.classList.remove("shut");
+        return wait(CLOSE_MS + FADE_MS);
+      })
+      .then(function () {
+        gate.classList.remove("opening");
+        state = "idle";
+        sizeTrace();
+        rebuild();
+      });
+  }
+
+  document.querySelectorAll("[data-try]").forEach(function (b) {
+    b.addEventListener("click", function (e) {
+      e.preventDefault();
+      if (b === gateGo) { openTry(); return; }
+      var r = closing.getBoundingClientRect();
+      closing.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+      setTimeout(openTry, reduce ? 0 : Math.min(1200, 250 + Math.abs(r.top) * 0.25));
+    });
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (typing(e.target)) return;
+    if (e.key === "/") {
+      if (state === "open") {
+        var gs = tryEl.querySelector(".tv-gtools input");
+        if (gs) { e.preventDefault(); gs.focus(); }
+        return;
+      }
+      e.preventDefault();
+      heroSearch.focus({ preventScroll: true });
+      heroSearch.closest(".graph-pane").scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+    }
+    if (e.key === "Escape" && state !== "open" && hero.focused()) hero.clearFocus();
+  });
+
+  /* ================= themes (the app's six, from src/app/styles/themes.css) ================= */
+  var THEMES = [
+    { id: "default", name: "Default", dark: ["#0a0a0a", "#ededed", "#a78bfa"], light: ["#ffffff", "#171717", "#7c3aed"] },
+    { id: "dracula", name: "Dracula", dark: ["#282a36", "#f8f8f2", "#bd93f9"], light: ["#fffbeb", "#1f1f1f", "#644ac9"] },
+    { id: "tokyo-night", name: "Tokyo Night", dark: ["#1a1b26", "#c0caf5", "#7aa2f7"], light: ["#e1e2e7", "#3760bf", "#2e7de9"] },
+    { id: "gruvbox", name: "Gruvbox", dark: ["#282828", "#ebdbb2", "#d79921"], light: ["#fbf1c7", "#3c3836", "#b57614"] },
+    { id: "everforest", name: "Everforest", dark: ["#2d353b", "#d3c6aa", "#a7c080"], light: ["#fdf6e3", "#5c6a72", "#8da101"] },
+    { id: "catppuccin", name: "Catppuccin", dark: ["#1e1e2e", "#cdd6f4", "#cba6f7"], light: ["#eff1f5", "#4c4f69", "#8839ef"] }
+  ];
+  var KEY = "zenote-landing-theme";
+  var grid = document.getElementById("theme-grid");
+  var label = document.getElementById("theme-name");
+  var buttons = [];
+  THEMES.forEach(function (t) {
+    var box = document.createElement("div");
+    box.className = "swatch";
+    ["dark", "light"].forEach(function (m) {
+      var c = t[m];
+      var b = document.createElement("button");
+      b.type = "button";
+      b.style.background = c[0];
+      b.style.color = c[1];
+      b.dataset.key = t.id + "-" + m;
+      b.setAttribute("aria-pressed", "false");
+      b.innerHTML = '<i style="background:' + c[2] + '"></i><span>' + t.name + "<small>" + m + "</small></span>";
+      b.addEventListener("click", function () { apply(t, m, true); });
+      box.appendChild(b);
+      buttons.push(b);
+    });
+    grid.appendChild(box);
+  });
+  function apply(t, m, save) {
+    var c = t[m];
+    root.style.setProperty("--bg", c[0]);
+    root.style.setProperty("--fg", c[1]);
+    root.style.setProperty("--accent", c[2]);
+    root.style.setProperty("--on-accent", c[0]);
+    root.style.colorScheme = m;
+    buttons.forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.key === t.id + "-" + m)); });
+    label.textContent = t.name + " · " + m;
+    currentTheme = { id: t.id, mode: m };
+    if (save) { try { localStorage.setItem(KEY, t.id + "-" + m); } catch (e) {} }
+  }
+  document.getElementById("theme-reset").addEventListener("click", function () {
+    ["--bg", "--fg", "--accent", "--on-accent"].forEach(function (p) { root.style.removeProperty(p); });
+    root.style.colorScheme = "";
+    buttons.forEach(function (b) { b.setAttribute("aria-pressed", "false"); });
+    label.textContent = "Default · follows your system";
+    currentTheme = null;
+    try { localStorage.removeItem(KEY); } catch (e) {}
+  });
+  try {
+    var saved = localStorage.getItem(KEY);
+    if (saved) THEMES.forEach(function (t) { ["dark", "light"].forEach(function (m) { if (t.id + "-" + m === saved) apply(t, m, false); }); });
+  } catch (e) {}
+
+  /* ================= todo demo ================= */
+  var todo = document.getElementById("todo-demo");
+  todo.addEventListener("click", function () { todo.setAttribute("aria-pressed", String(todo.getAttribute("aria-pressed") !== "true")); });
+})();
+</script>
+<!--LANDING:END-->
+</body>
+</html>
